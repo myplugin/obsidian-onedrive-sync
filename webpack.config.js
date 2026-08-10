@@ -6,6 +6,43 @@ const TerserPlugin = require("terser-webpack-plugin");
 const DEFAULT_ONEDRIVE_CLIENT_ID = process.env.ONEDRIVE_CLIENT_ID || "";
 const DEFAULT_ONEDRIVE_AUTHORITY = process.env.ONEDRIVE_AUTHORITY || "";
 
+// Auto-deploy to Obsidian vault on build/watch (if VAULT_PATH set in .env).
+// Mirrors scripts/deploy.mjs so `npm run dev` (watch) + `npm run build` auto-install.
+const fs = require("fs");
+const vaultPath = process.env.VAULT_PATH;
+let deployPlugin = null;
+if (vaultPath) {
+  const pluginDir = path.join(
+    vaultPath,
+    ".obsidian",
+    "plugins",
+    "remotely-save-onedrive",
+  );
+  class DeployPlugin {
+    apply(compiler) {
+      compiler.hooks.afterEmit.tap("DeployPlugin", () => {
+        try {
+          if (!fs.existsSync(pluginDir)) {
+            fs.mkdirSync(pluginDir, { recursive: true });
+          }
+          for (const file of ["main.js", "manifest.json", "styles.css"]) {
+            const src = path.join(__dirname, file);
+            if (fs.existsSync(src)) {
+              fs.copyFileSync(src, path.join(pluginDir, file));
+            }
+          }
+          console.log(
+            `\n[deploy] main.js + manifest.json + styles.css -> ${pluginDir}`,
+          );
+        } catch (e) {
+          console.error(`[deploy] failed: ${e.message}`);
+        }
+      });
+    }
+  }
+  deployPlugin = new DeployPlugin();
+}
+
 module.exports = {
   entry: "./src/main.ts",
   target: "web",
@@ -37,6 +74,7 @@ module.exports = {
     new webpack.ProvidePlugin({
       process: "process/browser",
     }),
+    ...(deployPlugin ? [deployPlugin] : []),
   ],
   module: {
     rules: [
