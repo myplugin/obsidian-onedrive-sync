@@ -294,6 +294,8 @@
   "settings_conflictaction_desc": "<p>If a file is created or modified on both side since last update, it's a conflict event. How to deal with it? This only works for bidirectional sync.</p>",
   "settings_conflictaction_keep_newer": "newer version survives (default)",
   "settings_conflictaction_keep_larger": "larger size version survives",
+  "settings_conflictaction_smart_conflict": "smart conflict (merge small / copy large)",
+  "settings_conflictaction_smart_conflict_desc": "Merge small md / copy large files",
   "settings_cleanemptyfolder": "Action For Empty Folders",
   "settings_cleanemptyfolder_desc": "The sync algorithm majorly deals with files, so you need to specify how to deal with empty folders.",
   "settings_cleanemptyfolder_skip": "leave them as is (default)",
