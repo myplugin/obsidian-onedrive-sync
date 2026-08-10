@@ -1,0 +1,74 @@
+src/langs/en.json
+  s_2a44dffac8b14c::t_49f8d15f4e8ec7 297-298
+src/langs/zh_cn.json
+  s_2a44dffac8b14c::t_e3f0f9e3e5f6ac 296-297
+src/settings.ts
+  s_2a44dffac8b14c::t_b90f2afb3d76e4 541,574-581,583-594,599,601,627,686,709,723,747,749-753,755-780,783,785,790-792,794-801,803-806,811,849,875,896,914,935,956,973,977,1044,1046-1139,1141-1161,1163-1168,1170-1172,1174,1179-1271,1273,1312,1339,1394,1409,1421,1445,1449,1520,1531,1545,1560,1568,1579,1587,1598,1606,1617,1628
+src/langs/zh_tw.json
+  s_2a44dffac8b14c::t_ed4bc41b12389c 295-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "ba8a1d4b71160881be364ee4e0e6c4ef3ad3a99e",
+  "prompts": {
+    "s_05cdfdc73916fc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014f5a273ffemCGbR72ku013S1",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 16,
+      "total_deletions": 10,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "s_27ca07ce078182": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014a1bb5bffevmjXh4yLduMSzw",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 97,
+      "total_deletions": 0,
+      "accepted_lines": 97,
+      "overriden_lines": 0
+    },
+    "s_2a44dffac8b14c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01476f15affeF5qk7qeAH3UyP6",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 329,
+      "total_deletions": 5,
+      "accepted_lines": 329,
+      "overriden_lines": 0
+    },
+    "s_b12776bc899f51": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014951318ffeTdGbJw9Nhg0wpG",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 101,
+      "total_deletions": 0,
+      "accepted_lines": 101,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_2a44dffac8b14c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01476f15affeF5qk7qeAH3UyP6",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
