@@ -384,5 +384,11 @@
   "syncalgov3_button_agree": "Agree",
   "syncalgov3_button_disagree": "Do Not Agree",
 
-  "menu_check_file_stat": "Check file stats"
+  "menu_check_file_stat": "Check file stats",
+
+  "settings_section_account": "Account & Connection",
+  "settings_section_sync": "Sync Options",
+  "settings_section_conflict": "Conflict Handling",
+  "settings_section_encryption": "Encryption",
+  "settings_section_advanced": "Advanced"
 }

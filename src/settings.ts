@@ -12,7 +12,6 @@ import type { TextComponent } from "obsidian";
 import type {
   CipherMethodType,
   ConflictActionType,
-  EmptyFolderCleanType,
   QRExportType,
   SUPPORTED_SERVICES_TYPE_WITH_REMOTE_BASE_DIR,
   SyncDirectionType,
@@ -538,7 +537,7 @@ const getEyesElements = () => {
   const eyeOffEl = createElement(EyeOff);
   return {
     eye: eyeEl.outerHTML,
-    eyeOff: eyeOff.outerHTML,
+    eyeOff: eyeOffEl.outerHTML,
   };
 };
 
@@ -596,7 +595,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(containerEl, "账户与连接");
+    const details = this.createSection(
+      containerEl,
+      t("settings_section_account")
+    );
 
     const onedriveLongDescDiv = details.createEl("div", {
       cls: "settings-long-desc",
@@ -752,7 +754,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(containerEl, "同步选项");
+    const details = this.createSection(
+      containerEl,
+      t("settings_section_sync")
+    );
 
     new Setting(details)
       .setName(t("setting_syncdirection"))
@@ -1049,7 +1054,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(containerEl, "冲突处理");
+    const details = this.createSection(
+      containerEl,
+      t("settings_section_conflict")
+    );
 
     let conflictActionSettingOrigDesc = t("settings_conflictaction_desc");
     if (
@@ -1099,7 +1107,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(containerEl, "加密");
+    const details = this.createSection(
+      containerEl,
+      t("settings_section_encryption")
+    );
 
     const passwordSetting = new Setting(details);
     const encryptionMethodSetting = new Setting(details);
@@ -1158,7 +1169,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(containerEl, "高级");
+    const details = this.createSection(
+      containerEl,
+      t("settings_section_advanced")
+    );
 
     new Setting(details)
       .setName(t("settings_syncunderscore"))

@@ -102,6 +102,11 @@ module.exports = {
   },
   externals: {
     obsidian: "commonjs2 obsidian",
+    // aggregate-error -> clean-stack imports {fileURLToPath} from 'node:url'.
+    // Under target:"web" webpack can't bundle the node: scheme; externalize it
+    // to the real Node "url" module (provided by Obsidian/Electron at runtime).
+    // Mirrors esbuild.config.mjs `external: ["node:url"]`.
+    "node:url": "commonjs2 url",
   },
   optimization: {
     minimize: true,

@@ -1,7 +1,5 @@
 import type { RemotelySavePluginSettings } from "./baseTypes";
 import type { FakeFs } from "./fsAll";
-import { FakeFsLocal } from "./fsLocal";
-import { FakeFsMock } from "./fsMock";
 import { FakeFsOnedrive } from "./fsOnedrive";
 
 /**

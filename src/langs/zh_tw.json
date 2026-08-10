@@ -382,5 +382,11 @@
   "syncalgov3_button_agree": "同意",
   "syncalgov3_button_disagree": "不同意",
 
-  "menu_check_file_stat": "檢視檔案屬性"
+  "menu_check_file_stat": "檢視檔案屬性",
+
+  "settings_section_account": "帳戶與連線",
+  "settings_section_sync": "同步選項",
+  "settings_section_conflict": "衝突處理",
+  "settings_section_encryption": "加密",
+  "settings_section_advanced": "進階"
 }
