@@ -1,0 +1,82 @@
+esbuild.config.mjs
+  s_af3defd45b81c9::t_6e2dbdc315139e 39,46
+package.json
+  s_af3defd45b81c9::t_9114298b2e13c0 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "8078cdc24c10d9101c5ae459464ce396fce65013",
+  "prompts": {
+    "s_05cdfdc73916fc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014f5a273ffemCGbR72ku013S1",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 17,
+      "total_deletions": 9,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    },
+    "s_27ca07ce078182": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014a1bb5bffevmjXh4yLduMSzw",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 97,
+      "total_deletions": 0,
+      "accepted_lines": 97,
+      "overriden_lines": 0
+    },
+    "s_2a44dffac8b14c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01476f15affeF5qk7qeAH3UyP6",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 75,
+      "total_deletions": 0,
+      "accepted_lines": 75,
+      "overriden_lines": 0
+    },
+    "s_af3defd45b81c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01469aa29ffeB7vv2QEuT8YCVs",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 3,
+      "total_deletions": 93,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "s_b12776bc899f51": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014951318ffeTdGbJw9Nhg0wpG",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 101,
+      "total_deletions": 0,
+      "accepted_lines": 101,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_af3defd45b81c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01469aa29ffeB7vv2QEuT8YCVs",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
