@@ -1,6 +1,7 @@
 import isEqual from "lodash/isEqual";
 import { nanoid } from "nanoid";
-import type { Entity } from "./baseTypes";
+import type { Entity, RemotelySavePluginSettings } from "./baseTypes";
+import { FakeFsOnedrive } from "./fsOnedrive";
 
 export abstract class FakeFs {
   abstract kind: string;
@@ -64,4 +65,22 @@ export abstract class FakeFs {
   abstract getUserDisplayName(): Promise<string>;
   abstract revokeAuth(): Promise<any>;
   abstract allowEmptyFile(): boolean;
+}
+
+/** Returns the cloud filesystem client for the configured service type. */
+export function getClient(
+  settings: RemotelySavePluginSettings,
+  vaultName: string,
+  saveUpdatedConfigFunc: () => Promise<any>
+): FakeFs {
+  switch (settings.serviceType) {
+    case "onedrive":
+      return new FakeFsOnedrive(
+        settings.onedrive,
+        vaultName,
+        saveUpdatedConfigFunc
+      );
+    default:
+      throw Error(`cannot init client for serviceType=${settings.serviceType}`);
+  }
 }

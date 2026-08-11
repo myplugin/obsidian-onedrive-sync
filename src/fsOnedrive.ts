@@ -17,7 +17,7 @@ import {
   ONEDRIVE_CLIENT_ID,
   type OnedriveConfig,
 } from "./baseTypes";
-import { VALID_REQURL } from "./baseTypesObs";
+import { VALID_REQURL } from "./baseTypes";
 import { FakeFs } from "./fsAll";
 import { bufferToArrayBuffer } from "./misc";
 

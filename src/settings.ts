@@ -19,13 +19,13 @@ import type {
 
 import cloneDeep from "lodash/cloneDeep";
 import { generateClearDupFilesSettingsPart } from "./settingsClearDupFiles";
-import { API_VER_ENSURE_REQURL_OK, VALID_REQURL } from "./baseTypesObs";
+import { API_VER_ENSURE_REQURL_OK, VALID_REQURL } from "./baseTypes";
 import { messyConfigToNormal } from "./configPersist";
 import {
   exportVaultProfilerResultsToFiles,
   exportVaultSyncPlansToFiles,
 } from "./debugMode";
-import { getClient } from "./fsGetter";
+import { getClient } from "./fsAll";
 import {
   DEFAULT_ONEDRIVE_CONFIG,
   getAuthUrlAndVerifier as getAuthUrlAndVerifierOnedrive,
