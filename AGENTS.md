@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI agents working in `remotely-save` — an Obsidian plugin that syncs a vault to cloud services (S3, OneDrive, Dropbox, WebDAV, Webdis, and paid Google Drive / Box / pCloud / Yandex / Koofr / Azure Blob).
+Guidance for AI agents working in `remotely-save-onedrive` — a OneDrive-only fork of the Obsidian plugin that syncs a vault to Microsoft OneDrive via the Graph App Folder API.
 
 ## Commands
 
@@ -9,28 +9,31 @@ Guidance for AI agents working in `remotely-save` — an Obsidian plugin that sy
 - `npm run dev2` / `npm run build2` — esbuild alternative; `build2` also runs `tsc -noEmit -skipLibCheck` (the only standalone typecheck)
 - `npm run format` — `biome check --write .` (formatter + linter)
 - `npm run clean` — `rimraf main.js`
-- `npm test` — mocha + tsx over `tests/**/*.ts` **and** `pro/tests/**/*.ts`
+- `npm test` — mocha + tsx over `tests/**/*.ts`
 - Single test file: `npx mocha --import=tsx tests/misc.test.ts`
 - No standalone lint or typecheck script; typecheck only runs via `build2` or webpack's ts-loader.
 
 ## Build environment
 
-- `.env` is gitignored (`.gitignore` ignores `.*`). Copy from `.env.example.txt` and fill OAuth client IDs/secrets (Dropbox, OneDrive, Google Drive, Box, pCloud, Yandex, Koofr, RemotelySave site).
-- These are injected at build time as `global.DEFAULT_*` constants (see `webpack.config.js` `DefinePlugin` and `esbuild.config.mjs` `define`). Empty values build fine, but the matching services can't connect.
-- webpack and esbuild configs define the **same** `global.DEFAULT_*` map — keep them in sync when adding a new service.
+- `.env` is gitignored (`.gitignore` ignores `.*`). Copy from `.env.example.txt` and fill the OneDrive client ID.
+- The OneDrive OAuth values are injected at build time as `global.DEFAULT_*` constants — `DEFAULT_ONEDRIVE_CLIENT_ID` and `DEFAULT_ONEDRIVE_AUTHORITY` (see `webpack.config.js` `DefinePlugin` and `esbuild.config.mjs` `define`). Empty values build fine, but OneDrive can't connect.
+- webpack and esbuild configs define the **same** `global.DEFAULT_*` map — keep them in sync when changing the OneDrive config.
 - Obsidian loads `main.js` + `manifest.json` + `styles.css`. Both `main.js` and `data.json` (runtime plugin data) are gitignored.
 
 ## Architecture
 
-- Entry point `src/main.ts` (~2k lines) — the Obsidian `Plugin` subclass, and the only place with side effects / stateful code.
-- `src/` is open source (Apache-2.0). `pro/` is source-available paid features (PolyForm Strict) — **not** OSS; never copy `pro/` code into `src/` or treat it as freely reusable.
-- `pro/` is **not** a separate package: `src/main.ts` imports directly from `../pro/src/*`, and both are bundled into one `main.js`.
-- Per-cloud filesystem modules follow the `fs*.ts` pattern:
-  - `src/`: `fsLocal`, `fsS3`, `fsOnedrive`, `fsDropbox`, `fsWebdav`, `fsWebdis`, `fsMock` (tests), `fsGetter` (selector), `fsAll`, `fsEncrypt`
-  - `pro/src/`: `fsGoogleDrive`, `fsBox`, `fsPCloud`, `fsYandexDisk`, `fsKoofr`, `fsAzureBlobStorage`, `fsOnedriveFull`
-- Sync algorithm (v3) lives in `pro/src/sync.ts`, supported by `src/copyLogic.ts`, `src/metadataOnRemote.ts`, `src/syncAlgoV3Notice.ts`.
-- Runtime state: `src/settings.ts` (Obsidian plugin settings), `src/configPersist.ts`, `src/localdb.ts` (localforage wrapper). Plugin data is persisted to `data.json` (gitignored).
-- i18n lives in `src/langs/` — to add a language, copy `en.json` → `<lang>.json`, translate, then register it in `src/langs/index.ts`.
+- Entry point `src/main.ts` (~2k lines) — the Obsidian `Plugin` subclass, the only stateful file / only place with side effects.
+- **No `pro/` directory** — it has been dissolved. All code lives in flat `src/`.
+- **License split within `src/`**: most of `src/` is Apache-2.0 (`src/LICENSE`). Five files are **PolyForm Strict 1.0.0** (source-available, see root `LICENSE.pro`): `src/sync.ts`, `src/conflictLogic.ts`, `src/fileContentHistory.ts`, `src/clearDupFiles.ts`, `src/settingsClearDupFiles.ts` (each carries a `// License: PolyForm Strict` header). Personal use is fine; distribution must respect the PolyForm terms. Never copy these into Apache-licensed derived works without honoring the license.
+- Per-cloud filesystem modules follow the `fs*.ts` pattern, all in `src/`:
+  - `fsLocal` — vault local filesystem
+  - `fsOnedrive` — the only real cloud backend (Microsoft Graph App Folder)
+  - `fsAll` — `FakeFs` abstract base + `getClient` selector (fsGetter was merged in here)
+  - `fsEncrypt` — rclone-crypt wrapper around any `FakeFs`
+- Sync algorithm (v3) lives in `src/sync.ts`, supported by `src/copyLogic.ts` (copy primitives), `src/metadataOnRemote.ts` (remote metadata file naming), `src/syncAlgoV3Notice.ts` (v3 migration modal). `src/conflictLogic.ts` = smart-conflict 3-way merge (node-diff3). `src/fileContentHistory.ts` = file-content-history backing for smart-conflict (sole consumer: `src/sync.ts`). `src/clearDupFiles.ts` + `src/settingsClearDupFiles.ts` = clear-duplicate-files feature. (These five are the PolyForm files noted above.)
+- Runtime state: `src/settings.ts` (plugin settings UI), `src/configPersist.ts` (settings serialization), `src/localdb.ts` (localforage wrapper, sync-record persistence). Plugin data is persisted to `data.json` (gitignored).
+- Utilities: `src/misc.ts` (must-not-depend-on-internal layer), `src/encryptOpenSSL.ts` + `src/encryptRClone.ts` (+`.worker.ts`) (encryption), `src/baseTypes.ts` (shared types + Obsidian API version constants; `baseTypesObs` was merged in here), `src/importExport.ts` (QR config import/export), `src/obsFolderLister.ts`, `src/profiler.ts`, `src/regexListSetting.ts`, `src/debugMode.ts` (sync plan export for debugging).
+- i18n lives in `src/i18n.ts` + `src/langs/` (a single directory — `en` / `zh_cn` / `zh_tw` JSON + `index.ts`). To add a language: copy `en.json` → `<lang>.json`, translate, then register it in `src/langs/index.ts`.
 - Web workers use the `*.worker.ts` suffix (e.g. `encryptRClone.worker.ts`); inlined by webpack `worker-loader` / esbuild `inline-worker`.
 
 ## Conventions
@@ -50,6 +53,5 @@ Guidance for AI agents working in `remotely-save` — an Obsidian plugin that sy
 
 - `docs/code_design.md` — code organization rules (purity, deps, folder strings).
 - `docs/sync_algorithm/v3/` — sync algorithm design (`intro.md`, `design.md`).
-- `docs/remote_services/<service>/` — per-service setup notes and CORS/quirks.
+- `docs/remote_services/onedrive/` — OneDrive setup notes and CORS/quirks (the only service).
 - `docs/how_to_debug/` — debugging flows (logs, sync plans export, console/vconsole).
-- `pro/src/add_new_service.md` — how to add a new cloud service.
