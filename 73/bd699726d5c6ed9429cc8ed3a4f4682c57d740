@@ -1,0 +1,144 @@
+src/sync.ts
+  s_527230a09ebd1a::t_01a97b2262fb8f 14-2075
+src/localdb.ts
+  s_527230a09ebd1a::t_b5d48f43273d85 9
+src/conflictLogic.ts
+  s_527230a09ebd1a::t_66eb655125a6f5 20-394
+src/settings.ts
+  s_527230a09ebd1a::t_152619e0d8fe72 21
+src/main.ts
+  s_527230a09ebd1a::t_568c156a76435b 19
+src/fileContentHistory.ts
+  s_527230a09ebd1a::t_9663ca49a7ef0c 1-47
+src/settingsClearDupFiles.ts
+  s_527230a09ebd1a::t_cb9c6cb278ceba 2-90
+src/clearDupFiles.ts
+  s_527230a09ebd1a::t_bb673bada91eaa 1-34
+src/debugMode.ts
+  s_527230a09ebd1a::t_7e5d21c0c41cd3 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "73bd699726d5c6ed9429cc8ed3a4f4682c57d740",
+  "prompts": {
+    "s_05cdfdc73916fc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014f5a273ffemCGbR72ku013S1",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 36,
+      "total_deletions": 0,
+      "accepted_lines": 36,
+      "overriden_lines": 0
+    },
+    "s_27ca07ce078182": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014a1bb5bffevmjXh4yLduMSzw",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 97,
+      "total_deletions": 0,
+      "accepted_lines": 97,
+      "overriden_lines": 0
+    },
+    "s_2a44dffac8b14c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01476f15affeF5qk7qeAH3UyP6",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 125,
+      "total_deletions": 0,
+      "accepted_lines": 125,
+      "overriden_lines": 0
+    },
+    "s_527230a09ebd1a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_010340d98ffevWzpp4ZXKOyc3s",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 2611,
+      "total_deletions": 21,
+      "accepted_lines": 2611,
+      "overriden_lines": 0
+    },
+    "s_604b2be7e50e94": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014537ca0ffeNIfBX5EJ84Zs59",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 89,
+      "total_deletions": 0,
+      "accepted_lines": 89,
+      "overriden_lines": 0
+    },
+    "s_96ce6d377df2c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_010762874ffeECBMhEk5c6FgDu",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 121,
+      "total_deletions": 0,
+      "accepted_lines": 121,
+      "overriden_lines": 0
+    },
+    "s_9be6b33bb4a852": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0117e86a1ffeu50fdpzJCEK8kZ",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 70,
+      "total_deletions": 0,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    },
+    "s_af3defd45b81c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_01469aa29ffeB7vv2QEuT8YCVs",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 201,
+      "total_deletions": 0,
+      "accepted_lines": 201,
+      "overriden_lines": 0
+    },
+    "s_b12776bc899f51": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_014951318ffeTdGbJw9Nhg0wpG",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 101,
+      "total_deletions": 0,
+      "accepted_lines": 101,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_527230a09ebd1a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_010340d98ffevWzpp4ZXKOyc3s",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
