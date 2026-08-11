@@ -855,7 +855,7 @@ export const checkValidName = (x: string) => {
 
 /**
  * 校验单条正则是否合法。
- * 使用与 pro/src/sync.ts 一致的 XRegExp(r, "A") 模式编译。
+ * 使用与 src/sync.ts 一致的 XRegExp(r, "A") 模式编译。
  * @param r 待校验的正则字符串
  * @returns 合法返回 {ok: true}；非法返回 {ok: false, error: 报错信息}
  */
@@ -875,7 +875,7 @@ export function validateRegex(
 
 /**
  * 测试路径是否命中正则列表。
- * 逐条用 XRegExp(r, "A").test(path) 判定（与 pro/src/sync.ts:180 完全一致）。
+ * 逐条用 XRegExp(r, "A").test(path) 判定（与 src/sync.ts 完全一致）。
  * 跳过空字符串 / 纯空白条目；非法正则条目跳过（try/catch）且不影响其他合法条目判定。
  * 命中的正则原文按列表顺序收集，保留重复项。
  *
