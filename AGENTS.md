@@ -22,7 +22,7 @@ Guidance for AI agents working in `remotely-save-onedrive` — a OneDrive-only f
 
 ## Architecture
 
-- Entry point `src/main.ts` (~2k lines) — the Obsidian `Plugin` subclass, the only stateful file / only place with side effects.
+- Entry point `src/main.ts` (~1.2k lines) — the Obsidian `Plugin` subclass, the only stateful file / only place with side effects.
 - **No `pro/` directory** — it has been dissolved. All code lives in flat `src/`.
 - **License split within `src/`**: most of `src/` is Apache-2.0 (`src/LICENSE`). Five files are **PolyForm Strict 1.0.0** (source-available, see root `LICENSE.pro`): `src/sync.ts`, `src/conflictLogic.ts`, `src/fileContentHistory.ts`, `src/clearDupFiles.ts`, `src/settingsClearDupFiles.ts` (each carries a `// License: PolyForm Strict` header). Personal use is fine; distribution must respect the PolyForm terms. Never copy these into Apache-licensed derived works without honoring the license.
 - Per-cloud filesystem modules follow the `fs*.ts` pattern, all in `src/`:
