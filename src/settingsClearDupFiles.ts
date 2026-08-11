@@ -1,8 +1,8 @@
 import { type App, Modal, Notice, Setting } from "obsidian";
-import { FakeFsLocal } from "../../src/fsLocal";
-import type { TransItemType } from "../../src/i18n";
-import type RemotelySavePlugin from "../../src/main";
-import { stringToFragment } from "../../src/misc";
+import { FakeFsLocal } from "./fsLocal";
+import type { TransItemType } from "./i18n";
+import type RemotelySavePlugin from "./main";
+import { stringToFragment } from "./misc";
 import { clearDupFiles, getDupFiles } from "./clearDupFiles";
 
 class ClearDupFilesModal extends Modal {

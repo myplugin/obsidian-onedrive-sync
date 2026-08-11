@@ -1,4 +1,4 @@
-import type { FakeFsLocal } from "../../src/fsLocal";
+import type { FakeFsLocal } from "./fsLocal";
 import { getFileRenameForDup } from "./conflictLogic";
 
 export const getDupFiles = async (fsLocal: FakeFsLocal) => {

@@ -18,7 +18,7 @@ import type {
 } from "./baseTypes";
 
 import cloneDeep from "lodash/cloneDeep";
-import { generateClearDupFilesSettingsPart } from "../pro/src/settingsClearDupFiles";
+import { generateClearDupFilesSettingsPart } from "./settingsClearDupFiles";
 import { API_VER_ENSURE_REQURL_OK, VALID_REQURL } from "./baseTypesObs";
 import { messyConfigToNormal } from "./configPersist";
 import {

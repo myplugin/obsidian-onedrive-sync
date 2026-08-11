@@ -11,21 +11,21 @@ import type {
   SUPPORTED_SERVICES_TYPE,
   SyncDirectionType,
   SyncTriggerSourceType,
-} from "../../src/baseTypes";
-import { copyFile, copyFileOrFolder, copyFolder } from "../../src/copyLogic";
-import type { FakeFs } from "../../src/fsAll";
-import type { FakeFsEncrypt } from "../../src/fsEncrypt";
+} from "./baseTypes";
+import { copyFile, copyFileOrFolder, copyFolder } from "./copyLogic";
+import type { FakeFs } from "./fsAll";
+import type { FakeFsEncrypt } from "./fsEncrypt";
 import {
   type InternalDBs,
   clearPrevSyncRecordByVaultAndProfile,
   getAllPrevSyncRecordsByVaultAndProfile,
   insertSyncPlanRecordByVault,
   upsertPrevSyncRecordByVaultAndProfile,
-} from "../../src/localdb";
+} from "./localdb";
 import {
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE,
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2,
-} from "../../src/metadataOnRemote";
+} from "./metadataOnRemote";
 import {
   atWhichLevel,
   checkValidName,
@@ -35,14 +35,14 @@ import {
   isSpecialFolderNameToSkip,
   roughSizeOfObject,
   unixTimeToStr,
-} from "../../src/misc";
-import type { Profiler } from "../../src/profiler";
+} from "./misc";
+import type { Profiler } from "./profiler";
 import { isMergable, mergeFile, tryDuplicateFile } from "./conflictLogic";
 import {
   clearFileContentHistoryByVaultAndProfile,
   getFileContentHistoryByVaultAndProfile,
   upsertFileContentHistoryByVaultAndProfile,
-} from "./localdb";
+} from "./fileContentHistory";
 
 const copyEntityAndFixTimeFormat = (
   src: Entity,

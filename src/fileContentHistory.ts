@@ -1,5 +1,5 @@
-import type { Entity } from "../../src/baseTypes";
-import type { InternalDBs } from "../../src/localdb";
+import type { Entity } from "./baseTypes";
+import type { InternalDBs } from "./localdb";
 
 export const upsertFileContentHistoryByVaultAndProfile = async (
   db: InternalDBs,

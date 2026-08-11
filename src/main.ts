@@ -16,7 +16,7 @@ import {
   requireApiVersion,
   setIcon,
 } from "obsidian";
-import { syncer } from "../pro/src/sync";
+import { syncer } from "./sync";
 import type {
   RemotelySavePluginSettings,
   SyncTriggerSourceType,
