@@ -852,3 +852,64 @@ export const checkValidName = (x: string) => {
     result: true,
   };
 };
+
+/**
+ * 校验单条正则是否合法。
+ * 使用与 pro/src/sync.ts 一致的 XRegExp(r, "A") 模式编译。
+ * @param r 待校验的正则字符串
+ * @returns 合法返回 {ok: true}；非法返回 {ok: false, error: 报错信息}
+ */
+export function validateRegex(
+  r: string
+): { ok: true } | { ok: false; error: string } {
+  if (typeof r !== "string") {
+    return { ok: false, error: "regex must be a string" };
+  }
+  try {
+    XRegExp(r, "A");
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: String(e?.message ?? e) };
+  }
+}
+
+/**
+ * 测试路径是否命中正则列表。
+ * 逐条用 XRegExp(r, "A").test(path) 判定（与 pro/src/sync.ts:180 完全一致）。
+ * 跳过空字符串 / 纯空白条目；非法正则条目跳过（try/catch）且不影响其他合法条目判定。
+ * 命中的正则原文按列表顺序收集，保留重复项。
+ *
+ * 斜杠兼容：匹配前对 path 和 r 做同样的斜杠归一化（与 sync.ts 保持一致），
+ *   - path: 每个单反斜杠 `\` → `/`
+ *   - r    : 每个双反斜杠 `\\`（字面反斜杠，路径分隔符意图）→ `/`
+ *   单反斜杠转义如 `\.``\d``\w``\s` 不受影响（它们不是 `\\`）。
+ *   matchedRegexes 仍返回用户原始输入的 r（归一化仅用于判定，不改变展示）。
+ * @param regexes 正则字符串列表
+ * @param path 待测试的路径（相对库根，无前导 /）
+ * @returns { matched: 是否至少一条命中, matchedRegexes: 命中的正则原文列表 }
+ */
+export function testPathAgainstRegexList(
+  regexes: string[],
+  path: string
+): { matched: boolean; matchedRegexes: string[] } {
+  const matchedRegexes: string[] = [];
+  const normalizedPath = path.replace(/\\/g, "/");
+  for (const r of regexes) {
+    if (typeof r !== "string") {
+      continue;
+    }
+    if (r.trim() === "") {
+      // skip empty / whitespace-only entries (matches sync.ts:176-178)
+      continue;
+    }
+    try {
+      const normalizedR = r.replace(/\\\\/g, "/");
+      if (XRegExp(normalizedR, "A").test(normalizedPath)) {
+        matchedRegexes.push(r); // original r, not normalized — UI shows what user typed
+      }
+    } catch {
+      // invalid regex entry: skip silently, do not affect other entries
+    }
+  }
+  return { matched: matchedRegexes.length > 0, matchedRegexes };
+}

@@ -119,15 +119,171 @@
   height: 350px;
 }
 
-.ignorepaths-textarea {
-  font-family: monospace;
-}
-
-.onlyallowpaths-textarea {
-  font-family: monospace;
-}
-
 .setting-need-wrapping .setting-item-control {
   /* flex-wrap: wrap; */
   display: grid;
+}
+
+/* ===== Regex list setting (ignorePaths / onlyAllowPaths) =====
+   These rows use Obsidian's `Setting` (so they inherit the standard
+   `.setting-item` background / padding / divider — consistent with
+   neighboring rows). The `.rs-regex-setting` class flips the setting's
+   flex direction to column so name/desc sit on TOP and the chip list /
+   add row / path tester fill the full width BELOW, instead of the default
+   left-right split that leaves empty space under the description. */
+
+/* Vertically center the control next to the name/desc on standard
+   left-right settings (Obsidian top-aligns by default, which looks
+   unbalanced when descriptions wrap to multiple lines). The regex
+   settings below use a higher-specificity selector with stretch, so
+   they are unaffected. */
+.rs-panel .setting-item {
+  align-items: center;
+}
+
+.rs-panel .setting-item.rs-regex-setting {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.rs-panel .setting-item.rs-regex-setting .setting-item-control {
+  width: 100%;
+}
+
+/* chips + add row + path tester container */
+.rs-regex-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* chips container — wraps horizontally */
+.rs-regex-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-height: 4px;
+}
+
+/* a single regex chip (capsule) */
+.rs-regex-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 4px 2px 8px;
+  border-radius: 10px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.6;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.rs-regex-chip:hover {
+  background: var(
+    --background-modifier-border-hover,
+    var(--background-modifier-border)
+  );
+}
+
+/* invalid regex chip */
+.rs-regex-chip-invalid {
+  border-color: var(--text-error);
+}
+
+/* the warning glyph on an invalid chip */
+.rs-regex-chip-warning {
+  color: var(--text-warning);
+  font-size: 1.05em;
+  line-height: 1;
+  cursor: help;
+}
+
+/* the regex text inside a chip — truncates with ellipsis if very long */
+.rs-regex-chip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* the x delete button */
+.rs-regex-chip-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-interface, sans-serif);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.rs-regex-chip-delete:hover {
+  color: var(--text-error);
+  background: var(--background-modifier-hover);
+}
+
+/* add-row + test-row share the same flex layout */
+.rs-regex-add-row,
+.rs-regex-test-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rs-regex-add-input,
+.rs-regex-test-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* path tester block — visually separated from the chips above */
+.rs-regex-tester {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--background-modifier-border);
+}
+
+.rs-regex-test-result {
+  margin-top: 6px;
+  font-size: var(--font-ui-smaller);
+  line-height: 1.6;
+}
+
+.rs-regex-test-result:empty {
+  display: none;
+}
+
+.rs-regex-test-result-match {
+  color: var(--text-success);
+}
+
+.rs-regex-test-result-nomatch {
+  color: var(--text-muted);
+}
+
+/* a matched regex rendered inline within the test result */
+.rs-regex-matched-regex {
+  font-family: var(--font-monospace);
+  background: var(--background-modifier-hover);
+  padding: 0 4px;
+  border-radius: 3px;
 }

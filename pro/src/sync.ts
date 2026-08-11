@@ -143,6 +143,8 @@ export const checkIsSkipItemOrNotByName = (
     throw Error(`checkIsSkipItemOrNotByName meets undefinded key!`);
   }
 
+  const normalizedKey = key.replace(/\\/g, "/"); // slash compatibility (parity with tester)
+
   let finalIsIgnored: boolean | undefined = undefined;
 
   let enableAllowMode = false;
@@ -155,7 +157,7 @@ export const checkIsSkipItemOrNotByName = (
       }
       enableAllowMode = true; // we really want to check the allow list
 
-      if (XRegExp(r, "A").test(key)) {
+      if (XRegExp(r.replace(/\\\\/g, "/"), "A").test(normalizedKey)) {
         isExplictlyAllowed = true;
       }
     }
@@ -177,7 +179,7 @@ export const checkIsSkipItemOrNotByName = (
         // ignore empty lines
         continue;
       }
-      if (XRegExp(r, "A").test(key)) {
+      if (XRegExp(r.replace(/\\\\/g, "/"), "A").test(normalizedKey)) {
         if (finalIsIgnored === undefined) {
           isExplictlyIgnored = true;
           finalIsIgnored = true;

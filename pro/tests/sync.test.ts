@@ -151,4 +151,85 @@ describe("Sync: checkIsSkipItemOrNotByName", () => {
     ).finalIsIgnored;
     assert.ok(isSkip);
   });
+
+  it("should normalize backslash in key path (slash compatibility)", async () => {
+    // key uses \, ignorePaths regex uses / → should still skip after path normalization
+    const isSkip = checkIsSkipItemOrNotByName(
+      "tmp\\foo.md",
+      false,
+      false,
+      false,
+      ".obsidian",
+      /*    ignorePaths */ ["tmp/.*"],
+      /* onlyAllowPaths */ []
+    ).finalIsIgnored;
+    assert.ok(isSkip);
+  });
+
+  it("should normalize double-backslash in ignorePaths regex (slash compatibility)", async () => {
+    // regex uses \\ (literal backslash = path-separator intent), key uses /
+    const isSkip = checkIsSkipItemOrNotByName(
+      "tmp/foo.md",
+      false,
+      false,
+      false,
+      ".obsidian",
+      /*    ignorePaths */ ["tmp\\\\.*"],
+      /* onlyAllowPaths */ []
+    ).finalIsIgnored;
+    assert.ok(isSkip);
+  });
+
+  it("should normalize backslash in key AND regex together (slash compatibility)", async () => {
+    // both key and regex use backslashes → both normalized to / → match
+    const isSkip = checkIsSkipItemOrNotByName(
+      "tmp\\foo.md",
+      false,
+      false,
+      false,
+      ".obsidian",
+      /*    ignorePaths */ ["tmp\\\\.*"],
+      /* onlyAllowPaths */ []
+    ).finalIsIgnored;
+    assert.ok(isSkip);
+  });
+
+  it("should normalize double-backslash in onlyAllowPaths regex (slash compatibility)", async () => {
+    // allow regex uses \\, key uses / → explicitly allowed → NOT skipped
+    const isSkip = checkIsSkipItemOrNotByName(
+      "tmp/foo.md",
+      false,
+      false,
+      false,
+      ".obsidian",
+      /*    ignorePaths */ [],
+      /* onlyAllowPaths */ ["tmp\\\\.*"]
+    ).finalIsIgnored;
+    assert.ok(!isSkip);
+  });
+
+  it("should NOT touch single-backslash escapes like \\. in sync (slash compatibility)", async () => {
+    // \.png$ is one backslash + dot (NOT \\) → must stay a literal-dot escape
+    let isSkip = checkIsSkipItemOrNotByName(
+      "a.png",
+      false,
+      false,
+      false,
+      ".obsidian",
+      /*    ignorePaths */ [String.raw`\.png$`],
+      /* onlyAllowPaths */ []
+    ).finalIsIgnored;
+    assert.ok(isSkip); // matches a.png
+
+    isSkip = checkIsSkipItemOrNotByName(
+      "a_png",
+      false,
+      false,
+      false,
+      ".obsidian",
+      /*    ignorePaths */ [String.raw`\.png$`],
+      /* onlyAllowPaths */ []
+    ).finalIsIgnored;
+    assert.ok(!isSkip); // does NOT match a_png
+  });
 });

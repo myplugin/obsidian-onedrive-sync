@@ -491,3 +491,145 @@ describe("Misc: Dropbox: should fix the folder name cases", () => {
     assert.deepEqual(misc.fixEntityListCasesInplace(input), output);
   });
 });
+
+describe("Misc: validateRegex", () => {
+  it("should accept legit regexes", () => {
+    assert.equal(misc.validateRegex("test").ok, true);
+    assert.equal(misc.validateRegex("^test$").ok, true);
+    assert.equal(misc.validateRegex(String.raw`\.png$`).ok, true);
+    assert.equal(misc.validateRegex("tmp/.*").ok, true);
+  });
+
+  it("should reject invalid regexes with non-empty error", () => {
+    const expectInvalid = (r: string) => {
+      const res = misc.validateRegex(r);
+      assert.equal(res.ok, false, `expected ok=false for ${JSON.stringify(r)}`);
+      // narrow to the error branch to read .error safely
+      if (res.ok === false) {
+        assert.ok(typeof res.error === "string");
+        assert.ok(
+          res.error.length > 0,
+          `expected non-empty error for ${JSON.stringify(r)}`
+        );
+      }
+    };
+    expectInvalid("(");
+    expectInvalid("[unclosed");
+    expectInvalid("*leading");
+  });
+});
+
+describe("Misc: testPathAgainstRegexList", () => {
+  it("should return no match for an empty list", () => {
+    assert.deepEqual(misc.testPathAgainstRegexList([], "anything"), {
+      matched: false,
+      matchedRegexes: [],
+    });
+  });
+
+  it("should match an anchored-end regex on exact input", () => {
+    assert.deepEqual(misc.testPathAgainstRegexList(["test$"], "test"), {
+      matched: true,
+      matchedRegexes: ["test$"],
+    });
+  });
+
+  it("should not match when end-anchor fails", () => {
+    assert.deepEqual(misc.testPathAgainstRegexList(["test$"], "testing"), {
+      matched: false,
+      matchedRegexes: [],
+    });
+  });
+
+  it("should match .png$ on a.png but not a.txt", () => {
+    const png = String.raw`\.png$`;
+    assert.deepEqual(misc.testPathAgainstRegexList([png], "a.png"), {
+      matched: true,
+      matchedRegexes: [png],
+    });
+    assert.deepEqual(misc.testPathAgainstRegexList([png], "a.txt"), {
+      matched: false,
+      matchedRegexes: [],
+    });
+  });
+
+  it("should collect multiple matches preserving order and duplicates", () => {
+    // both "ab" and "bc" are substrings of "abc"
+    assert.deepEqual(misc.testPathAgainstRegexList(["ab", "bc"], "abc"), {
+      matched: true,
+      matchedRegexes: ["ab", "bc"],
+    });
+    // only first matches
+    assert.deepEqual(misc.testPathAgainstRegexList(["abc", "xyz"], "abc"), {
+      matched: true,
+      matchedRegexes: ["abc"],
+    });
+    // duplicates both kept, in order
+    assert.deepEqual(misc.testPathAgainstRegexList(["abc", "abc"], "abc"), {
+      matched: true,
+      matchedRegexes: ["abc", "abc"],
+    });
+  });
+
+  it("should skip invalid regex entries without throwing", () => {
+    assert.deepEqual(misc.testPathAgainstRegexList(["(", "abc"], "abc"), {
+      matched: true,
+      matchedRegexes: ["abc"],
+    });
+  });
+
+  it("should skip empty and whitespace-only entries", () => {
+    assert.deepEqual(
+      misc.testPathAgainstRegexList(["", "  ", "abc"], "abc"),
+      {
+        matched: true,
+        matchedRegexes: ["abc"],
+      }
+    );
+  });
+});
+
+describe("Misc: testPathAgainstRegexList slash compatibility", () => {
+  it("should normalize backslash in input path", () => {
+    // regex uses /, user pastes Windows-style path with \
+    assert.deepEqual(misc.testPathAgainstRegexList(["tmp/.*"], "tmp\\foo"), {
+      matched: true,
+      matchedRegexes: ["tmp/.*"],
+    });
+  });
+
+  it("should normalize double-backslash in regex (path separator intent)", () => {
+    // regex uses \\ (literal backslash), path uses /
+    assert.deepEqual(misc.testPathAgainstRegexList(["tmp\\\\.*"], "tmp/foo"), {
+      matched: true,
+      matchedRegexes: ["tmp\\\\.*"], // original regex returned, not normalized
+    });
+  });
+
+  it("should match when both path and regex use backslashes", () => {
+    assert.deepEqual(misc.testPathAgainstRegexList(["tmp\\\\.*"], "tmp\\foo"), {
+      matched: true,
+      matchedRegexes: ["tmp\\\\.*"],
+    });
+  });
+
+  it("should NOT touch single-backslash escapes like \\.", () => {
+    // \.png$ still works (\. is one backslash + dot, NOT \\)
+    const r = String.raw`\.png$`;
+    assert.deepEqual(misc.testPathAgainstRegexList([r], "a.png"), {
+      matched: true,
+      matchedRegexes: [r],
+    });
+    assert.deepEqual(misc.testPathAgainstRegexList([r], "a_png"), {
+      matched: false,
+      matchedRegexes: [],
+    });
+  });
+
+  it("forward-slash paths and regexes still work (no regression)", () => {
+    assert.deepEqual(misc.testPathAgainstRegexList(["tmp/.*"], "tmp/foo"), {
+      matched: true,
+      matchedRegexes: ["tmp/.*"],
+    });
+  });
+});

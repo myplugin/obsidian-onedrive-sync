@@ -50,6 +50,7 @@ import {
   stringToFragment,
 } from "./misc";
 import { DEFAULT_PROFILER_CONFIG } from "./profiler";
+import { renderRegexListSetting } from "./regexListSetting";
 
 class PasswordModal extends Modal {
   plugin: RemotelySavePlugin;
@@ -964,47 +965,35 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl)
+    const ignorePathsSetting = new Setting(containerEl)
       .setName(t("settings_ignorepaths"))
-      .setDesc(t("settings_ignorepaths_desc"))
-      .setClass("ignorepaths-settings")
+      .setDesc(t("settings_ignorepaths_desc"));
+    ignorePathsSetting.settingEl.addClass("rs-regex-setting");
+    renderRegexListSetting({
+      containerEl: ignorePathsSetting.controlEl,
+      getValues: () => this.plugin.settings.ignorePaths ?? [],
+      setValues: async (next) => {
+        this.plugin.settings.ignorePaths = next;
+        await this.plugin.saveSettings();
+      },
+      t,
+      placeholder: t("settings_regex_add_placeholder"),
+    });
 
-      .addTextArea((textArea) => {
-        textArea
-          .setValue(`${(this.plugin.settings.ignorePaths ?? []).join("\n")}`)
-          .onChange(async (value) => {
-            this.plugin.settings.ignorePaths = value
-              .trim()
-              .split("\n")
-              .filter((x) => x.trim() !== "");
-            await this.plugin.saveSettings();
-          });
-        textArea.inputEl.rows = 10;
-        textArea.inputEl.cols = 30;
-
-        textArea.inputEl.addClass("ignorepaths-textarea");
-      });
-
-    new Setting(containerEl)
+    const onlyAllowPathsSetting = new Setting(containerEl)
       .setName(t("settings_onlyallowpaths"))
-      .setDesc(t("settings_onlyallowpaths_desc"))
-      .setClass("onlyallowpaths-settings")
-
-      .addTextArea((textArea) => {
-        textArea
-          .setValue(`${(this.plugin.settings.onlyAllowPaths ?? []).join("\n")}`)
-          .onChange(async (value) => {
-            this.plugin.settings.onlyAllowPaths = value
-              .trim()
-              .split("\n")
-              .filter((x) => x.trim() !== "");
-            await this.plugin.saveSettings();
-          });
-        textArea.inputEl.rows = 10;
-        textArea.inputEl.cols = 30;
-
-        textArea.inputEl.addClass("onlyallowpaths-textarea");
-      });
+      .setDesc(t("settings_onlyallowpaths_desc"));
+    onlyAllowPathsSetting.settingEl.addClass("rs-regex-setting");
+    renderRegexListSetting({
+      containerEl: onlyAllowPathsSetting.controlEl,
+      getValues: () => this.plugin.settings.onlyAllowPaths ?? [],
+      setValues: async (next) => {
+        this.plugin.settings.onlyAllowPaths = next;
+        await this.plugin.saveSettings();
+      },
+      t,
+      placeholder: t("settings_regex_add_placeholder"),
+    });
 
     new Setting(containerEl)
       .setName(t("settings_deletetowhere"))
