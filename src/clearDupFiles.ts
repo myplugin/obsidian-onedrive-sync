@@ -1,3 +1,5 @@
+// License: PolyForm Strict 1.0.0 (source-available). See LICENSE.pro.
+
 import type { FakeFsLocal } from "./fsLocal";
 import { getFileRenameForDup } from "./conflictLogic";
 

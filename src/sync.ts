@@ -1,3 +1,5 @@
+// License: PolyForm Strict 1.0.0 (source-available). See LICENSE.pro.
+
 // biome-ignore lint/suspicious/noShadowRestrictedNames: <explanation>
 import AggregateError from "aggregate-error";
 import PQueue from "p-queue";

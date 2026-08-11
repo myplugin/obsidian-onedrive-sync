@@ -1,3 +1,5 @@
+// License: PolyForm Strict 1.0.0 (source-available). See LICENSE.pro.
+
 import { type App, Modal, Notice, Setting } from "obsidian";
 import { FakeFsLocal } from "./fsLocal";
 import type { TransItemType } from "./i18n";
