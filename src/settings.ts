@@ -572,21 +572,79 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h1", { text: "Remotely Save (OneDrive)" });
 
-    this.generateAccountSection(containerEl);
-    this.generateSyncOptionsSection(containerEl);
-    this.generateConflictSection(containerEl);
-    this.generateEncryptionSection(containerEl);
-    this.generateAdvancedSection(containerEl);
+    const t = (x: TransItemType, vars?: any) => {
+      return this.plugin.i18n.t(x, vars);
+    };
+
+    const tabBar = containerEl.createDiv({ cls: "rs-tab-bar" });
+    const panelsHost = containerEl.createDiv({ cls: "rs-panels" });
+
+    const accountPanel = panelsHost.createDiv({
+      cls: "rs-panel rs-panel-active",
+    });
+    const syncPanel = panelsHost.createDiv({ cls: "rs-panel" });
+    const safetyPanel = panelsHost.createDiv({ cls: "rs-panel" });
+    const advancedPanel = panelsHost.createDiv({ cls: "rs-panel" });
+
+    const accountTab = this.createTabButton(
+      tabBar,
+      t("settings_section_account"),
+      true
+    );
+    const syncTab = this.createTabButton(
+      tabBar,
+      t("settings_section_sync"),
+      false
+    );
+    const safetyTab = this.createTabButton(
+      tabBar,
+      t("settings_section_safety"),
+      false
+    );
+    const advancedTab = this.createTabButton(
+      tabBar,
+      t("settings_section_advanced"),
+      false
+    );
+
+    const tabs = [accountTab, syncTab, safetyTab, advancedTab];
+    const panels = [accountPanel, syncPanel, safetyPanel, advancedPanel];
+    tabs.forEach((tab, i) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((tb, j) => {
+          tb.toggleClass("rs-tab-active", i === j);
+          panels[j].toggleClass("rs-panel-active", i === j);
+        });
+      });
+    });
+
+    this.generateAccountSection(accountPanel);
+    this.generateSyncOptionsSection(syncPanel);
+
+    safetyPanel.createEl("h3", {
+      text: t("settings_section_conflict"),
+      cls: "rs-subheading",
+    });
+    this.generateConflictSection(safetyPanel);
+    safetyPanel.createEl("h3", {
+      text: t("settings_section_encryption"),
+      cls: "rs-subheading",
+    });
+    this.generateEncryptionSection(safetyPanel);
+
+    this.generateAdvancedSection(advancedPanel);
   }
 
-  private createSection(
-    containerEl: HTMLElement,
-    title: string
-  ): HTMLDetailsElement {
-    const details = containerEl.createEl("details") as HTMLDetailsElement;
-    details.open = true;
-    details.createEl("summary", { text: title });
-    return details;
+  private createTabButton(
+    tabBar: HTMLElement,
+    label: string,
+    active: boolean
+  ): HTMLElement {
+    const tab = tabBar.createDiv({
+      cls: active ? "rs-tab rs-tab-active" : "rs-tab",
+    });
+    tab.setText(label);
+    return tab;
   }
 
   // ① 账户与连接
@@ -595,12 +653,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(
-      containerEl,
-      t("settings_section_account")
-    );
-
-    const onedriveLongDescDiv = details.createEl("div", {
+    const onedriveLongDescDiv = containerEl.createEl("div", {
       cls: "settings-long-desc",
     });
     for (const c of [
@@ -626,7 +679,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       text: t("settings_onedrive_nobiz"),
     });
 
-    const onedriveSelectAuthDiv = details.createDiv();
+    const onedriveSelectAuthDiv = containerEl.createDiv();
     const onedriveAuthDiv = onedriveSelectAuthDiv.createDiv({
       cls: "onedrive-auth-button-hide settings-auth-related",
     });
@@ -685,7 +738,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     let newOnedriveRemoteBaseDir =
       this.plugin.settings.onedrive.remoteBaseDir || "";
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_remotebasedir"))
       .setDesc(t("settings_remotebasedir_desc"))
       .addText((text) =>
@@ -708,7 +761,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_onedrive_emptyfile"))
       .setDesc(t("settings_onedrive_emptyfile_desc"))
       .addDropdown(async (dropdown) => {
@@ -722,7 +775,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_checkonnectivity"))
       .setDesc(t("settings_checkonnectivity_desc"))
       .addButton(async (button) => {
@@ -754,12 +807,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(
-      containerEl,
-      t("settings_section_sync")
-    );
-
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("setting_syncdirection"))
       .setDesc(stringToFragment(t("setting_syncdirection_desc")))
       .addDropdown((dropdown) => {
@@ -792,7 +840,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_concurrency"))
       .setDesc(t("settings_concurrency_desc"))
       .addDropdown((dropdown) => {
@@ -813,7 +861,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_autorun"))
       .setDesc(t("settings_autorun_desc"))
       .addDropdown((dropdown) => {
@@ -851,7 +899,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_runoncestartup"))
       .setDesc(t("settings_runoncestartup_desc"))
       .addDropdown((dropdown) => {
@@ -877,7 +925,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_synconsave"))
       .setDesc(t("settings_synconsave_desc"))
       .addDropdown((dropdown) => {
@@ -898,7 +946,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_skiplargefiles"))
       .setDesc(t("settings_skiplargefiles_desc"))
       .addDropdown((dropdown) => {
@@ -916,7 +964,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_ignorepaths"))
       .setDesc(t("settings_ignorepaths_desc"))
       .setClass("ignorepaths-settings")
@@ -937,7 +985,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         textArea.inputEl.addClass("ignorepaths-textarea");
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_onlyallowpaths"))
       .setDesc(t("settings_onlyallowpaths_desc"))
       .setClass("onlyallowpaths-settings")
@@ -958,7 +1006,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         textArea.inputEl.addClass("onlyallowpaths-textarea");
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_deletetowhere"))
       .setDesc(t("settings_deletetowhere_desc"))
       .addDropdown((dropdown) => {
@@ -975,11 +1023,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    const percentage1 = new Setting(details)
+    const percentage1 = new Setting(containerEl)
       .setName(t("settings_protectmodifypercentage"))
       .setDesc(t("settings_protectmodifypercentage_desc"));
 
-    const percentage2 = new Setting(details)
+    const percentage2 = new Setting(containerEl)
       .setName(t("settings_protectmodifypercentage_customfield"))
       .setDesc(t("settings_protectmodifypercentage_customfield_desc"));
     if ((this.plugin.settings.protectModifyPercentage ?? 50) % 10 === 0) {
@@ -1054,11 +1102,6 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(
-      containerEl,
-      t("settings_section_conflict")
-    );
-
     let conflictActionSettingOrigDesc = t("settings_conflictaction_desc");
     if (
       (this.plugin.settings.conflictAction ?? "keep_newer") === "smart_conflict"
@@ -1067,7 +1110,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         "settings_conflictaction_smart_conflict_desc"
       );
     }
-    const conflictActionSetting = new Setting(details)
+    const conflictActionSetting = new Setting(containerEl)
       .setName(t("settings_conflictaction"))
       .setDesc(stringToFragment(conflictActionSettingOrigDesc));
     conflictActionSetting.addDropdown((dropdown) => {
@@ -1098,7 +1141,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
     });
 
-    generateClearDupFilesSettingsPart(details, t, this.app, this.plugin);
+    generateClearDupFilesSettingsPart(containerEl, t, this.app, this.plugin);
   }
 
   // ④ 加密
@@ -1107,13 +1150,8 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(
-      containerEl,
-      t("settings_section_encryption")
-    );
-
-    const passwordSetting = new Setting(details);
-    const encryptionMethodSetting = new Setting(details);
+    const passwordSetting = new Setting(containerEl);
+    const encryptionMethodSetting = new Setting(containerEl);
 
     let newPassword = `${this.plugin.settings.password}`;
     passwordSetting
@@ -1169,12 +1207,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const details = this.createSection(
-      containerEl,
-      t("settings_section_advanced")
-    );
-
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_syncunderscore"))
       .setDesc(t("settings_syncunderscore_desc"))
       .addDropdown((dropdown) => {
@@ -1190,7 +1223,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_configdir"))
       .setDesc(
         t("settings_configdir_desc", {
@@ -1223,7 +1256,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_bookmarks"))
       .setDesc(
         t("settings_bookmarks_desc", {
@@ -1247,7 +1280,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     // status bar
     // custom status bar items is not supported on mobile
     if (!Platform.isMobileApp) {
-      new Setting(details)
+      new Setting(containerEl)
         .setName(t("settings_enablestatusbar_info"))
         .setDesc(t("settings_enablestatusbar_info_desc"))
         .addToggle((toggle) => {
@@ -1260,7 +1293,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             });
         });
 
-      new Setting(details)
+      new Setting(containerEl)
         .setName(t("settings_resetstatusbar_time"))
         .setDesc(t("settings_resetstatusbar_time_desc"))
         .addButton((button) => {
@@ -1284,7 +1317,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     }
 
     if (Platform.isMobile) {
-      new Setting(details)
+      new Setting(containerEl)
         .setName(t("settings_enablemobilestatusbar"))
         .setDesc(t("settings_enablemobilestatusbar_desc"))
         .addDropdown(async (dropdown) => {
@@ -1323,7 +1356,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     // below for import and export functions
     //////////////////////////////////////////////////
 
-    const importExportDivSetting1 = new Setting(details)
+    const importExportDivSetting1 = new Setting(containerEl)
       .setName(t("settings_export"))
       .setDesc(t("settings_export_desc"));
     importExportDivSetting1.settingEl.addClass("setting-need-wrapping");
@@ -1350,7 +1383,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       });
 
     let importSettingVal = "";
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_import"))
       .setDesc(t("settings_import_desc"))
       .addText((text) =>
@@ -1405,7 +1438,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     // below for debug
     //////////////////////////////////////////////////
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_debuglevel"))
       .setDesc(t("settings_debuglevel_desc"))
       .addDropdown(async (dropdown) => {
@@ -1420,7 +1453,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_outputsettingsconsole"))
       .setDesc(t("settings_outputsettingsconsole_desc"))
       .addButton(async (button) => {
@@ -1432,7 +1465,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_obfuscatesettingfile"))
       .setDesc(t("settings_obfuscatesettingfile_desc"))
       .addDropdown(async (dropdown) => {
@@ -1456,11 +1489,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_viewconsolelog"))
       .setDesc(stringToFragment(t("settings_viewconsolelog_desc")));
 
-    const debugDivExportSyncPlans = new Setting(details)
+    const debugDivExportSyncPlans = new Setting(containerEl)
       .setName(t("settings_syncplans"))
       .setDesc(t("settings_syncplans_desc"));
     debugDivExportSyncPlans.settingEl.addClass("setting-need-wrapping");
@@ -1531,7 +1564,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_delsyncplans"))
       .setDesc(t("settings_delsyncplans_desc"))
       .addButton(async (button) => {
@@ -1542,7 +1575,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_delprevsync"))
       .setDesc(t("settings_delprevsync_desc"))
       .addButton(async (button) => {
@@ -1556,7 +1589,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_profiler_results"))
       .setDesc(t("settings_profiler_results_desc"))
       .addButton(async (button) => {
@@ -1571,7 +1604,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_profiler_enableprofiler"))
       .setDesc(t("settings_profiler_enableprofiler_desc"))
       .addDropdown((dropdown) => {
@@ -1590,7 +1623,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_profiler_enabledebugprint"))
       .setDesc(t("settings_profiler_enabledebugprint_desc"))
       .addDropdown((dropdown) => {
@@ -1609,7 +1642,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_profiler_recordsize"))
       .setDesc(t("settings_profiler_recordsize_desc"))
       .addDropdown((dropdown) => {
@@ -1628,7 +1661,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_outputbasepathvaultid"))
       .setDesc(t("settings_outputbasepathvaultid_desc"))
       .addButton(async (button) => {
@@ -1639,7 +1672,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(details)
+    new Setting(containerEl)
       .setName(t("settings_resetcache"))
       .setDesc(t("settings_resetcache_desc"))
       .addButton(async (button) => {

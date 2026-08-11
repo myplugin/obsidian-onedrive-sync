@@ -388,5 +388,6 @@
   "settings_section_sync": "同步選項",
   "settings_section_conflict": "衝突處理",
   "settings_section_encryption": "加密",
+  "settings_section_safety": "衝突與加密",
   "settings_section_advanced": "進階"
 }

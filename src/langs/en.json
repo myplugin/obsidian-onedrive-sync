@@ -390,5 +390,6 @@
   "settings_section_sync": "Sync Options",
   "settings_section_conflict": "Conflict Handling",
   "settings_section_encryption": "Encryption",
+  "settings_section_safety": "Conflict & Encryption",
   "settings_section_advanced": "Advanced"
 }

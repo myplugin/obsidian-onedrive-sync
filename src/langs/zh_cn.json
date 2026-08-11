@@ -389,5 +389,6 @@
   "settings_section_sync": "同步选项",
   "settings_section_conflict": "冲突处理",
   "settings_section_encryption": "加密",
+  "settings_section_safety": "冲突与加密",
   "settings_section_advanced": "高级"
 }
