@@ -30,7 +30,7 @@ import { API_VER_ENSURE_REQURL_OK } from "./baseTypes";
 import { messyConfigToNormal, normalConfigToMessy } from "./configPersist";
 import { exportVaultSyncPlansToFiles } from "./debugMode";
 import { FakeFsEncrypt } from "./fsEncrypt";
-import { getClient } from "./fsAll";
+import { getClient } from "./fsGetter";
 import { FakeFsLocal } from "./fsLocal";
 import {
   type AccessCodeResponseSuccessfulType as AccessCodeResponseSuccessfulTypeOnedrive,

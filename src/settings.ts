@@ -25,7 +25,7 @@ import {
   exportVaultProfilerResultsToFiles,
   exportVaultSyncPlansToFiles,
 } from "./debugMode";
-import { getClient } from "./fsAll";
+import { getClient } from "./fsGetter";
 import {
   DEFAULT_ONEDRIVE_CONFIG,
   getAuthUrlAndVerifier as getAuthUrlAndVerifierOnedrive,

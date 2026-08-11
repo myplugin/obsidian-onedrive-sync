@@ -28,7 +28,8 @@ Guidance for AI agents working in `remotely-save-onedrive` — a OneDrive-only f
 - Per-cloud filesystem modules follow the `fs*.ts` pattern, all in `src/`:
   - `fsLocal` — vault local filesystem
   - `fsOnedrive` — the only real cloud backend (Microsoft Graph App Folder)
-  - `fsAll` — `FakeFs` abstract base + `getClient` selector (fsGetter was merged in here)
+  - `fsAll` — `FakeFs` abstract base
+  - `fsGetter` — `getClient` selector (separate file to avoid a `fsAll`↔`fsOnedrive` circular dependency: `fsOnedrive` extends `FakeFs` from `fsAll`, while `getClient` instantiates `FakeFsOnedrive`)
   - `fsEncrypt` — rclone-crypt wrapper around any `FakeFs`
 - Sync algorithm (v3) lives in `src/sync.ts`, supported by `src/copyLogic.ts` (copy primitives), `src/metadataOnRemote.ts` (remote metadata file naming), `src/syncAlgoV3Notice.ts` (v3 migration modal). `src/conflictLogic.ts` = smart-conflict 3-way merge (node-diff3). `src/fileContentHistory.ts` = file-content-history backing for smart-conflict (sole consumer: `src/sync.ts`). `src/clearDupFiles.ts` + `src/settingsClearDupFiles.ts` = clear-duplicate-files feature. (These five are the PolyForm files noted above.)
 - Runtime state: `src/settings.ts` (plugin settings UI), `src/configPersist.ts` (settings serialization), `src/localdb.ts` (localforage wrapper, sync-record persistence). Plugin data is persisted to `data.json` (gitignored).
