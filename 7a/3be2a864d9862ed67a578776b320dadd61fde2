@@ -1,0 +1,60 @@
+src/main.ts
+  ai_agent 57,73,181,1160
+src/settingsClearDupFiles.ts
+  ai_agent 4,80
+src/fsLocal.ts
+  ai_agent 13,23,34,112-113
+src/baseTypes.ts
+  ai_agent 7,69
+src/langs/en.json
+  s_f51ac2f1e41c03::t_c096438d8369dd 178-179
+src/langs/zh_tw.json
+  s_f51ac2f1e41c03::t_23d08fbb508e14 178-179
+src/langs/zh_cn.json
+  s_f51ac2f1e41c03::t_281c5da4191af1 179-180
+src/settings.ts
+  ai_agent 53,1248-1267
+src/obsFolderLister.ts
+  ai_agent 38-39,45-53,106,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "7a3be2a864d9862ed67a578776b320dadd61fde2",
+  "prompts": {
+    "s_1cb889a5606dcd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00b9c9edcffe0OUkghLZxyyZ33",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 63,
+      "total_deletions": 0,
+      "accepted_lines": 63,
+      "overriden_lines": 0
+    },
+    "s_f51ac2f1e41c03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c5f3c2fffeUKi59Bju9UqWJJ",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 6,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_f51ac2f1e41c03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c5f3c2fffeUKi59Bju9UqWJJ",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
