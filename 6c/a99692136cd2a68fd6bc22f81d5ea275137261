@@ -1,0 +1,44 @@
+.gitignore
+  s_6f3afb2c4dfb17::t_8cd9a0ea511028 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "6ca99692136cd2a68fd6bc22f81d5ea275137261",
+  "prompts": {
+    "s_6f3afb2c4dfb17": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00e910f4cffeuBDrv0grSCaLFL",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 1,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "s_f51ac2f1e41c03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c5f3c2fffeUKi59Bju9UqWJJ",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 158,
+      "total_deletions": 9,
+      "accepted_lines": 158,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_6f3afb2c4dfb17": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00e910f4cffeuBDrv0grSCaLFL",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
