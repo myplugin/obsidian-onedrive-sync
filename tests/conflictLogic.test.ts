@@ -3,7 +3,7 @@ import {
   getFileRenameForDup,
   threeWayMerge,
   twoWayMerge,
-} from "../src/conflictLogic";
+} from "../src/mergeUtils";
 
 describe("New name is generated", () => {
   it("should throw for empty file", async () => {

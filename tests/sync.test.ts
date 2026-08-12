@@ -1,5 +1,5 @@
 import { strict as assert } from "assert";
-import { checkIsSkipItemOrNotByName } from "../src/sync";
+import { checkIsSkipItemOrNotByName } from "../src/skipFilter";
 
 describe("Sync: checkIsSkipItemOrNotByName", () => {
   it("should be ok everywhere for empty config", async () => {
