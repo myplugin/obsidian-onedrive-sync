@@ -159,6 +159,8 @@
   "settings_remotebasedir": "修改远端基文件夹（实验性质）",
   "settings_remotebasedir_desc": "默认设定，内容会被同步到远端的和资料库同名的文件夹下。您可以在此修改远端文件夹名，或删除输入框文本从而重设到默认值。您需要点击“确认”。",
   "settings_onedrive": "Onedrive（个人版）（App Folder）设置",
+  "settings_disclaimer_title": "声明",
+  "settings_disclaimer_summary": "非微软官方产品 · 信息存于本地",
   "settings_onedrive_disclaimer1": "声明：此插件不是微软或 OneDrive 的官方产品。",
   "settings_onedrive_disclaimer2": "声明：您所输入的信息存储于本地。其它有害的或者出错的插件，是有可能读取到这些信息的。如果您发现了 OneDrive 有不符合预期的访问，请立刻从 https://microsoft.com/consent 删除记录于此插件的连接鉴权。",
   "settings_onedrive_folder": "我们会在您的 OneDrive 上创建此文件夹并在里面同步：/Apps/{{pluginID}}/{{remoteBaseDir}}。",

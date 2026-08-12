@@ -1,4 +1,4 @@
-import { Eye, EyeOff, createElement } from "lucide";
+import { AlertTriangle, ChevronRight, Eye, EyeOff, Info, createElement } from "lucide";
 import {
   type App,
   Modal,
@@ -661,20 +661,40 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const onedriveLongDescDiv = containerEl.createEl("div", {
-      cls: "settings-long-desc",
+    // ── collapsible disclaimer callout ──
+    const initiallyOpen = this.plugin.settings.disclaimerAcknowledged !== true;
+    const disclaimerDiv = containerEl.createEl("div", {
+      cls: initiallyOpen ? "rs-disclaimer rs-disclaimer-open" : "rs-disclaimer",
     });
+
+    const header = disclaimerDiv.createDiv({ cls: "rs-disclaimer-header" });
+    const chevron = header.createSpan({ cls: "rs-disclaimer-chevron" });
+    chevron.innerHTML = createElement(ChevronRight).outerHTML;
+    header.createSpan({
+      cls: "rs-disclaimer-title",
+      text: t("settings_disclaimer_title"),
+    });
+    header.createSpan({
+      cls: "rs-disclaimer-summary",
+      text: t("settings_disclaimer_summary"),
+    });
+
+    const body = disclaimerDiv.createDiv({ cls: "rs-disclaimer-body" });
+
+    const warnIcon = createElement(AlertTriangle).outerHTML;
     for (const c of [
       t("settings_onedrive_disclaimer1"),
       t("settings_onedrive_disclaimer2"),
     ]) {
-      onedriveLongDescDiv.createEl("p", {
-        text: c,
-        cls: "onedrive-disclaimer",
-      });
+      const p = body.createEl("p", { cls: "rs-disclaimer-warn" });
+      p.createSpan({ cls: "rs-disclaimer-icon" }).innerHTML = warnIcon;
+      p.createSpan({ text: c });
     }
 
-    onedriveLongDescDiv.createEl("p", {
+    const folderP = body.createEl("p", { cls: "rs-disclaimer-info" });
+    folderP.createSpan({ cls: "rs-disclaimer-icon" }).innerHTML =
+      createElement(Info).outerHTML;
+    folderP.createSpan({
       text: t("settings_onedrive_folder", {
         pluginID: this.plugin.manifest.id,
         remoteBaseDir:
@@ -683,8 +703,19 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       }),
     });
 
-    onedriveLongDescDiv.createEl("p", {
-      text: t("settings_onedrive_nobiz"),
+    const nobizP = body.createEl("p", { cls: "rs-disclaimer-info" });
+    nobizP.createSpan({ cls: "rs-disclaimer-icon" }).innerHTML =
+      createElement(Info).outerHTML;
+    nobizP.createSpan({ text: t("settings_onedrive_nobiz") });
+
+    header.addEventListener("click", () => {
+      const isOpen = disclaimerDiv.hasClass("rs-disclaimer-open");
+      disclaimerDiv.toggleClass("rs-disclaimer-open", !isOpen);
+      if (isOpen && this.plugin.settings.disclaimerAcknowledged !== true) {
+        // 首次折叠 → 粘性置位,只写一次库
+        this.plugin.settings.disclaimerAcknowledged = true;
+        void this.plugin.saveSettings();
+      }
     });
 
     const onedriveSelectAuthDiv = containerEl.createDiv();

@@ -74,6 +74,7 @@ export interface RemotelySavePluginSettings {
   ignorePaths?: string[];
   onlyAllowPaths?: string[];
   enableStatusBarInfo?: boolean;
+  disclaimerAcknowledged?: boolean;
   deleteToWhere?: "system" | "obsidian";
   conflictAction?: ConflictActionType;
 
