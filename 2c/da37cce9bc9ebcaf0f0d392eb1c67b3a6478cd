@@ -1,0 +1,38 @@
+package.json
+  ai_agent 6-8,21-24,31-34,50,58
+esbuild.config.mjs
+  ai_agent 2-3,22-91,102-111,135
+scripts/deploy.mjs
+  ai_agent 3,22,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "2cda37cce9bc9ebcaf0f0d392eb1c67b3a6478cd",
+  "prompts": {
+    "s_1cb889a5606dcd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00b9c9edcffe0OUkghLZxyyZ33",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 172,
+      "total_deletions": 18,
+      "accepted_lines": 172,
+      "overriden_lines": 0
+    },
+    "s_f51ac2f1e41c03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c5f3c2fffeUKi59Bju9UqWJJ",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 462,
+      "total_deletions": 6,
+      "accepted_lines": 462,
+      "overriden_lines": 0
+    }
+  }
+}
