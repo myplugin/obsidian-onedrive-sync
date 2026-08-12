@@ -1,0 +1,32 @@
+src/fsAll.ts
+  s_39c0acadc6705f::t_3ab6a0c385785f 22-23,50-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "9a667707007e7ff8375307a3ad0ea5149398cecd",
+  "prompts": {
+    "s_39c0acadc6705f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00b9900b5ffeTs9v8cht3nGYMM",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 17,
+      "total_deletions": 14,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_39c0acadc6705f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00b9900b5ffeTs9v8cht3nGYMM",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
