@@ -102,10 +102,6 @@
   display: none;
 }
 
-.onedrive-disclaimer {
-  font-weight: bold;
-}
-
 .onedrive-auth-button-hide {
   display: none;
 }
@@ -286,4 +282,63 @@
   background: var(--background-modifier-hover);
   padding: 0 4px;
   border-radius: 3px;
+}
+
+/* ===== Disclaimer callout (collapsible, intentionally low-key) ===== */
+.rs-disclaimer {
+  margin: 0 0 18px;
+  padding: 8px 12px;
+  background: var(--background-secondary-alt);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 6px);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+.rs-disclaimer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.rs-disclaimer-chevron {
+  display: inline-flex;
+  color: var(--text-faint);
+  transition: transform 0.15s ease;
+}
+.rs-disclaimer.rs-disclaimer-open .rs-disclaimer-chevron {
+  transform: rotate(90deg);
+}
+.rs-disclaimer-title {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.rs-disclaimer-summary {
+  color: var(--text-muted);
+}
+.rs-disclaimer-body {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: none;
+}
+.rs-disclaimer.rs-disclaimer-open .rs-disclaimer-body {
+  display: block;
+}
+.rs-disclaimer-body p {
+  margin: 6px 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.rs-disclaimer-icon {
+  flex: 0 0 auto;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.rs-disclaimer-warn {
+  color: var(--text-normal);
+}
+.rs-disclaimer-info {
+  color: var(--text-muted);
 }
