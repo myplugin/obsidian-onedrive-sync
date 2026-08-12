@@ -18,7 +18,6 @@ import type {
 } from "./baseTypes";
 
 import cloneDeep from "lodash/cloneDeep";
-import { generateClearDupFilesSettingsPart } from "./settingsClearDupFiles";
 import { API_VER_ENSURE_REQURL_OK, VALID_REQURL } from "./baseTypes";
 import { messyConfigToNormal } from "./configPersist";
 import {
@@ -51,6 +50,7 @@ import {
 } from "./misc";
 import { DEFAULT_PROFILER_CONFIG } from "./profiler";
 import { renderRegexListSetting } from "./regexListSetting";
+import { generateClearDupFilesSettingsPart } from "./settingsClearDupFiles";
 
 class PasswordModal extends Modal {
   plugin: RemotelySavePlugin;
@@ -1242,6 +1242,26 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
               this.plugin.settings.syncConfigDir = false;
               await this.plugin.saveSettings();
             }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t("settings_appearance"))
+      .setDesc(
+        t("settings_appearance_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncAppearance ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncAppearance = val === "enable";
+            await this.plugin.saveSettings();
           });
       });
 

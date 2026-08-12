@@ -1,11 +1,11 @@
 // License: PolyForm Strict 1.0.0 (source-available). See LICENSE.pro.
 
 import { type App, Modal, Notice, Setting } from "obsidian";
+import { clearDupFiles, getDupFiles } from "./clearDupFiles";
 import { FakeFsLocal } from "./fsLocal";
 import type { TransItemType } from "./i18n";
 import type RemotelySavePlugin from "./main";
 import { stringToFragment } from "./misc";
-import { clearDupFiles, getDupFiles } from "./clearDupFiles";
 
 class ClearDupFilesModal extends Modal {
   readonly plugin: RemotelySavePlugin;
@@ -77,6 +77,7 @@ export const generateClearDupFilesSettingsPart = (
           app.vault,
           plugin.settings.syncConfigDir ?? false,
           plugin.settings.syncBookmarks ?? false,
+          plugin.settings.syncAppearance ?? false,
           app.vault.configDir,
           plugin.manifest.id,
           undefined,

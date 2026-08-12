@@ -3,8 +3,8 @@
  * To avoid circular dependency.
  */
 
-import type { LangTypeAndAuto } from "./i18n";
 import { Platform, requireApiVersion } from "obsidian";
+import type { LangTypeAndAuto } from "./i18n";
 
 declare global {
   var DEFAULT_ONEDRIVE_CLIENT_ID: string;
@@ -66,6 +66,7 @@ export interface RemotelySavePluginSettings {
   concurrency?: number;
   syncConfigDir?: boolean;
   syncBookmarks?: boolean;
+  syncAppearance?: boolean;
   syncUnderscoreItems?: boolean;
   lang?: LangTypeAndAuto;
   agreeToUseSyncV3?: boolean;

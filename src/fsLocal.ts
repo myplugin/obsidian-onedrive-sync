@@ -10,6 +10,7 @@ export class FakeFsLocal extends FakeFs {
   vault: Vault;
   syncConfigDir: boolean;
   syncBookmarks: boolean;
+  syncAppearance: boolean;
   configDir: string;
   pluginID: string;
   profiler: Profiler | undefined;
@@ -19,6 +20,7 @@ export class FakeFsLocal extends FakeFs {
     vault: Vault,
     syncConfigDir: boolean,
     syncBookmarks: boolean,
+    syncAppearance: boolean,
     configDir: string,
     pluginID: string,
     profiler: Profiler | undefined,
@@ -29,6 +31,7 @@ export class FakeFsLocal extends FakeFs {
     this.vault = vault;
     this.syncConfigDir = syncConfigDir;
     this.syncBookmarks = syncBookmarks;
+    this.syncAppearance = syncAppearance;
     this.configDir = configDir;
     this.pluginID = pluginID;
     this.profiler = profiler;
@@ -106,7 +109,8 @@ export class FakeFsLocal extends FakeFs {
         this.configDir,
         this.vault,
         this.pluginID,
-        bookmarksOnly
+        bookmarksOnly,
+        this.syncAppearance
       );
       // console.debug(`syncFiles in obs: ${JSON.stringify(syncFiles, null, 2)}`);
       for (const f of syncFiles) {

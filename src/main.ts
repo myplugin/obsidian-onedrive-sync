@@ -16,7 +16,6 @@ import {
   requireApiVersion,
   setIcon,
 } from "obsidian";
-import { syncer } from "./sync";
 import type {
   RemotelySavePluginSettings,
   SyncTriggerSourceType,
@@ -55,6 +54,7 @@ import {
 import { changeMobileStatusBar } from "./misc";
 import { DEFAULT_PROFILER_CONFIG, Profiler } from "./profiler";
 import { RemotelySaveSettingTab } from "./settings";
+import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
 
 const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
@@ -70,6 +70,7 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   concurrency: 5,
   syncConfigDir: false,
   syncBookmarks: false,
+  syncAppearance: false,
   syncUnderscoreItems: false,
   lang: "auto",
   logToDB: false,
@@ -177,6 +178,7 @@ export default class RemotelySavePlugin extends Plugin {
       this.app.vault,
       this.settings.syncConfigDir ?? false,
       this.settings.syncBookmarks ?? false,
+      this.settings.syncAppearance ?? false,
       this.app.vault.configDir,
       this.manifest.id,
       profiler,
@@ -545,8 +547,6 @@ export default class RemotelySavePlugin extends Plugin {
       }
     );
 
-
-
     this.registerObsidianProtocolHandler(
       COMMAND_CALLBACK_ONEDRIVE,
       async (inputParams) => {
@@ -630,18 +630,6 @@ export default class RemotelySavePlugin extends Plugin {
         }
       }
     );
-
-
-
-
-
-
-
-
-
-
-
-
 
     this.syncRibbon = this.addRibbonIcon(
       iconNameSyncWait,
@@ -1169,6 +1157,7 @@ export default class RemotelySavePlugin extends Plugin {
                   this.app.vault,
                   this.settings.syncConfigDir ?? false,
                   this.settings.syncBookmarks ?? false,
+                  this.settings.syncAppearance ?? false,
                   this.app.vault.configDir,
                   this.manifest.id,
                   undefined,

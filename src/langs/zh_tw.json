@@ -175,6 +175,8 @@
   "settings_syncunderscore_desc": "是否同步“_”（下劃線）開始的檔案或資料夾。",
   "settings_configdir": "同步配置資料夾（實驗性質）",
   "settings_configdir_desc": "是否同步 Obsidian 的配置資料夾 {{configDir}}（其中的 .git 和 node_modules 依然會被忽略）。請注意，此設定可能會影響到您 Obsidian 或者所有的外掛設定，也可能需要您同步完畢後重啟 Obsidian。如果您同意自行承受其風險，則可以開啟本設定。",
+  "settings_appearance": "同步外觀（主題選擇）",
+  "settings_appearance_desc": "是否同步 {{configDir}}/appearance.json。關閉時，目前主題、亮/暗模式、已啟用的 CSS snippet、強調色均保持各裝置獨立；{{configDir}}/themes/ 下的主題檔案仍會同步。預設關閉。",
   "settings_bookmarks": "同步書籤（實驗性質）",
   "settings_bookmarks_desc": "是否同步書籤 {{configDir}}/bookmarks.json 。如果您設定了同步配置資料夾，此選項會被忽略並設為“開啟”。",
   "settings_deletetowhere": "刪除檔案到哪裡",

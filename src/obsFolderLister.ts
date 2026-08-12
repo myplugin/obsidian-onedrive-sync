@@ -35,11 +35,21 @@ export const listFilesInObsFolder = async (
   configDir: string,
   vault: Vault,
   pluginId: string,
-  bookmarksOnly: boolean
+  bookmarksOnly: boolean,
+  syncAppearance: boolean
 ): Promise<Entity[]> => {
   const q = new Queue([configDir]);
   const CHUNK_SIZE = 10;
   let contents: Entity[] = [];
+
+  // Names always skipped within the config dir. `workspace`/`workspace.json`
+  // are device-specific. `appearance.json` (active theme, light/dark mode,
+  // enabled CSS snippets, accent color) is skipped unless `syncAppearance` is
+  // on, so each device keeps its own theme selection.
+  const skipNames = ["workspace", "workspace.json"];
+  if (!syncAppearance) {
+    skipNames.push("appearance.json");
+  }
 
   let iterRound = 0;
 
@@ -93,9 +103,7 @@ export const listFilesInObsFolder = async (
         const isInsideSelfPlugin = isPluginDirItself(iter.itself.key, pluginId);
         if (iter.children !== undefined) {
           for (const iter2 of iter.children.folders) {
-            if (
-              isSpecialFolderNameToSkip(iter2, ["workspace", "workspace.json"])
-            ) {
+            if (isSpecialFolderNameToSkip(iter2, skipNames)) {
               continue;
             }
             if (isInsideSelfPlugin && !isLikelyPluginSubFiles(iter2)) {
@@ -105,9 +113,7 @@ export const listFilesInObsFolder = async (
             q.push(iter2);
           }
           for (const iter2 of iter.children.files) {
-            if (
-              isSpecialFolderNameToSkip(iter2, ["workspace", "workspace.json"])
-            ) {
+            if (isSpecialFolderNameToSkip(iter2, skipNames)) {
               continue;
             }
             if (isInsideSelfPlugin && !isLikelyPluginSubFiles(iter2)) {

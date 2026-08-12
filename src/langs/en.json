@@ -175,6 +175,8 @@
   "settings_syncunderscore_desc": "Sync files or folders starting with _ (\"underscore\") or not",
   "settings_configdir": "Sync Config Dir (experimental)",
   "settings_configdir_desc": "Sync config dir {{configDir}} or not (inner folder .git and node_modules would be ignored). Please be aware that this may impact all your plugins' or Obsidian's settings, and may require you restart Obsidian after sync. Enable this at your own risk.",
+  "settings_appearance": "Sync Appearance (theme selection)",
+  "settings_appearance_desc": "Sync {{configDir}}/appearance.json or not. When OFF, your active theme, light/dark mode, enabled CSS snippets, and accent color stay per-device; theme files in {{configDir}}/themes/ still sync. Default OFF.",
   "settings_bookmarks": "Sync Bookmarks (experimental)",
   "settings_bookmarks_desc": "Sync {{configDir}}/bookmarks.json or not. If you sync config dir, this option will be ignore and treated as \"enabled\".",
   "settings_deletetowhere": "Deletion Destination",
