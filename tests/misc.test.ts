@@ -439,7 +439,7 @@ describe("Misc: check valid file names", () => {
   });
 });
 
-describe("Misc: Dropbox: should fix the folder name cases", () => {
+describe("Misc: should fix the folder name cases", () => {
   it("should do nothing on empty folders", () => {
     const input: any[] = [];
     assert.equal(misc.fixEntityListCasesInplace(input).length, 0);

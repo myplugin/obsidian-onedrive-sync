@@ -1,7 +1,7 @@
 {
   "name": "remotely-save-onedrive",
   "version": "0.6.0",
-  "description": "This is yet another sync plugin for Obsidian app.",
+  "description": "Sync your Obsidian vault with OneDrive (personal, App Folder).",
   "scripts": {
     "dev2": "node esbuild.config.mjs --watch",
     "build2": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
@@ -23,8 +23,9 @@
   },
   "source": "src/main.ts",
   "keywords": [],
-  "author": "",
+  "author": "pef",
   "license": "SEE LICENSE IN LICENSE",
+  "repository": {"type": "git", "url": "https://gitee.com/pef/remotely-save-onedrive.git"},
   "devDependencies": {
     "@biomejs/biome": "1.8.3",
     "@microsoft/microsoft-graph-types": "^2.40.0",

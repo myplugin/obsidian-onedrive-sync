@@ -1368,7 +1368,7 @@ const fullfillMTimeOfRemoteEntityInplace = (
   mtimeCli?: number
 ) => {
   // TODO:
-  // on 20240405, we find that dropbox's mtimeCli is not updated
+  // mtimeCli is not reliably updated by the remote, so we don't depend on it here.
   // if the content is not updated even the time is updated...
   // so we do not check remote.mtimeCli for now..
   if (

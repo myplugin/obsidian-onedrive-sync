@@ -19,3 +19,6 @@ logs.txt
 
 # hidden files
 .*
+
+# local AI agent docs (not published)
+AGENTS.md

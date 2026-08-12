@@ -620,8 +620,6 @@ export const changeMobileStatusBar = (
 };
 
 /**
- * https://github.com/remotely-save/remotely-save/issues/567
- * https://www.dropboxforum.com/t5/Dropbox-API-Support-Feedback/Case-Sensitivity-in-API-2/td-p/191279
  * @param entities
  */
 export const fixEntityListCasesInplace = (entities: { keyRaw: string }[]) => {
