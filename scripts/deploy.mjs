@@ -1,6 +1,6 @@
 // Deploys main.js + manifest.json + styles.css to the Obsidian vault plugin folder.
 // Reads VAULT_PATH from .env (or process.env). Creates the plugin dir if needed.
-// Standalone use: `npm run deploy`. Auto-invoked by webpack afterEmit plugin on dev/build.
+// Standalone use: `npm run deploy`. Auto-invoked by the esbuild onEnd plugin on dev/build.
 import "dotenv/config";
 import fs from "fs";
 import path from "path";
@@ -19,7 +19,7 @@ const pluginDir = path.join(
   vaultPath,
   ".obsidian",
   "plugins",
-  "remotely-save-onedrive",
+  "remotely-save-onedrive"
 );
 
 if (!fs.existsSync(pluginDir)) {
@@ -41,5 +41,5 @@ for (const file of files) {
 }
 console.log(
   `[deploy] done (${copied}/${files.length} files). ` +
-    "In Obsidian: toggle the plugin off/on (or Ctrl+R in a dev vault) to pick up changes.",
+    "In Obsidian: toggle the plugin off/on (or Ctrl+R in a dev vault) to pick up changes."
 );

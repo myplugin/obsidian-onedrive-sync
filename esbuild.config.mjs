@@ -1,4 +1,6 @@
 import "dotenv/config";
+import fs from "fs";
+import path from "path";
 import esbuild from "esbuild";
 import inlineWorkerPlugin from "esbuild-plugin-inline-worker";
 import process from "process";
@@ -17,6 +19,76 @@ const prod = process.argv[2] === "production";
 const DEFAULT_ONEDRIVE_CLIENT_ID = process.env.ONEDRIVE_CLIENT_ID || "";
 const DEFAULT_ONEDRIVE_AUTHORITY = process.env.ONEDRIVE_AUTHORITY || "";
 
+// Auto-deploy to Obsidian vault on build/watch (if VAULT_PATH set in .env).
+// Mirrors scripts/deploy.mjs and the former webpack DeployPlugin so that
+// `npm run dev` (watch) and `npm run build` auto-install the plugin.
+function deployPlugin(pluginDir) {
+  return {
+    name: "deploy",
+    setup(build) {
+      build.onEnd(() => {
+        try {
+          if (!fs.existsSync(pluginDir)) {
+            fs.mkdirSync(pluginDir, { recursive: true });
+          }
+          for (const file of ["main.js", "manifest.json", "styles.css"]) {
+            const src = path.join(process.cwd(), file);
+            if (fs.existsSync(src)) {
+              fs.copyFileSync(src, path.join(pluginDir, file));
+            }
+          }
+          console.log(
+            `[deploy] main.js + manifest.json + styles.css -> ${pluginDir}`
+          );
+        } catch (e) {
+          console.error(`[deploy] failed: ${e.message}`);
+        }
+      });
+    },
+  };
+}
+
+// `aggregate-error` -> `clean-stack` imports `node:url` for `fileURLToPath`,
+// used only in its `pretty` mode (this plugin never triggers it). On Obsidian
+// mobile there's no Node runtime, so a bare `require("node:url")` would fail
+// at bundle load. esbuild's `browser` field does not handle the `node:` scheme,
+// so intercept it here and resolve to a stub. Matches the effect of webpack's
+// `externals: { "node:url": "commonjs2 url" }` redirect (where fileURLToPath is
+// effectively absent on the url polyfill too).
+function nodeUrlStubPlugin() {
+  const STUB = `module.exports = {
+  fileURLToPath: (u) => (typeof u === "string" ? u : (u && u.href) || ""),
+  pathToFileURL: (p) => ({ href: p, pathname: p }),
+  URL: globalThis.URL,
+};
+`;
+  return {
+    name: "node-url-stub",
+    setup(build) {
+      build.onResolve({ filter: /^node:url$/ }, () => ({
+        path: "node-url-stub",
+        namespace: "node-url-stub",
+      }));
+      build.onLoad({ filter: /.*/, namespace: "node-url-stub" }, () => ({
+        contents: STUB,
+        loader: "js",
+      }));
+    },
+  };
+}
+
+const vaultPath = process.env.VAULT_PATH;
+const deployPlugins = [];
+if (vaultPath) {
+  const pluginDir = path.join(
+    vaultPath,
+    ".obsidian",
+    "plugins",
+    "remotely-save-onedrive"
+  );
+  deployPlugins.push(deployPlugin(pluginDir));
+}
+
 esbuild
   .context({
     banner: {
@@ -27,19 +99,16 @@ esbuild
     },
     entryPoints: ["./src/main.ts"],
     bundle: true,
-    external: [
-      "obsidian",
-      "electron",
-      "fs",
-      "tls",
-      "net",
-      "http",
-      "https",
-      "vm",
-      "node:url",
-      // "process",
-      // ...builtins
-    ],
+    // Mobile-safe: mirror webpack's resolve.fallback behavior so the bundle
+    // works on Obsidian mobile (no Node runtime) as well as desktop (Electron).
+    // Only `obsidian` is external (provided by the Obsidian runtime on both
+    // platforms). Node builtins fs/http/https/net/tls/vm are stubbed to empty
+    // via the `browser` field in package.json (-> false) so the bundle has no
+    // runtime require() of them. crypto/path/stream/url/process are polyfilled
+    // via the `browser` field (-> *-browserify packages). `node:url` (used by
+    // aggregate-error -> clean-stack) is also redirected via the `browser` field
+    // to the `url/` polyfill, matching webpack's externals mapping.
+    external: ["obsidian"],
     inject: ["./esbuild.injecthelper.mjs"],
     format: "cjs",
     // watch: !prod, // no longer valid in esbuild 0.17
@@ -63,7 +132,7 @@ esbuild
       // https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-util/src/checkEnvironment.ts
       "globalThis.process.versions": `undefined`,
     },
-    plugins: [inlineWorkerPlugin()],
+    plugins: [inlineWorkerPlugin(), nodeUrlStubPlugin(), ...deployPlugins],
   })
   .then((context) => {
     if (process.argv.includes("--watch")) {
