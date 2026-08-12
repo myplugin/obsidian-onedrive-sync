@@ -1,13 +1,57 @@
-import { Notice } from "obsidian";
+import { App, Modal, Notice, Platform } from "obsidian";
 import type { TransItemType } from "./i18n";
 import { testPathAgainstRegexList, validateRegex } from "./misc";
 
 export interface RegexListSettingOptions {
+  app: App;
   containerEl: HTMLElement;
   getValues: () => string[];
   setValues: (next: string[]) => Promise<void>;
   t: (k: TransItemType, vars?: any) => string;
   placeholder?: string;
+}
+
+/**
+ * A themed, in-page confirm dialog for deleting a regex. Uses Obsidian's
+ * Modal base (NOT window.confirm — that minimizes the settings window and
+ * pops an OS-level dialog, terrible UX). Inherits the current theme and
+ * stacks on top of the settings UI without dismissing it. Returns true on
+ * confirm, false on cancel/Esc/backdrop.
+ */
+function confirmDeleteRegex(
+  app: App,
+  t: (k: TransItemType, vars?: any) => string,
+  regex: string
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const modal = new Modal(app);
+    let resolved = false;
+    const finish = (val: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(val);
+      modal.close();
+    };
+    modal.titleEl.setText(t("settings_regex_delete_confirm"));
+    const codeEl = modal.contentEl.createEl("pre", {
+      cls: "rs-regex-delete-code",
+    });
+    codeEl.createEl("code", { text: regex });
+    const btnRow = modal.contentEl.createDiv({
+      cls: "rs-regex-delete-buttons",
+    });
+    const cancelBtn = btnRow.createEl("button", { text: t("goback") });
+    cancelBtn.addEventListener("click", () => finish(false));
+    const deleteBtn = btnRow.createEl("button", {
+      text: t("settings_regex_delete_button"),
+      cls: "mod-warning",
+    });
+    deleteBtn.addEventListener("click", () => finish(true));
+    // Esc / backdrop click counts as cancel.
+    modal.onClose = () => finish(false);
+    modal.open();
+    deleteBtn.focus();
+  });
 }
 
 /**
@@ -25,10 +69,16 @@ export interface RegexListSettingOptions {
  * below, avoiding the default left-right split's empty space.
  */
 export function renderRegexListSetting(opts: RegexListSettingOptions): void {
-  const { containerEl, getValues, setValues, t, placeholder } = opts;
+  const { app, containerEl, getValues, setValues, t, placeholder } = opts;
 
   // chip list + add row + tester, rendered into the Setting's controlEl.
   const blockEl = containerEl.createEl("div", { cls: "rs-regex-block" });
+  // On mobile, render chips as stacked full-width rows (one regex per line,
+  // full text visible) instead of the PC chip capsule — the flex-wrap chip
+  // layout is fragile on narrow viewports. See the .rs-regex-mobile CSS.
+  if (Platform.isMobile) {
+    blockEl.addClass("rs-regex-mobile");
+  }
 
   // chips container — cleared & re-rendered on every mutation
   const chipsEl = blockEl.createEl("div", { cls: "rs-regex-list" });
@@ -45,8 +95,25 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     cls: "mod-cta rs-regex-add-button",
   });
 
-  // tester
-  const testerEl = blockEl.createEl("div", { cls: "rs-regex-tester" });
+  // tester toggle — the path tester is low-frequency, so it is
+  // collapsed by default and expanded on demand via this button.
+  const testerToggleEl = blockEl.createEl("button", {
+    cls: "rs-regex-tester-toggle",
+    attr: { type: "button", "aria-expanded": "false" },
+  });
+  testerToggleEl.createEl("span", {
+    cls: "rs-regex-tester-toggle-caret",
+    text: "\u25b8", // ▸
+  });
+  const toggleLabelEl = testerToggleEl.createEl("span", {
+    cls: "rs-regex-tester-toggle-label",
+    text: t("settings_regex_test_toggle_show"),
+  });
+
+  // tester (hidden until the toggle above expands it)
+  const testerEl = blockEl.createEl("div", {
+    cls: "rs-regex-tester rs-is-collapsed",
+  });
   const testRow = testerEl.createEl("div", { cls: "rs-regex-test-row" });
   const testInputEl = testRow.createEl("input", {
     type: "text",
@@ -93,6 +160,11 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
       const idx = index;
       delBtn.addEventListener("click", async (e) => {
         e.preventDefault();
+        // themed in-page second confirmation (NOT window.confirm — that
+        // minimizes the settings window and pops an OS dialog). Prevents
+        // accidental deletion when the × is tapped.
+        const ok = await confirmDeleteRegex(app, t, value);
+        if (!ok) return;
         const current = [...getValues()];
         current.splice(idx, 1);
         await setValues(current);
@@ -186,6 +258,22 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     if (e.key === "Enter") {
       e.preventDefault();
       handleTest();
+    }
+  });
+
+  testerToggleEl.addEventListener("click", (e) => {
+    e.preventDefault();
+    const collapsed = testerEl.hasClass("rs-is-collapsed");
+    if (collapsed) {
+      testerEl.removeClass("rs-is-collapsed");
+      testerToggleEl.addClass("rs-is-expanded");
+      testerToggleEl.setAttribute("aria-expanded", "true");
+      toggleLabelEl.setText(t("settings_regex_test_toggle_hide"));
+    } else {
+      testerEl.addClass("rs-is-collapsed");
+      testerToggleEl.removeClass("rs-is-expanded");
+      testerToggleEl.setAttribute("aria-expanded", "false");
+      toggleLabelEl.setText(t("settings_regex_test_toggle_show"));
     }
   });
 

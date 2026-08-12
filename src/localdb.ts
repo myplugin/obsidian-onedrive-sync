@@ -542,6 +542,46 @@ export const getLastFailedSyncTimeByVault = async (
   )) as number | null | undefined;
 };
 
+export const upsertLastSuccessCheckTimeByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string,
+  millis: number
+) => {
+  await db.simpleKVForMiscTbl.setItem(
+    `${vaultRandomID}-lastSuccessCheckMillis`,
+    millis
+  );
+};
+
+export const getLastSuccessCheckTimeByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string
+) => {
+  return (await db.simpleKVForMiscTbl.getItem(
+    `${vaultRandomID}-lastSuccessCheckMillis`
+  )) as number | null | undefined;
+};
+
+export const upsertLastFailedCheckTimeByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string,
+  millis: number
+) => {
+  await db.simpleKVForMiscTbl.setItem(
+    `${vaultRandomID}-lastFailedCheckMillis`,
+    millis
+  );
+};
+
+export const getLastFailedCheckTimeByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string
+) => {
+  return (await db.simpleKVForMiscTbl.getItem(
+    `${vaultRandomID}-lastFailedCheckMillis`
+  )) as number | null | undefined;
+};
+
 export const upsertPluginVersionByVault = async (
   db: InternalDBs,
   vaultRandomID: string,
