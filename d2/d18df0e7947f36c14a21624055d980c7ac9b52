@@ -1,0 +1,81 @@
+src/langs/zh_cn.json
+  s_f51ac2f1e41c03::t_e237176c0c4db2 133-134
+  s_f51ac2f1e41c03::t_509a148726a22f 137-138
+  s_f51ac2f1e41c03::t_70aa1a51aaa6ca 158
+  s_f51ac2f1e41c03::t_03a489bee0961a 154-157
+styles.css
+  s_1cb889a5606dcd::t_0ff2c3d3dd16e1 205-206,208
+  s_f51ac2f1e41c03::t_46ebbca9b401ad 259-282,297-304,306-307,309-337
+  s_f51ac2f1e41c03::t_5915772075e58e 215-221,230-232,234
+  s_f51ac2f1e41c03::t_46a5c08315a511 365-386
+src/langs/en.json
+  s_f51ac2f1e41c03::t_a3c5732cf1a560 136-137
+  s_f51ac2f1e41c03::t_1ef3be43a718a8 157
+  s_f51ac2f1e41c03::t_3cc8f83add47c9 153-156
+  s_f51ac2f1e41c03::t_4374e157cf3465 132-133
+src/localdb.ts
+  s_f51ac2f1e41c03::t_b093136a033f4b 545-584
+src/regexListSetting.ts
+  s_f51ac2f1e41c03::t_6f5cb0b440f769 163-167,264-279
+  s_f51ac2f1e41c03::t_c39cd1deba93fa 6,14
+  s_f51ac2f1e41c03::t_d260a765ecf4be 15-56,72,76-81,98-116
+src/langs/zh_tw.json
+  s_f51ac2f1e41c03::t_4c397a16d68c2d 157
+  s_f51ac2f1e41c03::t_439a344d387cf6 153-156
+  s_f51ac2f1e41c03::t_d2bbcdcce1b23e 132-133
+  s_f51ac2f1e41c03::t_9f6d5d074bb816 136-137
+src/settings.ts
+  s_f51ac2f1e41c03::t_91e0f2e25d8c50 786,788-796
+  s_f51ac2f1e41c03::t_2c3b5e3161aa4b 43-47,49
+  s_f51ac2f1e41c03::t_db9c6960117600 797-851,853-870,872-874,1045,1061
+  s_f51ac2f1e41c03::t_e26501a286dee0 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "d2d18df0e7947f36c14a21624055d980c7ac9b52",
+  "prompts": {
+    "s_1cb889a5606dcd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00b9c9edcffe0OUkghLZxyyZ33",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 7,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 4
+    },
+    "s_f51ac2f1e41c03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c5f3c2fffeUKi59Bju9UqWJJ",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 350,
+      "total_deletions": 43,
+      "accepted_lines": 349,
+      "overriden_lines": 1
+    }
+  },
+  "sessions": {
+    "s_1cb889a5606dcd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00b9c9edcffe0OUkghLZxyyZ33",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    },
+    "s_f51ac2f1e41c03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c5f3c2fffeUKi59Bju9UqWJJ",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
