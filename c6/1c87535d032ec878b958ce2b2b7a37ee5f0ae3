@@ -1,0 +1,38 @@
+docs/minimal_intrusive_design.md
+  s_257a2a9a59ac7d::t_e5ca91b20fa1e5 13,15
+docs/how_to_debug/export_sync_plans.md
+  s_257a2a9a59ac7d::t_9ecf3d7cd989a1 91
+docs/sync_algorithm/README.md
+  s_257a2a9a59ac7d::t_c83243d50884f0 3-4
+docs/encryption/openssl.md
+  s_257a2a9a59ac7d::t_8f9f33a4a6fd53 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "2.14.1050",
+  "base_commit_sha": "c61c87535d032ec878b958ce2b2b7a37ee5f0ae3",
+  "prompts": {
+    "s_257a2a9a59ac7d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c538c2dffevzNJBqTJJ6iz14",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 6,
+      "total_deletions": 8,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_257a2a9a59ac7d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00c538c2dffevzNJBqTJJ6iz14",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
