@@ -10,9 +10,9 @@ From version 0.4.1 and above, the plugin doesn't need uploading meta data due to
 
 Then the plugin doesn't make more-than-necessary assumptions about information on the remote endpoint.
 
-For example, it's possbile for a uses to manually upload a file to s3, and next time the plugin can download that file to the local device.
+For example, it's possbile for a uses to manually upload a file to OneDrive, and next time the plugin can download that file to the local device.
 
-And it's also possible to combine another "sync-to-s3" solution (like, another software) on desktops, and this plugin on mobile devices, together.
+And it's also possible to combine another "sync-to-OneDrive" solution (like, another software) on desktops, and this plugin on mobile devices, together.
 
 ## ~~Necessarity Of Uploading Extra Metadata from 0.3.0 ~ 0.3.40~~
 

@@ -88,7 +88,7 @@ deltimeLocal
   The "deletion time" locally.
 ```
 
-The `decision` SHOULD be determined by the modified times and deletion times, by the logic described in [the doc of sync alogorithm](../sync_algorithm_v2.md). In short, we collect four timestamps (`mtimeRemote`, `deltimeRemote`, `mtimeLocal`, `deltimeLocal`), and respect the max timestamp and its corresponding operation.
+The `decision` SHOULD be determined by the modified times and deletion times, by the logic described in [the doc of sync alogorithm](../sync_algorithm/v3/intro.md). In short, we collect four timestamps (`mtimeRemote`, `deltimeRemote`, `mtimeLocal`, `deltimeLocal`), and respect the max timestamp and its corresponding operation.
 
 ## Common Issues
 

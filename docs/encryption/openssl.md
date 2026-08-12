@@ -43,4 +43,4 @@ This encryption algorithm is delibrately designed to be aligned with openssl for
    echo -n 'U2FsdGVkX19tNkdFL5rZeHxbe7FL-Pp5mkZJkDNFJWFT6lldZlfa57j0C_cKn0I3PZ9YDvOkyoKqfF6lbn0_yg' | base64url::decode | openssl enc -d -aes-256-cbc -pbkdf2 -iter 20000 -pass pass:mylongpassword
    ```
 
-4. The directory is considered as special "0-byte" object on remote s3. So this meta infomation may be easily guessed if some third party can access the remote bucket.
+4. The directory is considered as special "0-byte" object on the remote service. So this meta infomation may be easily guessed if some third party can access the remote service.
