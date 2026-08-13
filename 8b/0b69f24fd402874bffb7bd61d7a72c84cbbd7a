@@ -1,0 +1,21 @@
+src/baseTypes.ts
+  s_dfb05e40464a7b::t_1c3d0023c5c1cb 86-89
+src/main.ts
+  s_dfb05e40464a7b::t_6257ad06b7e4ca 64-68,99,839-851,1048-1099
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "8b0b69f24fd402874bffb7bd61d7a72c84cbbd7a",
+  "prompts": {},
+  "sessions": {
+    "s_dfb05e40464a7b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00521d5b5ffeCi2XwWSKMJ7iTO",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
