@@ -1,0 +1,34 @@
+src/baseTypes.ts
+  s_a8b8f04d58b777::t_b93df34a373145 71
+src/langs/zh_cn.json
+  s_a8b8f04d58b777::t_fe4435d1bbed78 178-179
+src/langs/zh_tw.json
+  s_a8b8f04d58b777::t_1a793b417f4c56 177-178
+src/main.ts
+  s_a8b8f04d58b777::t_cbdce3b1866c1d 75
+src/sync.ts
+  s_a8b8f04d58b777::t_4a504200a88585 439,477,1210,2000
+  s_a8b8f04d58b777::t_c89e2454904c95 236
+  s_a8b8f04d58b777::t_1486bc5498c127 356,388
+  s_a8b8f04d58b777::t_f58592018b5a1a 140
+src/settings.ts
+  s_a8b8f04d58b777::t_47190ca8f59e6f 1247-1261
+src/langs/en.json
+  s_a8b8f04d58b777::t_110b032a5b79c3 177-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "6675f58e24f9dbc746b53647637e35ec1a5bc2b7",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8f04d58b777": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_009828307ffeQ8AXBtny6G5WFB",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
