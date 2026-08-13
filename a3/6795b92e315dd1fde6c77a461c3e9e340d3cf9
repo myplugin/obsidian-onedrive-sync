@@ -1,0 +1,27 @@
+src/localdb.ts
+  s_d022a2fa7f71ad::t_a9ebbf21fe65d1 11,650-653,663
+src/main.ts
+  s_d022a2fa7f71ad::t_f0ebc75eb19b1d 944,954-956
+  s_d022a2fa7f71ad::t_3b8fad136fd71f 929,940
+  s_d022a2fa7f71ad::t_92677adb69b60e 63
+  s_d022a2fa7f71ad::t_52f03601037603 1018
+tests/configPersist.test.ts
+  s_d022a2fa7f71ad::t_8d74db6f4172cb 5
+  s_d022a2fa7f71ad::t_74a79c996d4b1c 25-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "a36795b92e315dd1fde6c77a461c3e9e340d3cf9",
+  "prompts": {},
+  "sessions": {
+    "s_d022a2fa7f71ad": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0052c3f4affeNscIAtRaHFfKH9",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
