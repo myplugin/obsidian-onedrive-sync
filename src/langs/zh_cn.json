@@ -293,5 +293,6 @@
   "modal_cleardupfiles_warning_finished": "所有检测到的重复文件已被删除！",
   "settings_cleardupfiles": "删除智能处理冲突生成的重复文件",
   "settings_cleardupfiles_desc": "如果用过智能处理冲突 (PRO) 功能，插件可能会生成重复文件。<strong>如果您真的确认了所有重复文件都不需要了，</strong>那么可以删除本地的<strong>所有</strong>这些文件。",
-  "settings_cleardupfiles_button": "开始扫描"
+  "settings_cleardupfiles_button": "开始扫描",
+  "conflict_with_remotely_save": "与原版 \"remotely-save\" 插件冲突，请禁用原版。"
 }

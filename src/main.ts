@@ -537,6 +537,11 @@ export default class RemotelySavePlugin extends Plugin {
     // must AFTER preparing DB
     this.enableAutoClearSyncPlanHist();
 
+    if ((this.app as any).plugins?.enabledPlugins?.has("remotely-save")) {
+      new Notice(t("conflict_with_remotely_save"), 10000);
+      return;
+    }
+
     this.registerObsidianProtocolHandler(COMMAND_URI, async (inputParams) => {
       // console.debug(inputParams);
       const parsed = importQrCodeUri(inputParams, this.app.vault.getName());
