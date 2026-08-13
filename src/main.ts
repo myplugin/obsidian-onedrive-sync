@@ -492,6 +492,14 @@ export default class RemotelySavePlugin extends Plugin {
 
     this.syncEvent = new Events();
 
+    // Reconcile the synced_settings.json sidecar after every sync run — the
+    // design-level clobber fix: re-read the sidecar into in-memory settings +
+    // persist to data.json, so memory never goes stale over a freshly-pulled
+    // config. Fires only on SYNC_DONE (post-sync, DB ready).
+    this.registerEvent(
+      this.syncEvent?.on("SYNC_DONE", this._reconcileSidecar)!
+    );
+
     await this.loadSettings();
 
     // MUST after loadSettings and before prepareDB
@@ -1098,6 +1106,24 @@ export default class RemotelySavePlugin extends Plugin {
       return null;
     }
   }
+
+  /** Re-read the sidecar (possibly just downloaded/merged) into in-memory
+   *  settings + persist to data.json. Design-level clobber fix: after every
+   *  sync the plugin's memory tracks the synced sidecar, so a later
+   *  saveSettings can never write stale values over a freshly-pulled config.
+   *  Swallows all errors — must never break the sync chain. */
+  _reconcileSidecar = async () => {
+    try {
+      const sidecar = await this.readSidecar();
+      if (sidecar === null) return;
+      const fields = this.settings.syncedSettingFields ?? [];
+      if (fields.length === 0) return;
+      applySyncedFields(this.settings, sidecar, fields);
+      await this.saveSettings(); // persist to data.json; writeSidecar diff=no-op
+    } catch (e) {
+      console.warn("sidecar reconcile failed", e);
+    }
+  };
 
   /**
    * After 202403 the data should be of profile based.
