@@ -60,7 +60,12 @@ import { DEFAULT_PROFILER_CONFIG, Profiler } from "./profiler";
 import { RemotelySaveSettingTab } from "./settings";
 import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
-import { stripPasswordInPlace } from "./syncSettings";
+import {
+  DEFAULT_SYNCED_FIELDS,
+  applySyncedFields,
+  projectSyncableFields,
+  stripPasswordInPlace,
+} from "./syncSettings";
 
 const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   onedrive: DEFAULT_ONEDRIVE_CONFIG,
@@ -91,6 +96,7 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   protectModifyPercentage: 50,
   syncDirection: "bidirectional",
   obfuscateSettingFile: true,
+  syncedSettingFields: [...DEFAULT_SYNCED_FIELDS],
   enableMobileStatusBar: false,
   encryptionMethod: "unknown",
   profiler: DEFAULT_PROFILER_CONFIG,
@@ -830,6 +836,19 @@ export default class RemotelySavePlugin extends Plugin {
       messyConfigToNormal(await this.loadData())
     );
 
+    if (this.settings.syncedSettingFields === undefined) {
+      this.settings.syncedSettingFields = [...DEFAULT_SYNCED_FIELDS];
+    }
+    // sidecar (cross-device) values win for the user-selected fields
+    const sidecar = await this.readSidecar();
+    if (sidecar !== null) {
+      applySyncedFields(
+        this.settings,
+        sidecar,
+        this.settings.syncedSettingFields
+      );
+    }
+
     if (this.settings.syncBookmarks === undefined) {
       this.settings.syncBookmarks = false;
     }
@@ -1025,6 +1044,58 @@ export default class RemotelySavePlugin extends Plugin {
     const dataOnDisk = await this.loadData();
     if (JSON.stringify(dataToSave) !== JSON.stringify(dataOnDisk)) {
       await this.saveData(dataToSave);
+    }
+    // project selected fields into the plain-JSON sidecar (sync unit)
+    await this.writeSidecar();
+  }
+
+  private sidecarPath(): string {
+    return `${this.manifest.dir}/synced_settings.json`;
+  }
+
+  private buildSidecarText(): string | null {
+    const fields = this.settings.syncedSettingFields ?? [];
+    if (fields.length === 0) return null;
+    const projected = projectSyncableFields(this.settings, fields);
+    return JSON.stringify(projected, null, 2);
+  }
+
+  /** Write the sidecar only when content changed (diff guard — no spurious
+   *  mtime bump, no ping-pong). No-op if no fields selected. */
+  async writeSidecar() {
+    const newText = this.buildSidecarText();
+    const p = this.sidecarPath();
+    const exists = await this.app.vault.adapter.exists(p);
+    if (newText === null) {
+      if (exists) await this.app.vault.adapter.remove(p);
+      return;
+    }
+    if (exists) {
+      const oldText = await this.app.vault.adapter.read(p);
+      if (oldText === newText) return; // diff guard: no change, no write
+    }
+    await this.app.vault.adapter.write(p, newText);
+  }
+
+  /** Read + parse the sidecar. null if missing/corrupt. Never throws. */
+  async readSidecar(): Promise<Partial<RemotelySavePluginSettings> | null> {
+    const p = this.sidecarPath();
+    try {
+      const exists = await this.app.vault.adapter.exists(p);
+      if (!exists) return null;
+      const text = await this.app.vault.adapter.read(p);
+      const parsed = JSON.parse(text);
+      if (
+        parsed === null ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed)
+      ) {
+        return null;
+      }
+      return parsed as Partial<RemotelySavePluginSettings>;
+    } catch (e) {
+      console.warn("synced_settings.json unreadable, skipping reconcile", e);
+      return null;
     }
   }
 
