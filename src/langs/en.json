@@ -174,6 +174,8 @@
   "settings_concurrency": "Concurrency",
   "settings_concurrency_desc": "How many files do you want to download or upload in parallel at most? By default it's set to 5. If you meet any problems such as rate limit, you can reduce the concurrency to a lower value.",
   "settings_syncunderscore": "Sync _ Files Or Folders",
+  "settings_syncdot": "Sync . Files Or Folders",
+  "settings_syncdot_desc": "Sync files or folders starting with . (\"dot\") or not. Special names like .git, .svn, node_modules are always still skipped, and .obsidian is controlled by its own setting.",
   "settings_syncunderscore_desc": "Sync files or folders starting with _ (\"underscore\") or not",
   "settings_configdir": "Sync Config Dir (experimental)",
   "settings_configdir_desc": "Sync config dir {{configDir}} or not (inner folder .git and node_modules would be ignored). Please be aware that this may impact all your plugins' or Obsidian's settings, and may require you restart Obsidian after sync. Enable this at your own risk.",

@@ -137,6 +137,7 @@ export const checkIsSkipItemOrNotByName = (
   syncConfigDir: boolean,
   syncBookmarks: boolean,
   syncUnderscoreItems: boolean,
+  syncDotItems: boolean,
   configDir: string,
   ignorePaths: string[],
   onlyAllowPaths: string[]
@@ -232,7 +233,7 @@ export const checkIsSkipItemOrNotByName = (
   }
 
   const checkIsHidden =
-    isHiddenPath(key, true, false) ||
+    (!syncDotItems && isHiddenPath(key, true, false)) ||
     (!syncUnderscoreItems && isHiddenPath(key, false, true)) ||
     key === "/" ||
     key === DEFAULT_FILE_NAME_FOR_METADATAONREMOTE ||
@@ -352,6 +353,7 @@ const ensembleMixedEnties = async (
   syncBookmarks: boolean,
   configDir: string,
   syncUnderscoreItems: boolean,
+  syncDotItems: boolean,
   ignorePaths: string[],
   onlyAllowPaths: string[],
   fsEncrypt: FakeFsEncrypt,
@@ -383,6 +385,7 @@ const ensembleMixedEnties = async (
       syncConfigDir,
       syncBookmarks,
       syncUnderscoreItems,
+      syncDotItems,
       configDir,
       ignorePaths,
       onlyAllowPaths
@@ -433,6 +436,7 @@ const ensembleMixedEnties = async (
           syncConfigDir,
           syncBookmarks,
           syncUnderscoreItems,
+          syncDotItems,
           configDir,
           ignorePaths,
           onlyAllowPaths
@@ -470,6 +474,7 @@ const ensembleMixedEnties = async (
         syncConfigDir,
         syncBookmarks,
         syncUnderscoreItems,
+        syncDotItems,
         configDir,
         ignorePaths,
         onlyAllowPaths
@@ -1202,6 +1207,7 @@ const getSyncPlanInplace = async (
       syncConfigDir: settings.syncConfigDir,
       syncBookmarks: settings.syncBookmarks,
       syncUnderscoreItems: settings.syncUnderscoreItems,
+      syncDotItems: settings.syncDotItems,
       skipSizeLargerThan: settings.skipSizeLargerThan,
       protectModifyPercentage: settings.protectModifyPercentage,
       conflictAction: conflictAction,
@@ -1991,6 +1997,7 @@ export async function syncer(
       settings.syncBookmarks ?? false,
       configDir,
       settings.syncUnderscoreItems ?? false,
+      settings.syncDotItems ?? false,
       settings.ignorePaths ?? [],
       settings.onlyAllowPaths ?? [],
       fsEncrypt,

@@ -68,6 +68,7 @@ export interface RemotelySavePluginSettings {
   syncBookmarks?: boolean;
   syncAppearance?: boolean;
   syncUnderscoreItems?: boolean;
+  syncDotItems?: boolean;
   lang?: LangTypeAndAuto;
   agreeToUseSyncV3?: boolean;
   skipSizeLargerThan?: number;

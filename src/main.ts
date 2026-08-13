@@ -72,6 +72,7 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   syncBookmarks: false,
   syncAppearance: false,
   syncUnderscoreItems: false,
+  syncDotItems: false,
   lang: "auto",
   logToDB: false,
   skipSizeLargerThan: -1,

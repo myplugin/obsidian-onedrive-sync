@@ -1244,6 +1244,22 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName(t("settings_syncdot"))
+      .setDesc(t("settings_syncdot_desc"))
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncDotItems ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncDotItems = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
       .setName(t("settings_configdir"))
       .setDesc(
         t("settings_configdir_desc", {
