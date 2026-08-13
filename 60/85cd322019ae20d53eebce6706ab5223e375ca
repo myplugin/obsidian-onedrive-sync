@@ -1,0 +1,19 @@
+src/obsFolderLister.ts
+  s_7079861647f70b::t_070538d0d47f8f 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "6085cd322019ae20d53eebce6706ab5223e375ca",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
