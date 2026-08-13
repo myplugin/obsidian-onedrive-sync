@@ -1,0 +1,23 @@
+src/langs/en.json
+  s_7079861647f70b::t_20674a8d201065 298
+src/langs/zh_tw.json
+  s_7079861647f70b::t_d261d9723eff32 298
+src/langs/zh_cn.json
+  s_7079861647f70b::t_7c187224b170de 299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "a01a7ee9a40583bc677a3c6e872848c7727ad61b",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
