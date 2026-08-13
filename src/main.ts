@@ -60,7 +60,12 @@ import { DEFAULT_PROFILER_CONFIG, Profiler } from "./profiler";
 import { RemotelySaveSettingTab } from "./settings";
 import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
-import { stripPasswordInPlace } from "./syncSettings";
+import {
+  DEFAULT_SYNCED_FIELDS,
+  applySyncedFields,
+  projectSyncableFields,
+  stripPasswordInPlace,
+} from "./syncSettings";
 
 const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   onedrive: DEFAULT_ONEDRIVE_CONFIG,
@@ -92,6 +97,7 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   protectModifyPercentage: 50,
   syncDirection: "bidirectional",
   obfuscateSettingFile: true,
+  syncedSettingFields: [...DEFAULT_SYNCED_FIELDS],
   enableMobileStatusBar: false,
   encryptionMethod: "unknown",
   profiler: DEFAULT_PROFILER_CONFIG,
@@ -487,6 +493,14 @@ export default class RemotelySavePlugin extends Plugin {
 
     this.syncEvent = new Events();
 
+    // Reconcile the synced_settings.json sidecar after every sync run — the
+    // design-level clobber fix: re-read the sidecar into in-memory settings +
+    // persist to data.json, so memory never goes stale over a freshly-pulled
+    // config. Fires only on SYNC_DONE (post-sync, DB ready).
+    this.registerEvent(
+      this.syncEvent?.on("SYNC_DONE", this._reconcileSidecar)!
+    );
+
     await this.loadSettings();
 
     // MUST after loadSettings and before prepareDB
@@ -831,6 +845,19 @@ export default class RemotelySavePlugin extends Plugin {
       messyConfigToNormal(await this.loadData())
     );
 
+    if (this.settings.syncedSettingFields === undefined) {
+      this.settings.syncedSettingFields = [...DEFAULT_SYNCED_FIELDS];
+    }
+    // sidecar (cross-device) values win for the user-selected fields
+    const sidecar = await this.readSidecar();
+    if (sidecar !== null) {
+      applySyncedFields(
+        this.settings,
+        sidecar,
+        this.settings.syncedSettingFields
+      );
+    }
+
     if (this.settings.syncBookmarks === undefined) {
       this.settings.syncBookmarks = false;
     }
@@ -1027,7 +1054,77 @@ export default class RemotelySavePlugin extends Plugin {
     if (JSON.stringify(dataToSave) !== JSON.stringify(dataOnDisk)) {
       await this.saveData(dataToSave);
     }
+    // project selected fields into the plain-JSON sidecar (sync unit)
+    await this.writeSidecar();
   }
+
+  private sidecarPath(): string {
+    return `${this.manifest.dir}/synced_settings.json`;
+  }
+
+  private buildSidecarText(): string | null {
+    const fields = this.settings.syncedSettingFields ?? [];
+    if (fields.length === 0) return null;
+    const projected = projectSyncableFields(this.settings, fields);
+    return JSON.stringify(projected, null, 2);
+  }
+
+  /** Write the sidecar only when content changed (diff guard — no spurious
+   *  mtime bump, no ping-pong). No-op if no fields selected. */
+  async writeSidecar() {
+    const newText = this.buildSidecarText();
+    const p = this.sidecarPath();
+    const exists = await this.app.vault.adapter.exists(p);
+    if (newText === null) {
+      if (exists) await this.app.vault.adapter.remove(p);
+      return;
+    }
+    if (exists) {
+      const oldText = await this.app.vault.adapter.read(p);
+      if (oldText === newText) return; // diff guard: no change, no write
+    }
+    await this.app.vault.adapter.write(p, newText);
+  }
+
+  /** Read + parse the sidecar. null if missing/corrupt. Never throws. */
+  async readSidecar(): Promise<Partial<RemotelySavePluginSettings> | null> {
+    const p = this.sidecarPath();
+    try {
+      const exists = await this.app.vault.adapter.exists(p);
+      if (!exists) return null;
+      const text = await this.app.vault.adapter.read(p);
+      const parsed = JSON.parse(text);
+      if (
+        parsed === null ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed)
+      ) {
+        return null;
+      }
+      return parsed as Partial<RemotelySavePluginSettings>;
+    } catch (e) {
+      console.warn("synced_settings.json unreadable, skipping reconcile", e);
+      return null;
+    }
+  }
+
+  /** Re-read the sidecar (possibly just downloaded/merged) into in-memory
+   *  settings + persist to data.json. Design-level clobber fix: after every
+   *  sync the plugin's memory tracks the synced sidecar, so a later
+   *  saveSettings can never write stale values over a freshly-pulled config.
+   *  Swallows all errors — must never break the sync chain. */
+  _reconcileSidecar = async () => {
+    try {
+      const sidecar = await this.readSidecar();
+      if (sidecar === null) return;
+      const fields = this.settings.syncedSettingFields ?? [];
+      if (fields.length === 0) return;
+      applySyncedFields(this.settings, sidecar, fields);
+      await this.saveSettings(); // persist to data.json; writeSidecar diff=no-op
+    } catch (e) {
+      console.warn("sidecar reconcile failed", e);
+    }
+  };
 
   /**
    * After 202403 the data should be of profile based.

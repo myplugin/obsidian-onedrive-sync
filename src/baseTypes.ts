@@ -84,6 +84,10 @@ export interface RemotelySavePluginSettings {
 
   obfuscateSettingFile?: boolean;
 
+  /** Which settings fields sync across devices via synced_settings.json.
+   *  Per-device (not itself synced). Undefined → DEFAULT_SYNCED_FIELDS. */
+  syncedSettingFields?: string[];
+
   enableMobileStatusBar?: boolean;
 
   encryptionMethod?: CipherMethodType;

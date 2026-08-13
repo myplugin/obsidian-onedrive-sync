@@ -17,11 +17,11 @@ const isPluginDirItself = (x: string, pluginId: string) => {
 
 const isLikelyPluginSubFiles = (x: string) => {
   const reqFiles = [
-    "data.json",
     "main.js",
     "manifest.json",
     ".gitignore",
     "styles.css",
+    "synced_settings.json",
   ];
   for (const iterator of reqFiles) {
     if (x === iterator || x.endsWith(`/${iterator}`)) {
