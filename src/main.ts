@@ -60,6 +60,7 @@ import { DEFAULT_PROFILER_CONFIG, Profiler } from "./profiler";
 import { RemotelySaveSettingTab } from "./settings";
 import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
+import { stripPasswordInPlace } from "./syncSettings";
 
 const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   onedrive: DEFAULT_ONEDRIVE_CONFIG,
@@ -925,7 +926,7 @@ export default class RemotelySavePlugin extends Plugin {
     await this.saveSettings();
   }
 
-  /** Extract device-specific onedrive auth fields from live settings. */
+  /** Extract device-specific onedrive auth fields + password from live settings. */
   private extractOnedriveAuth(): OnedriveAuthFields {
     const o = this.settings.onedrive;
     return {
@@ -936,10 +937,11 @@ export default class RemotelySavePlugin extends Plugin {
       deltaLink: o.deltaLink,
       username: o.username,
       credentialsShouldBeDeletedAtTime: o.credentialsShouldBeDeletedAtTime,
+      password: this.settings.password,
     };
   }
 
-  /** Merge device-specific onedrive auth from DB into live settings. */
+  /** Merge device-specific onedrive auth + password from DB into live settings. */
   private mergeOnedriveAuthFromDB(auth: OnedriveAuthFields) {
     const o = this.settings.onedrive;
     o.accessToken = auth.accessToken;
@@ -949,6 +951,9 @@ export default class RemotelySavePlugin extends Plugin {
     o.deltaLink = auth.deltaLink;
     o.username = auth.username;
     o.credentialsShouldBeDeletedAtTime = auth.credentialsShouldBeDeletedAtTime;
+    // Guard: old DB records (pre-password-migration) lack this field; keep
+    // the value loaded from data.json until the first saveSettings persists it.
+    this.settings.password = auth.password ?? this.settings.password;
   }
 
   /** Strip device-specific auth from an onedrive config copy (for data.json). */
@@ -1010,6 +1015,7 @@ export default class RemotelySavePlugin extends Plugin {
     const settingsCopy = dbReady ? cloneDeep(this.settings) : this.settings;
     if (dbReady) {
       this.stripOnedriveAuthInPlace(settingsCopy.onedrive);
+      stripPasswordInPlace(settingsCopy);
     }
     const dataToSave = settingsCopy.obfuscateSettingFile
       ? normalConfigToMessy(settingsCopy)
