@@ -17,6 +17,7 @@ import {
   setIcon,
 } from "obsidian";
 import type {
+  OnedriveConfig,
   RemotelySavePluginSettings,
   SyncTriggerSourceType,
 } from "./baseTypes";
@@ -42,13 +43,16 @@ import type { LangTypeAndAuto, TransItemType } from "./i18n";
 import { importQrCodeUri } from "./importExport";
 import {
   type InternalDBs,
+  type OnedriveAuthFields,
   clearAllLoggerOutputRecords,
   clearExpiredSyncPlanRecords,
   getLastFailedSyncTimeByVault,
   getLastSuccessSyncTimeByVault,
+  getOnedriveAuthByVault,
   prepareDBs,
   upsertLastFailedSyncTimeByVault,
   upsertLastSuccessSyncTimeByVault,
+  upsertOnedriveAuthByVault,
   upsertPluginVersionByVault,
 } from "./localdb";
 import { changeMobileStatusBar } from "./misc";
@@ -56,6 +60,7 @@ import { DEFAULT_PROFILER_CONFIG, Profiler } from "./profiler";
 import { RemotelySaveSettingTab } from "./settings";
 import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
+import { stripPasswordInPlace } from "./syncSettings";
 
 const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   onedrive: DEFAULT_ONEDRIVE_CONFIG,
@@ -420,7 +425,16 @@ export default class RemotelySavePlugin extends Plugin {
       return;
     }
 
-    const configSaver = async () => await this.saveSettings();
+    const configSaver = async () => {
+      // persist device-specific onedrive auth to the DB only — do NOT touch
+      // data.json here (token refresh must not bump data.json's mtime, or the
+      // config-dir sync sees a false "local modified" → ping-pong conflict).
+      await upsertOnedriveAuthByVault(
+        this.db,
+        this.vaultRandomID,
+        this.extractOnedriveAuth()
+      );
+    };
 
     await syncer(
       fsLocal,
@@ -514,11 +528,21 @@ export default class RemotelySavePlugin extends Plugin {
       throw err;
     }
 
+    // must AFTER preparing DB: merge device-specific onedrive auth from the
+    // DB (or migrate from data.json on first run). The token no longer lives
+    // in synced data.json, so we load it from the device-local DB here.
+    await this.mergeOnedriveAuthFromDBOrMigrate();
+
     // must AFTER preparing DB
     this.enableAutoClearOutputToDBHistIfSet();
 
     // must AFTER preparing DB
     this.enableAutoClearSyncPlanHist();
+
+    if ((this.app as any).plugins?.enabledPlugins?.has("remotely-save")) {
+      new Notice(t("conflict_with_remotely_save"), 10000);
+      return;
+    }
 
     this.registerObsidianProtocolHandler(COMMAND_URI, async (inputParams) => {
       // console.debug(inputParams);
@@ -903,11 +927,105 @@ export default class RemotelySavePlugin extends Plugin {
     await this.saveSettings();
   }
 
-  async saveSettings() {
-    if (this.settings.obfuscateSettingFile) {
-      await this.saveData(normalConfigToMessy(this.settings));
+  /** Extract device-specific onedrive auth fields + password from live settings. */
+  private extractOnedriveAuth(): OnedriveAuthFields {
+    const o = this.settings.onedrive;
+    return {
+      accessToken: o.accessToken,
+      refreshToken: o.refreshToken,
+      accessTokenExpiresInSeconds: o.accessTokenExpiresInSeconds,
+      accessTokenExpiresAtTime: o.accessTokenExpiresAtTime,
+      deltaLink: o.deltaLink,
+      username: o.username,
+      credentialsShouldBeDeletedAtTime: o.credentialsShouldBeDeletedAtTime,
+      password: this.settings.password,
+    };
+  }
+
+  /** Merge device-specific onedrive auth + password from DB into live settings. */
+  private mergeOnedriveAuthFromDB(auth: OnedriveAuthFields) {
+    const o = this.settings.onedrive;
+    o.accessToken = auth.accessToken;
+    o.refreshToken = auth.refreshToken;
+    o.accessTokenExpiresInSeconds = auth.accessTokenExpiresInSeconds;
+    o.accessTokenExpiresAtTime = auth.accessTokenExpiresAtTime;
+    o.deltaLink = auth.deltaLink;
+    o.username = auth.username;
+    o.credentialsShouldBeDeletedAtTime = auth.credentialsShouldBeDeletedAtTime;
+    // Guard: old DB records (pre-password-migration) lack this field; keep
+    // the value loaded from data.json until the first saveSettings persists it.
+    this.settings.password = auth.password ?? this.settings.password;
+  }
+
+  /** Strip device-specific auth from an onedrive config copy (for data.json). */
+  private stripOnedriveAuthInPlace(o: OnedriveConfig) {
+    o.accessToken = "";
+    o.refreshToken = "";
+    o.accessTokenExpiresInSeconds = 0;
+    o.accessTokenExpiresAtTime = 0;
+    o.deltaLink = "";
+    o.username = "";
+    o.credentialsShouldBeDeletedAtTime = 0;
+  }
+
+  /** True once prepareDBAndVaultRandomID has populated this.db + this.vaultRandomID. */
+  private isDbReady(): boolean {
+    return (
+      this.db !== undefined &&
+      this.vaultRandomID !== undefined &&
+      this.vaultRandomID !== ""
+    );
+  }
+
+  /**
+   * Merge onedrive auth from DB into live settings; if DB has no record yet
+   * (first run after the token-out-of-data.json migration), migrate the auth
+   * currently in settings.onedrive into the DB. Must be called AFTER
+   * prepareDBAndVaultRandomID.
+   */
+  async mergeOnedriveAuthFromDBOrMigrate() {
+    const authFromDB = await getOnedriveAuthByVault(
+      this.db,
+      this.vaultRandomID
+    );
+    if (authFromDB) {
+      this.mergeOnedriveAuthFromDB(authFromDB);
     } else {
-      await this.saveData(this.settings);
+      await upsertOnedriveAuthByVault(
+        this.db,
+        this.vaultRandomID,
+        this.extractOnedriveAuth()
+      );
+    }
+  }
+
+  async saveSettings() {
+    const dbReady = this.isDbReady();
+    // persist device-specific onedrive auth to the DB (not data.json)
+    if (dbReady) {
+      await upsertOnedriveAuthByVault(
+        this.db,
+        this.vaultRandomID,
+        this.extractOnedriveAuth()
+      );
+    }
+    // data.json gets auth stripped once DB is the source of truth;
+    // before DB is ready (early in onload) we fall back to writing the
+    // whole settings (legacy behavior) so checkIfOauthExpires etc. still
+    // see a token.
+    const settingsCopy = dbReady ? cloneDeep(this.settings) : this.settings;
+    if (dbReady) {
+      this.stripOnedriveAuthInPlace(settingsCopy.onedrive);
+      stripPasswordInPlace(settingsCopy);
+    }
+    const dataToSave = settingsCopy.obfuscateSettingFile
+      ? normalConfigToMessy(settingsCopy)
+      : settingsCopy;
+    // skip the disk write if content is unchanged — avoids spurious mtime
+    // bumps that cause sync ping-pong on every load.
+    const dataOnDisk = await this.loadData();
+    if (JSON.stringify(dataToSave) !== JSON.stringify(dataOnDisk)) {
+      await this.saveData(dataToSave);
     }
   }
 

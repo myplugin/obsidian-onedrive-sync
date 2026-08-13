@@ -294,5 +294,6 @@
   "modal_cleardupfiles_warning_finished": "All the detected duplicated files are removed!",
   "settings_cleardupfiles": "Clear Duplicated Files By Smart Conflict",
   "settings_cleardupfiles_desc": "If you have ever used Smart Conflict (PRO) feature, the plugin may generate duplicated files. <strong>IF YOU ARE SURE THE DUPLICATED FILES ARE NO LONGER NEEDED</strong>, you can clear <strong>ALL</strong> of them locally here.",
-  "settings_cleardupfiles_button": "Start Scanning"
+  "settings_cleardupfiles_button": "Start Scanning",
+  "conflict_with_remotely_save": "Conflict: the original \"remotely-save\" plugin is enabled. Disable it to use this plugin."
 }

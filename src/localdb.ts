@@ -6,9 +6,9 @@ ep2(localforage);
 export type LocalForage = typeof localforage;
 import { nanoid } from "nanoid";
 
-import type { SyncPlanType } from "./sync";
 import type { Entity, SUPPORTED_SERVICES_TYPE } from "./baseTypes";
 import { unixTimeToStr } from "./misc";
+import type { SyncPlanType } from "./sync";
 
 const DB_VERSION_NUMBER_IN_HISTORY = [20211114, 20220108, 20220326, 20240220];
 export const DEFAULT_DB_VERSION_NUMBER: number = 20240220;
@@ -644,4 +644,38 @@ export const readAllProfilerResultsByVault = async (
   } else {
     return records.map((x) => x.val);
   }
+};
+
+/**
+ * Device-specific secrets stored in the DB (NOT in synced data.json): the
+ * onedrive auth tokens AND the vault encryption password. Each device holds
+ * its own; keeping these out of data.json prevents the config-dir sync
+ * ping-pong and avoids leaking one device's secrets to the other.
+ */
+export interface OnedriveAuthFields {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresInSeconds: number;
+  accessTokenExpiresAtTime: number;
+  deltaLink: string;
+  username: string;
+  credentialsShouldBeDeletedAtTime?: number;
+  password: string;
+}
+
+export const getOnedriveAuthByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string
+): Promise<OnedriveAuthFields | null | undefined> => {
+  return (await db.simpleKVForMiscTbl.getItem(
+    `${vaultRandomID}-onedriveAuth`
+  )) as OnedriveAuthFields | null | undefined;
+};
+
+export const upsertOnedriveAuthByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string,
+  auth: OnedriveAuthFields
+): Promise<void> => {
+  await db.simpleKVForMiscTbl.setItem(`${vaultRandomID}-onedriveAuth`, auth);
 };
