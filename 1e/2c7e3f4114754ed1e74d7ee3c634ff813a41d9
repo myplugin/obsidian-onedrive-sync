@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-08-13-selective-config-sync-design.md
+  s_7079861647f70b::t_5d19f72ac7a909 1-126
+  s_7079861647f70b::t_0477a5c3bc8b1c 127-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "1e2c7e3f4114754ed1e74d7ee3c634ff813a41d9",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
