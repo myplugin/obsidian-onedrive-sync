@@ -295,7 +295,5 @@
   "settings_cleardupfiles": "Clear Duplicated Files By Smart Conflict",
   "settings_cleardupfiles_desc": "If you have ever used Smart Conflict (PRO) feature, the plugin may generate duplicated files. <strong>IF YOU ARE SURE THE DUPLICATED FILES ARE NO LONGER NEEDED</strong>, you can clear <strong>ALL</strong> of them locally here.",
   "settings_cleardupfiles_button": "Start Scanning",
-  "conflict_with_remotely_save": "Conflict: the original \"remotely-save\" plugin is enabled. Disable it to use this plugin.",
-  "settings_syncedsettingfields": "Synced config items",
-  "settings_syncedsettingfields_desc": "Pick which settings travel across devices via synced_settings.json. Device-specific items (mobile status bar, log level, obfuscate toggle) always stay per-device. Sensitive items (password, onedrive auth) are never synced."
+  "conflict_with_remotely_save": "Conflict: the original \"remotely-save\" plugin is enabled. Disable it to use this plugin."
 }
