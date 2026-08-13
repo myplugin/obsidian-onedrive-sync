@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-08-13-selective-config-sync.md
+  s_7079861647f70b::t_bab35f1be7eee4 1-761
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "d70056f054938cd0f4ceb0940b9622f593a916c1",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
