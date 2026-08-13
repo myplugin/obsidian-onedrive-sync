@@ -6,6 +6,7 @@ import {
   Platform,
   PluginSettingTab,
   Setting,
+  moment,
   requireApiVersion,
 } from "obsidian";
 import type { TextComponent } from "obsidian";
@@ -39,7 +40,13 @@ import {
   clearAllPrevSyncRecordByVault,
   clearAllSyncPlanRecords,
   destroyDBs,
+  getLastFailedCheckTimeByVault,
+  getLastFailedSyncTimeByVault,
+  getLastSuccessCheckTimeByVault,
+  getLastSuccessSyncTimeByVault,
+  upsertLastFailedCheckTimeByVault,
   upsertLastFailedSyncTimeByVault,
+  upsertLastSuccessCheckTimeByVault,
   upsertLastSuccessSyncTimeByVault,
 } from "./localdb";
 import type RemotelySavePlugin from "./main"; // unavoidable
@@ -807,30 +814,95 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl)
+    const checkSetting = new Setting(containerEl)
       .setName(t("settings_checkonnectivity"))
-      .setDesc(t("settings_checkonnectivity_desc"))
-      .addButton(async (button) => {
-        button.setButtonText(t("settings_checkonnectivity_button"));
-        button.onClick(async () => {
-          new Notice(t("settings_checkonnectivity_checking"));
-          const client = getClient(
-            this.plugin.settings,
-            this.app.vault.getName(),
-            () => this.plugin.saveSettings()
-          );
-          const errors = { msg: "" };
-          const res = await client.checkConnect((err: any) => {
-            errors.msg = `${err}`;
-          });
-          if (res) {
-            new Notice(t("settings_onedrive_connect_succ"));
-          } else {
-            new Notice(t("settings_onedrive_connect_fail"));
-            new Notice(errors.msg);
-          }
+      .setDesc(t("settings_checkonnectivity_desc"));
+
+    // Refresh the "last connection" status in this setting's desc. The last
+    // connection = the single most recent of (sync success, sync fail, check
+    // success, check fail); show its outcome + relative time, or "never" if
+    // there has been no sync/check yet. Mobile sync only flashes a brief
+    // popup, so surfacing the last result here lets the user confirm whether
+    // the last connection actually succeeded.
+    const refreshConnStatus = async () => {
+      if (this.plugin.isSyncing) {
+        checkSetting.setDesc(t("settings_connection_syncing"));
+        return;
+      }
+      const db = this.plugin.db;
+      const vault = this.plugin.vaultRandomID;
+      const syncSuccess = await getLastSuccessSyncTimeByVault(db, vault);
+      const syncFail = await getLastFailedSyncTimeByVault(db, vault);
+      const checkSuccess = await getLastSuccessCheckTimeByVault(db, vault);
+      const checkFail = await getLastFailedCheckTimeByVault(db, vault);
+      let latestTime: number | null = null;
+      let latestOutcome: "success" | "fail" | null = null;
+      const consider = (
+        t: number | null | undefined,
+        outcome: "success" | "fail"
+      ) => {
+        if (
+          t !== null &&
+          t !== undefined &&
+          (latestTime === null || t > latestTime)
+        ) {
+          latestTime = t;
+          latestOutcome = outcome;
+        }
+      };
+      consider(syncSuccess, "success");
+      consider(syncFail, "fail");
+      consider(checkSuccess, "success");
+      consider(checkFail, "fail");
+      let desc: string;
+      if (latestTime === null || latestOutcome === null) {
+        desc = t("settings_connection_never");
+      } else {
+        const time = (moment as any)(latestTime).fromNow();
+        const outcome =
+          latestOutcome === "success"
+            ? t("settings_connection_success")
+            : t("settings_connection_failed");
+        desc = t("settings_connection_last_status", { time, outcome });
+      }
+      checkSetting.setDesc(desc);
+    };
+
+    checkSetting.addButton((button) => {
+      button.setButtonText(t("settings_checkonnectivity_button"));
+      button.onClick(async () => {
+        new Notice(t("settings_checkonnectivity_checking"));
+        const client = getClient(
+          this.plugin.settings,
+          this.app.vault.getName(),
+          () => this.plugin.saveSettings()
+        );
+        const errors = { msg: "" };
+        const res = await client.checkConnect((err: any) => {
+          errors.msg = `${err}`;
         });
+        const now = Date.now();
+        if (res) {
+          await upsertLastSuccessCheckTimeByVault(
+            this.plugin.db,
+            this.plugin.vaultRandomID,
+            now
+          );
+          new Notice(t("settings_onedrive_connect_succ"));
+        } else {
+          await upsertLastFailedCheckTimeByVault(
+            this.plugin.db,
+            this.plugin.vaultRandomID,
+            now
+          );
+          new Notice(t("settings_onedrive_connect_fail"));
+          new Notice(errors.msg);
+        }
+        await refreshConnStatus();
       });
+    });
+
+    void refreshConnStatus();
   }
 
   // ② 同步选项
@@ -1001,6 +1073,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setDesc(t("settings_ignorepaths_desc"));
     ignorePathsSetting.settingEl.addClass("rs-regex-setting");
     renderRegexListSetting({
+      app: this.app,
       containerEl: ignorePathsSetting.controlEl,
       getValues: () => this.plugin.settings.ignorePaths ?? [],
       setValues: async (next) => {
@@ -1016,6 +1089,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setDesc(t("settings_onlyallowpaths_desc"));
     onlyAllowPathsSetting.settingEl.addClass("rs-regex-setting");
     renderRegexListSetting({
+      app: this.app,
       containerEl: onlyAllowPathsSetting.controlEl,
       getValues: () => this.plugin.settings.onlyAllowPaths ?? [],
       setValues: async (next) => {

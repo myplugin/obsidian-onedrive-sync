@@ -163,12 +163,17 @@
   min-height: 4px;
 }
 
-/* a single regex chip (capsule) */
+/* a single regex chip = ONE indivisible unit, one line. A long regex
+   truncates with an ellipsis instead of wrapping — never multi-line,
+   never one-char-per-line. min-width:0 lets the chip shrink below its
+   natural (long) min-content so max-width:100% can cap it at the
+   container width, which is what lets the text truncate. */
 .rs-regex-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   max-width: 100%;
+  min-width: 0;
   padding: 2px 4px 2px 8px;
   border-radius: 10px;
   background: var(--background-modifier-hover);
@@ -193,26 +198,36 @@
   border-color: var(--text-error);
 }
 
-/* the warning glyph on an invalid chip */
+/* the warning glyph on an invalid chip — kept at natural size so it
+   never shrinks when the regex text is wide */
 .rs-regex-chip-warning {
+  flex: 0 0 auto;
   color: var(--text-warning);
   font-size: 1.05em;
   line-height: 1;
   cursor: help;
 }
 
-/* the regex text inside a chip — truncates with ellipsis if very long */
+/* the regex text inside a chip — single line, truncate on overflow.
+   white-space:nowrap means the text NEVER wraps (no multi-line, no
+   one-char-per-line); overflow:hidden + text-overflow:ellipsis clip the
+   visible part with "…" when the regex is longer than the chip's text
+   slot. min-width:0 lets the slot shrink so the × keeps its full width.
+   The full regex stays in the DOM (selectable/copyable) — only visually
+   clipped. */
 .rs-regex-chip-text {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 280px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* the x delete button */
+/* the × delete button — fixed-size so it keeps its 20px even when the
+   regex text is wide; sits at the right end of the chip (last flex
+   child), vertically centered with the text block */
 .rs-regex-chip-delete {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -237,6 +252,30 @@
   background: var(--background-modifier-hover);
 }
 
+/* ===== Mobile: drop the chip capsule; one regex per full-width row.
+   The chip flex-wrap layout is fragile on narrow viewports (a long regex
+   makes a sharing chip shrink to ×-only, hiding the text). On mobile we
+   stack chips vertically as full-width rows: each regex on its own line,
+   full text visible (wraps within the row if long), × at the right.
+   Triggered by adding .rs-regex-mobile to .rs-regex-block when
+   Platform.isMobile in regexListSetting.ts. */
+.rs-regex-mobile .rs-regex-list {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.rs-regex-mobile .rs-regex-chip {
+  width: 100%;
+  max-width: 100%;
+}
+
+.rs-regex-mobile .rs-regex-chip-text {
+  white-space: normal;
+  overflow-wrap: break-word;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 /* add-row + test-row share the same flex layout */
 .rs-regex-add-row,
 .rs-regex-test-row {
@@ -251,11 +290,47 @@
   min-width: 0;
 }
 
-/* path tester block — visually separated from the chips above */
-.rs-regex-tester {
+/* collapse/expand toggle for the (low-frequency) path tester. Default
+   is collapsed: the tester input is only needed when the user wants to
+   probe a path against the regex list, so it stays hidden until toggled.
+   The toggle doubles as the section divider (dashed top border). */
+.rs-regex-tester-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-top: 6px;
-  padding-top: 10px;
+  padding: 10px 0 2px;
+  border: none;
   border-top: 1px dashed var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-interface, sans-serif);
+  font-size: var(--font-ui-small);
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.rs-regex-tester-toggle:hover {
+  color: var(--text-normal);
+}
+
+.rs-regex-tester-toggle-caret {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.rs-regex-tester-toggle.rs-is-expanded .rs-regex-tester-toggle-caret {
+  transform: rotate(90deg);
+}
+
+/* path tester block — shown when the toggle above is expanded */
+.rs-regex-tester {
+  margin-top: 8px;
+}
+
+.rs-regex-tester.rs-is-collapsed {
+  display: none;
 }
 
 .rs-regex-test-result {
@@ -284,6 +359,27 @@
   border-radius: 3px;
 }
 
+/* ===== Delete-confirm modal (regex list) =====
+   A themed in-page modal (Obsidian Modal base) — NOT window.confirm, which
+   minimizes the settings window and pops an OS-level dialog. Shows the regex
+   being deleted in a monospace block; Delete (destructive) + Cancel buttons. */
+.rs-regex-delete-code {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  background: var(--background-modifier-hover);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.rs-regex-delete-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 /* ===== Disclaimer callout (collapsible, intentionally low-key) ===== */
 .rs-disclaimer {
   margin: 0 0 18px;
