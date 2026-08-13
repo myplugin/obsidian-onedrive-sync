@@ -645,3 +645,39 @@ export const readAllProfilerResultsByVault = async (
     return records.map((x) => x.val);
   }
 };
+
+/**
+ * Device-specific onedrive auth fields stored in the DB (NOT in synced
+ * data.json). Each device authenticates independently and holds its own
+ * tokens; refresh-token rotation means the rotated value MUST persist
+ * somewhere that survives reload. Keeping these out of data.json prevents
+ * the config-dir sync ping-pong (configSaver token-refresh writing
+ * data.json → false "local modified" → conflict keep_local → perpetual
+ * overwrite), and avoids leaking one device's tokens to the other.
+ */
+export interface OnedriveAuthFields {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresInSeconds: number;
+  accessTokenExpiresAtTime: number;
+  deltaLink: string;
+  username: string;
+  credentialsShouldBeDeletedAtTime?: number;
+}
+
+export const getOnedriveAuthByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string
+): Promise<OnedriveAuthFields | null | undefined> => {
+  return (await db.simpleKVForMiscTbl.getItem(
+    `${vaultRandomID}-onedriveAuth`
+  )) as OnedriveAuthFields | null | undefined;
+};
+
+export const upsertOnedriveAuthByVault = async (
+  db: InternalDBs,
+  vaultRandomID: string,
+  auth: OnedriveAuthFields
+): Promise<void> => {
+  await db.simpleKVForMiscTbl.setItem(`${vaultRandomID}-onedriveAuth`, auth);
+};
