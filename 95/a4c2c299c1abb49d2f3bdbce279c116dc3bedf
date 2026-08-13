@@ -1,0 +1,19 @@
+src/main.ts
+  s_7079861647f70b::t_ebbf4bb9ddb78e 923-981,983-1016
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "95a4c2c299c1abb49d2f3bdbce279c116dc3bedf",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
