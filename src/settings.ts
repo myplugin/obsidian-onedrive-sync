@@ -65,6 +65,7 @@ import {
 import { DEFAULT_PROFILER_CONFIG } from "./profiler";
 import { renderRegexListSetting } from "./regexListSetting";
 import { generateClearDupFilesSettingsPart } from "./settingsClearDupFiles";
+import { addSyncToggle } from "./syncToggle";
 
 class PasswordModal extends Modal {
   plugin: RemotelySavePlugin;
@@ -972,7 +973,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl)
+    const autoRunSetting = new Setting(containerEl)
       .setName(t("settings_autorun"))
       .setDesc(t("settings_autorun_desc"))
       .addDropdown((dropdown) => {
@@ -1010,7 +1011,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl)
+    addSyncToggle(autoRunSetting, "autoRunEveryMilliseconds", this.plugin, t);
+
+    const runOnceSetting = new Setting(containerEl)
       .setName(t("settings_runoncestartup"))
       .setDesc(t("settings_runoncestartup_desc"))
       .addDropdown((dropdown) => {
@@ -1036,7 +1039,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl)
+    addSyncToggle(runOnceSetting, "initRunAfterMilliseconds", this.plugin, t);
+
+    const syncOnSaveSetting = new Setting(containerEl)
       .setName(t("settings_synconsave"))
       .setDesc(t("settings_synconsave_desc"))
       .addDropdown((dropdown) => {
@@ -1056,6 +1061,13 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             this.plugin.toggleSyncOnSaveIfSet();
           });
       });
+
+    addSyncToggle(
+      syncOnSaveSetting,
+      "syncOnSaveAfterMilliseconds",
+      this.plugin,
+      t
+    );
 
     new Setting(containerEl)
       .setName(t("settings_skiplargefiles"))
