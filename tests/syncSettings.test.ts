@@ -6,6 +6,7 @@ import {
   applySyncedFields,
   projectSyncableFields,
   stripPasswordInPlace,
+  toggleFieldInList,
 } from "../src/syncSettings";
 
 const baseSettings = (): RemotelySavePluginSettings =>
@@ -89,5 +90,12 @@ describe("syncSettings projection", () => {
     assert.ok(!SYNCABLE_FIELDS.includes("enableMobileStatusBar" as any));
     assert.ok(!SYNCABLE_FIELDS.includes("currLogLevel" as any));
     assert.ok(!SYNCABLE_FIELDS.includes("obfuscateSettingFile" as any));
+  });
+
+  it("toggleFieldInList adds when absent, removes when present, no mutation", () => {
+    const list = ["a", "b"];
+    assert.deepEqual(toggleFieldInList(list, "c"), ["a", "b", "c"]);
+    assert.deepEqual(toggleFieldInList(list, "a"), ["b"]);
+    assert.deepEqual(list, ["a", "b"]);
   });
 });

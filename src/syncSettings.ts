@@ -81,3 +81,18 @@ export function applySyncedFields(
 export function stripPasswordInPlace(copy: RemotelySavePluginSettings): void {
   copy.password = "";
 }
+
+/**
+ * Toggle a field's membership in a list: add if absent, remove if present.
+ * Returns a NEW array; does not mutate the input. Used by the per-setting
+ * sync toggle UI to add/remove a field from syncedSettingFields.
+ */
+export function toggleFieldInList(list: string[], field: string): string[] {
+  const cur = new Set(list);
+  if (cur.has(field)) {
+    cur.delete(field);
+  } else {
+    cur.add(field);
+  }
+  return [...cur];
+}
