@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-08-14-per-setting-sync-toggle.md
+  s_7079861647f70b::t_585ccb8a615ecf 1-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "5e5096b8338b8a2658e0f7442422f672e0b7ba30",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
