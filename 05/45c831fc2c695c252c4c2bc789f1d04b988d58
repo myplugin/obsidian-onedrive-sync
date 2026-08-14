@@ -1,0 +1,23 @@
+src/syncSettings.ts
+  s_7079861647f70b::t_ad5cda4ec3a12a 84-89
+  s_7079861647f70b::t_9a155c396d3c5a 90-98
+tests/syncSettings.test.ts
+  s_7079861647f70b::t_d45cf566c673ee 9
+  s_7079861647f70b::t_66c794db217af4 94-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "0545c831fc2c695c252c4c2bc789f1d04b988d58",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
