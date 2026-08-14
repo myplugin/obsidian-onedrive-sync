@@ -1,0 +1,32 @@
+src/syncToggle.ts
+  s_7079861647f70b::t_55c2621f998f42 2-64
+  s_7079861647f70b::t_b6bc61756681be 1
+src/settings.ts
+  s_7079861647f70b::t_c6a6fe09cada76 976
+  s_7079861647f70b::t_2c6f1c9ef98c46 1042-1044
+  s_7079861647f70b::t_55c2621f998f42 1065-1071
+src/langs/zh_cn.json
+  s_7079861647f70b::t_9024d4e400f975 299-301
+src/langs/zh_tw.json
+  s_7079861647f70b::t_c4db2c3f928332 298-300
+styles.css
+  s_7079861647f70b::t_3eb4b611018dd2 441-454
+src/langs/en.json
+  s_7079861647f70b::t_72d763a2394cd1 298-300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "406e40b6924419a9e05d46bc543210cb58ad480f",
+  "prompts": {},
+  "sessions": {
+    "s_7079861647f70b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_00729cf09ffeBCbMz2vTcg4pqT",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
