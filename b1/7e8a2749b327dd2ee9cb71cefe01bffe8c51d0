@@ -1,0 +1,31 @@
+manifest.json
+  s_a8b8f04d58b777::t_d6af6dbc77173c 4
+styles.css
+  s_b75ed41e11d8fb::t_9337910d9cdb47 267
+  s_b75ed41e11d8fb::t_3f306c28033275 268-273,275-280,284-286,293-306,469
+  s_a8b8f04d58b777::t_d40ad71b333ca3 470
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "b17e8a2749b327dd2ee9cb71cefe01bffe8c51d0",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8f04d58b777": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_009828307ffeQ8AXBtny6G5WFB",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    },
+    "s_b75ed41e11d8fb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_004b1266cffeRcrDSbAg4UrX4l",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
