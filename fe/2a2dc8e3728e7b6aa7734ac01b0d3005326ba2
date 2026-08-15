@@ -1,0 +1,37 @@
+src/syncSettings.ts
+  s_a8b8f04d58b777::t_230a9b84e817cc 84-98
+styles.css
+  ai_agent 470-482
+docs/superpowers/specs/2026-08-14-per-setting-sync-toggle-design.md
+  s_a8b8f04d58b777::t_230a9b84e817cc 1-61
+src/syncToggle.ts
+  s_a8b8f04d58b777::t_230a9b84e817cc 1-64
+src/langs/zh_tw.json
+  s_a8b8f04d58b777::t_230a9b84e817cc 299-300
+tests/syncSettings.test.ts
+  s_a8b8f04d58b777::t_230a9b84e817cc 9,94-100
+src/settings.ts
+  s_a8b8f04d58b777::t_230a9b84e817cc 68,976,1014-1016,1042-1044,1065-1071
+src/langs/zh_cn.json
+  s_a8b8f04d58b777::t_230a9b84e817cc 300-301
+src/langs/en.json
+  s_a8b8f04d58b777::t_230a9b84e817cc 299-300
+docs/superpowers/plans/2026-08-14-per-setting-sync-toggle.md
+  s_a8b8f04d58b777::t_230a9b84e817cc 1-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "fe2a2dc8e3728e7b6aa7734ac01b0d3005326ba2",
+  "prompts": {},
+  "sessions": {
+    "s_a8b8f04d58b777": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_009828307ffeQ8AXBtny6G5WFB",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
