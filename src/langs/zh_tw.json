@@ -296,6 +296,6 @@
   "settings_cleardupfiles_desc": "如果用過智慧處理衝突 (PRO) 功能，外掛可能會生成重複檔案。<strong>如果您真的確認了所有重複檔案都不需要了，</strong>那麼可以刪除本地的<strong>所有</strong>這些檔案。",
   "settings_cleardupfiles_button": "開始掃描",
   "conflict_with_remotely_save": "與原版 \"remotely-save\" 插件衝突，請停用原版。",
-  "settings_syncedsettingfields": "同步的設定項",
-  "settings_syncedsettingfields_desc": "選擇哪些設定透過 synced_settings.json 跨裝置同步。裝置相關項（手機狀態列、日誌級別、混淆開關）始終保留在各裝置。敏感項（密碼、OneDrive 鑑權）永不同步。"
+  "settings_synctoggle_on": "跨裝置同步中，點擊改為僅本地",
+  "settings_synctoggle_off": "僅本地，點擊改為跨裝置同步"
 }

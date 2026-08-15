@@ -467,4 +467,16 @@
   color: var(--text-muted);
 }
 
-
+/* ===== Per-setting sync toggle (cloud/cloud-off icon next to title) ===== */
+.rs-sync-toggle-icon {
+  margin-left: 0.5em;
+  cursor: pointer;
+  vertical-align: middle;
+  display: inline-flex;
+}
+.rs-sync-toggle-icon.is-on {
+  color: var(--text-accent);
+}
+.rs-sync-toggle-icon.is-off {
+  opacity: 0.5;
+}
