@@ -264,16 +264,44 @@
   align-items: stretch;
 }
 
+/* Mobile chips are block-level flex (display:flex, not the base
+   inline-flex) so each chip is one full-width row. Obsidian mobile
+   overrides the chip's display/width too (like it stretches the ×
+   button), shrinking the chip to content width and leaving it
+   right-aligned in the row. Same !important treatment as the × pin
+   below: force full width + left-aligned row layout so the text
+   (flex:1) fills from the left and the × sits at the right. */
 .rs-regex-mobile .rs-regex-chip {
-  width: 100%;
-  max-width: 100%;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .rs-regex-mobile .rs-regex-chip-text {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  text-align: left !important;
   white-space: normal;
   overflow-wrap: break-word;
   overflow: visible;
   text-overflow: clip;
+}
+
+/* Mobile: Obsidian mobile stretches <button> in settings to width:100%,
+   which blows the × delete button out to full row width (its border-radius:50%
+   then becomes a row-wide ellipse on hover, and the text slot collapses to
+   ~0px → one-char-per-line). Pin the × to its 20px with !important so the
+   app's mobile button rule cannot override it. Desktop (.rs-regex-mobile
+   absent) is unaffected — desktop × already renders at 20px. */
+.rs-regex-mobile .rs-regex-chip-delete {
+  flex: 0 0 20px !important;
+  width: 20px !important;
+  max-width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
 }
 
 /* add-row + test-row share the same flex layout */
@@ -438,3 +466,5 @@
 .rs-disclaimer-info {
   color: var(--text-muted);
 }
+
+
