@@ -1,0 +1,69 @@
+src/fsOnedrive.ts
+  s_f241f264bf1f05::t_bb306bf7176d4b 906-912,917,920,926-957,959-976,1127-1131,1138,1145-1153,1191,1193,1195,1204-1216,1229-1285
+  s_f241f264bf1f05::t_348e8f78c7d3cd 21
+  s_f241f264bf1f05::t_65e6140e186013 889-892,894-905
+  s_f241f264bf1f05::t_93748195dfec67 22,246-250,456,467-469,557-568,573-574,584,641-689,693-705,711-723,729-741,747-767,773-804,828-863,867-876,885-888
+src/debugMode.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 14
+src/deltaMerge.ts
+  s_f241f264bf1f05::t_2b786cc7cb5ef5 1-57
+src/sync.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 17,19-23
+  s_f241f264bf1f05::t_ef8292bd883105 1724-1725
+  s_f241f264bf1f05::t_6278589e0dc94a 33
+  s_f241f264bf1f05::t_bc74b914e031f0 1802-1819,1835-1848,1850,1855,1862,1873-1874,1877-1880,1882-1899,1902-1941,2063-2078
+  s_f241f264bf1f05::t_dd781140d1f04a 2144-2145,2156
+src/clearDupFiles.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 4
+tests/deltaMerge.test.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 4-197
+  s_f241f264bf1f05::t_1e2fa6e75a2539 1-3
+tests/misc.test.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 582-585
+src/node-diff3.d.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 16-26
+src/regexListSetting.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 1
+src/fsEncrypt.ts
+  s_f241f264bf1f05::t_1710e5a7c0742c 365-412,470
+  s_f241f264bf1f05::t_054348b9aff169 66
+src/main.ts
+  s_f241f264bf1f05::t_a527e2c69ed2f7 52
+  s_f241f264bf1f05::t_90e70a948a43aa 54,202-207,211-212,477-487
+  s_f241f264bf1f05::t_360a6fc67d547d 570-583
+src/skipFilter.ts
+  s_f241f264bf1f05::t_90e70a948a43aa 26
+src/localdb.ts
+  s_f241f264bf1f05::t_1422f3018164c1 479-502,706-737
+src/fsGetter.ts
+  s_f241f264bf1f05::t_296b2ae98be4de 1,11-12,19-20
+src/syncOptimize.ts
+  s_f241f264bf1f05::t_e3d3f7177bbefe 1-2
+  s_f241f264bf1f05::t_ac9ed7ccbd6d92 3-5
+  s_f241f264bf1f05::t_3313e181e7da53 6-160
+src/copyLogic.ts
+  s_f241f264bf1f05::t_56af0274f966e9 20-24
+src/fsAll.ts
+  s_f241f264bf1f05::t_20a50a74fcd9f9 7-12
+  s_f241f264bf1f05::t_7679a5dd0ea940 13-19,31-41
+tests/syncOptimize.test.ts
+  s_f241f264bf1f05::t_c488922f3ff2e6 4-298
+  s_f241f264bf1f05::t_d734b4b6e55504 1-3
+  s_f241f264bf1f05::t_1b75532138f638 299-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "b191f9d91f0ce5106b74a84b29a0fa84e09aa8d6",
+  "prompts": {},
+  "sessions": {
+    "s_f241f264bf1f05": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ffaac60ddffeaHB1x2RF50cPj3",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
