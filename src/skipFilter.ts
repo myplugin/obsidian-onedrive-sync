@@ -23,7 +23,7 @@ export function checkIsSkipItemOrNotByName(
   isSymlink: boolean,
   obsidianFolder: string,
   ignorePaths: string[],
-  onlyAllowPaths: string[],
+  onlyAllowPaths: string[]
 ): SkipCheckResult {
   // Normalize backslashes in the key to forward slashes.
   const normalizedKey = key.replace(/\\/g, "/");

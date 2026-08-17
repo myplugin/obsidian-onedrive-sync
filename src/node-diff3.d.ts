@@ -13,15 +13,17 @@ declare module "node-diff3" {
 
   export function LCS<T>(buffer1: T[], buffer2: T[]): ILCSResult;
 
-  export type ICommResult<T> = {
-    common: T[];
-    buffer1?: never;
-    buffer2?: never;
-  } | {
-    common?: never;
-    buffer1: T[];
-    buffer2: T[];
-  };
+  export type ICommResult<T> =
+    | {
+        common: T[];
+        buffer1?: never;
+        buffer2?: never;
+      }
+    | {
+        common?: never;
+        buffer1: T[];
+        buffer2: T[];
+      };
 
   export function diffComm<T>(buffer1: T[], buffer2: T[]): ICommResult<T>[];
 

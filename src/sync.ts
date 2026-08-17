@@ -14,7 +14,13 @@ import type {
   SyncDirectionType,
   SyncTriggerSourceType,
 } from "./baseTypes";
+import { isMergable, mergeFile, tryDuplicateFile } from "./conflictLogic";
 import { copyFile, copyFileOrFolder, copyFolder } from "./copyLogic";
+import {
+  clearFileContentHistoryByVaultAndProfile,
+  getFileContentHistoryByVaultAndProfile,
+  upsertFileContentHistoryByVaultAndProfile,
+} from "./fileContentHistory";
 import type { FakeFs } from "./fsAll";
 import type { FakeFsEncrypt } from "./fsEncrypt";
 import {
@@ -24,6 +30,7 @@ import {
   insertSyncPlanRecordByVault,
   upsertPrevSyncRecordByVaultAndProfile,
 } from "./localdb";
+import { shouldSkipSync, splitUploadDownloadOps } from "./syncOptimize";
 import {
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE,
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2,
@@ -39,12 +46,6 @@ import {
   unixTimeToStr,
 } from "./misc";
 import type { Profiler } from "./profiler";
-import { isMergable, mergeFile, tryDuplicateFile } from "./conflictLogic";
-import {
-  clearFileContentHistoryByVaultAndProfile,
-  getFileContentHistoryByVaultAndProfile,
-  upsertFileContentHistoryByVaultAndProfile,
-} from "./fileContentHistory";
 
 const copyEntityAndFixTimeFormat = (
   src: Entity,
@@ -1720,7 +1721,8 @@ export const doActualSync = async (
   profiler: Profiler | undefined,
   conflictAction: ConflictActionType,
   triggerSource: SyncTriggerSourceType,
-  callbackSyncProcess?: any
+  callbackSyncProcess?: any,
+  remoteDeltaCount?: number
 ) => {
   profiler?.addIndent();
   profiler?.insert("doActualSync: enter");
@@ -1797,49 +1799,67 @@ export const doActualSync = async (
 
   let realCounter = 0;
   for (let i = 0; i < nested.length; ++i) {
+    // C optimization: Skip onlyMarkSyncedOps when remote is unchanged
+    // (delta=0). "equal" files with prevSync don't need any operation —
+    // their prevSync records are already correct. Only skip when not using
+    // smart_conflict (which might need content history updates).
+    if (
+      i === 0 &&
+      remoteDeltaCount === 0 &&
+      conflictAction !== "smart_conflict"
+    ) {
+      console.debug(
+        "Skipping onlyMarkSyncedOps: remote unchanged (delta=0)"
+      );
+      profiler?.insert(
+        "doActualSync: skipped step 0 (onlyMarkSyncedOps, delta=0)"
+      );
+      continue;
+    }
+
     profiler?.addIndent();
     profiler?.insert(`doActualSync: step ${i} start`);
     console.debug(logTexts[i]);
 
     const operations = nested[i];
-    // console.debug(`curr operations=${JSON.stringify(operations, null, 2)}`);
 
     for (let j = 0; j < operations.length; ++j) {
       const singleLevelOps = operations[j];
-      // console.debug(
-      //   `singleLevelOps=${JSON.stringify(singleLevelOps, null, 2)}`
-      // );
       if (singleLevelOps === undefined || singleLevelOps === null) {
         continue;
       }
 
-      const queue = new PQueue({ concurrency: concurrency, autoStart: true });
       const potentialErrors: Error[] = [];
       let tooManyErrors = false;
 
-      for (let k = 0; k < singleLevelOps.length; ++k) {
-        const val = singleLevelOps[k];
-        const key = val.key;
+      // D optimization: For upload/download step (i=3), split into
+      // dual queues for parallel upload+download execution.
+      if (i === 3) {
+        const { uploads, downloads } = splitUploadDownloadOps(
+          singleLevelOps
+        );
+        const uploadQueue = new PQueue({
+          concurrency,
+          autoStart: true,
+        });
+        const downloadQueue = new PQueue({
+          concurrency,
+          autoStart: true,
+        });
 
-        const fn = async () => {
-          // console.debug(
-          //   `start syncing "${key}" with plan ${JSON.stringify(val)}`
-          // );
-
+        const makeFn = (val: MixedEntity) => async () => {
           await callbackSyncProcess?.(
             triggerSource,
             realCounter,
             realTotalCount,
-            key,
+            val.key,
             val.decision
           );
-
           if (val.change === undefined || val.change) {
             realCounter += 1;
           }
-
           await dispatchOperationToActualV3(
-            key,
+            val.key,
             vaultRandomID,
             profileID,
             val,
@@ -1848,22 +1868,77 @@ export const doActualSync = async (
             db,
             conflictAction
           );
-
-          // console.debug(`finished ${key}`);
         };
 
-        queue.add(fn).catch((e) => {
-          const msg = `${key}: ${e.message}`;
-          potentialErrors.push(new Error(msg));
+        const makeCatch = () => (e: any) => {
+          potentialErrors.push(new Error(e.message));
           if (potentialErrors.length >= 3) {
             tooManyErrors = true;
-            queue.pause();
-            queue.clear();
+            uploadQueue.pause();
+            uploadQueue.clear();
+            downloadQueue.pause();
+            downloadQueue.clear();
           }
-        });
-      }
+        };
 
-      await queue.onIdle();
+        for (const val of uploads) {
+          uploadQueue.add(makeFn(val)).catch(makeCatch());
+        }
+        for (const val of downloads) {
+          downloadQueue.add(makeFn(val)).catch(makeCatch());
+        }
+
+        await Promise.all([
+          uploadQueue.onIdle(),
+          downloadQueue.onIdle(),
+        ]);
+      } else {
+        // Single queue (steps 0-2: onlyMarkSyncedOps, folderCreation, deletion)
+        const queue = new PQueue({
+          concurrency,
+          autoStart: true,
+        });
+
+        for (let k = 0; k < singleLevelOps.length; ++k) {
+          const val = singleLevelOps[k];
+          const key = val.key;
+
+          const fn = async () => {
+            await callbackSyncProcess?.(
+              triggerSource,
+              realCounter,
+              realTotalCount,
+              key,
+              val.decision
+            );
+            if (val.change === undefined || val.change) {
+              realCounter += 1;
+            }
+            await dispatchOperationToActualV3(
+              key,
+              vaultRandomID,
+              profileID,
+              val,
+              fsLocal,
+              fsEncrypt,
+              db,
+              conflictAction
+            );
+          };
+
+          queue.add(fn).catch((e) => {
+            const msg = `${key}: ${e.message}`;
+            potentialErrors.push(new Error(msg));
+            if (potentialErrors.length >= 3) {
+              tooManyErrors = true;
+              queue.pause();
+              queue.clear();
+            }
+          });
+        }
+
+        await queue.onIdle();
+      }
 
       if (potentialErrors.length > 0) {
         if (tooManyErrors) {
@@ -1985,6 +2060,22 @@ export async function syncer(
     // console.debug(prevSyncEntityList);
     profiler?.insert(`finish step${step} (prev sync)`);
 
+    // Early exit optimization: if remote is unchanged (delta=0) and local
+    // is unchanged (all mtimes match prevSync), skip sync plan building and
+    // execution entirely. Reduces "no changes" sync from O(N) to O(1).
+    const skipSync = shouldSkipSync(
+      fsRemote.lastWalkDeltaCount,
+      localEntityList,
+      prevSyncEntityList
+    );
+    if (skipSync) {
+      console.info(
+        "No changes detected (remote delta=0, local mtime all match). Skipping sync plan and execution."
+      );
+      profiler?.insert(
+        "early exit: no changes detected, skipping sync plan and execution"
+      );
+    } else {
     step = 6;
     await notifyFunc?.(triggerSource, step);
     await ribboonFunc?.(triggerSource, step);
@@ -2050,7 +2141,8 @@ export async function syncer(
         profiler,
         settings.conflictAction ?? "keep_newer",
         triggerSource,
-        callbackSyncProcess
+        callbackSyncProcess,
+        fsRemote.lastWalkDeltaCount
       );
       profiler?.insert(`finish step${step} (actual sync)`);
     } else {
@@ -2061,6 +2153,7 @@ export async function syncer(
         `finish step${step} (skip actual sync because of dry run)`
       );
     }
+    } // end skipSync else block — steps 6-7 only run when changes detected
   } catch (error: any) {
     profiler?.insert("start error branch");
     everythingOk = false;

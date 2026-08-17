@@ -3,7 +3,6 @@ import * as openssl from "./encryptOpenSSL";
 import * as rclone from "./encryptRClone";
 import { isSpecialFolderNameToSkip, isVaildText } from "./misc";
 
-import cloneDeep from "lodash/cloneDeep";
 import { FakeFs } from "./fsAll";
 
 /**
@@ -64,7 +63,7 @@ export interface PasswordCheckType {
  * Useful if isPasswordEmpty()
  */
 function copyEntityAndCopyKeyEncSizeEnc(entity: Entity) {
-  const res = cloneDeep(entity);
+  const res = { ...entity };
   res["keyEnc"] = res["keyRaw"];
   res["sizeEnc"] = res["sizeRaw"];
   return res;
@@ -363,6 +362,54 @@ export class FakeFsEncrypt extends FakeFs {
     }
   }
 
+  /**
+   * Combined stat + readFile via the inner filesystem's optimized path.
+   * Delegates to innerFs.readFileWithStat (which for OneDrive does a
+   * single API call), then applies the same entity transform as stat()
+   * and the same content decryption as readFile().
+   */
+  async readFileWithStat(key: string): Promise<{ entity: Entity; content: ArrayBuffer }> {
+    if (!this.hasCacheMap) {
+      throw new Error("You have to build the cacheMap firstly for readFileWithStat");
+    }
+    const keyEnc = this.cacheMapOrigToEnc[key];
+    if (keyEnc === undefined) {
+      throw new Error(`no encrypted key ${key} before! cannot readFileWithStat`);
+    }
+
+    const { entity: innerEntity, content: contentEnc } =
+      await this.innerFs.readFileWithStat(keyEnc);
+
+    // Transform entity (same logic as stat())
+    let entity: Entity;
+    if (this.isPasswordEmpty()) {
+      entity = copyEntityAndCopyKeyEncSizeEnc(innerEntity);
+    } else {
+      entity = {
+        key: key,
+        keyRaw: innerEntity.keyRaw,
+        keyEnc: innerEntity.key!,
+        mtimeCli: innerEntity.mtimeCli,
+        mtimeSvr: innerEntity.mtimeSvr,
+        size: undefined,
+        sizeEnc: innerEntity.size!,
+        sizeRaw: innerEntity.sizeRaw,
+        hash: undefined,
+        synthesizedFolder: innerEntity.synthesizedFolder,
+      };
+    }
+
+    // Decrypt content (same logic as readFile())
+    let content: ArrayBuffer;
+    if (this.isPasswordEmpty()) {
+      content = contentEnc;
+    } else {
+      content = await this._decryptContent(contentEnc);
+    }
+
+    return { entity, content };
+  }
+
   async rename(key1: string, key2: string): Promise<void> {
     if (!this.hasCacheMap) {
       throw new Error("You have to build the cacheMap firstly for readFile");
@@ -420,7 +467,7 @@ export class FakeFsEncrypt extends FakeFs {
     }
 
     // below is for having password
-    const local = cloneDeep(input);
+    const local = { ...input };
     if (local.sizeEnc === undefined && local.size !== undefined) {
       // it's not filled yet, we fill it
       // local.size is possibly undefined if it's "prevSync" Entity

@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Platform } from "obsidian";
+import { type App, Modal, Notice, Platform } from "obsidian";
 import type { TransItemType } from "./i18n";
 import { testPathAgainstRegexList, validateRegex } from "./misc";
 

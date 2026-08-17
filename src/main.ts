@@ -49,7 +49,9 @@ import {
   getLastFailedSyncTimeByVault,
   getLastSuccessSyncTimeByVault,
   getOnedriveAuthByVault,
+  getPrevRemoteEntities,
   prepareDBs,
+  savePrevRemoteEntities,
   upsertLastFailedSyncTimeByVault,
   upsertLastSuccessSyncTimeByVault,
   upsertOnedriveAuthByVault,
@@ -197,10 +199,17 @@ export default class RemotelySavePlugin extends Plugin {
       profiler,
       this.settings.deleteToWhere ?? "system"
     );
+    // Load the previous sync's full remote entity list to enable
+    // incremental delta enumeration (only fetch changed items from OneDrive
+    // instead of re-listing all remote files every sync).
+    const prevRemoteEntities = this.isDbReady()
+      ? await getPrevRemoteEntities(this.db, this.vaultRandomID)
+      : undefined;
     const fsRemote = getClient(
       this.settings,
       this.app.vault.getName(),
-      async () => await this.saveSettings()
+      async () => await this.saveSettings(),
+      prevRemoteEntities
     );
     const fsEncrypt = new FakeFsEncrypt(
       fsRemote,
@@ -465,6 +474,17 @@ export default class RemotelySavePlugin extends Plugin {
     );
 
     fsEncrypt.closeResources();
+
+    // Save the remote entity list so the next sync can use it for
+    // incremental delta enumeration (only fetch changed items).
+    if (fsRemote.lastWalkResult && this.isDbReady()) {
+      await savePrevRemoteEntities(
+        this.db,
+        this.vaultRandomID,
+        fsRemote.lastWalkResult
+      );
+    }
+
     (profiler as Profiler | undefined)?.clear();
 
     this.syncEvent?.trigger("SYNC_DONE");
@@ -546,6 +566,20 @@ export default class RemotelySavePlugin extends Plugin {
     // DB (or migrate from data.json on first run). The token no longer lives
     // in synced data.json, so we load it from the device-local DB here.
     await this.mergeOnedriveAuthFromDBOrMigrate();
+
+    // Clear the prevRemoteEntities cache on every plugin load. This is the
+    // full remote entity list from the last sync's walk(), used for
+    // incremental delta enumeration. Clearing on load ensures the first
+    // sync after reload always does a full (correct) enumeration, preventing
+    // any stale or corrupted state from causing incorrect incremental merges.
+    // Subsequent syncs within the same session still benefit from incremental
+    // mode. The cost is one full enumeration per plugin reload (~3-7s for
+    // 2500 files), which is the same as the pre-optimization behavior.
+    if (this.isDbReady()) {
+      await this.db.simpleKVForMiscTbl.removeItem(
+        `${this.vaultRandomID}-prevRemoteEntities`
+      );
+    }
 
     // must AFTER preparing DB
     this.enableAutoClearOutputToDBHistIfSet();

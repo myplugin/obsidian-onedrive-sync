@@ -18,6 +18,8 @@ import {
   type OnedriveConfig,
 } from "./baseTypes";
 import { VALID_REQURL } from "./baseTypes";
+import { mergeDeltaWithPrevState } from "./deltaMerge";
+import { buildDeltaStartUrl } from "./syncOptimize";
 import { FakeFs } from "./fsAll";
 import { bufferToArrayBuffer } from "./misc";
 
@@ -241,7 +243,11 @@ const constructFromDriveItemToEntityError = (x: DriveItem) => {
   }", selfName="${x.name}"`;
 };
 
-const fromDriveItemToEntity = (x: DriveItem, remoteBaseDir: string): Entity => {
+const fromDriveItemToEntity = (
+  x: DriveItem,
+  remoteBaseDir: string,
+  requireMtime = true
+): Entity => {
   let key = "";
 
   // possible prefix:
@@ -447,7 +453,7 @@ ${constructFromDriveItemToEntityError(x)}`
   }
 
   const mtimeTry = x?.fileSystemInfo?.lastModifiedDateTime;
-  if (mtimeTry === undefined || mtimeTry === null) {
+  if (requireMtime && (mtimeTry === undefined || mtimeTry === null)) {
     throw Error(`onedrive cannot parse mtime: ${JSON.stringify(x, null, 2)}`);
   }
 
@@ -458,9 +464,9 @@ ${constructFromDriveItemToEntityError(x)}`
     ctimeTry = mtimeTry;
   }
 
-  const mtimeSvr = Date.parse(mtimeTry);
-  const mtimeCli = Date.parse(mtimeTry);
-  const ctimeCli = Date.parse(ctimeTry);
+  const mtimeSvr = mtimeTry ? Date.parse(mtimeTry) : undefined;
+  const mtimeCli = mtimeSvr;
+  const ctimeCli = ctimeTry ? Date.parse(ctimeTry) : mtimeSvr;
   return {
     key: key,
     keyRaw: key,
@@ -548,11 +554,24 @@ export class FakeFsOnedrive extends FakeFs {
   authGetter: MyAuthProvider;
   saveUpdatedConfigFunc: () => Promise<any>;
   foldersCreatedBefore: Set<string>;
+  /**
+   * The full remote entity list from the previous sync's walk().
+   * When present AND deltaLink is set, walk() uses the OneDrive delta API
+   * incrementally (only changed items) and merges with this state,
+   * avoiding a full re-enumeration of all remote files.
+   */
+  prevRemoteEntities?: Entity[];
+  /**
+   * The result of the most recent walk() call. main.ts saves this to the
+   * DB after sync so the next sync can use it for incremental enumeration.
+   */
+  lastWalkResult?: Entity[];
 
   constructor(
     onedriveConfig: OnedriveConfig,
     vaultName: string,
-    saveUpdatedConfigFunc: () => Promise<any>
+    saveUpdatedConfigFunc: () => Promise<any>,
+    prevRemoteEntities?: Entity[]
   ) {
     super();
     this.kind = "onedrive";
@@ -562,6 +581,7 @@ export class FakeFsOnedrive extends FakeFs {
     this.saveUpdatedConfigFunc = saveUpdatedConfigFunc;
     this.authGetter = new MyAuthProvider(onedriveConfig, saveUpdatedConfigFunc);
     this.foldersCreatedBefore = new Set();
+    this.prevRemoteEntities = prevRemoteEntities;
   }
 
   async _init() {
@@ -618,105 +638,170 @@ export class FakeFsOnedrive extends FakeFs {
     return theUrl;
   }
 
+  /**
+   * Retry wrapper for Graph API calls that may be throttled (HTTP 429).
+   * OneDrive always returns a Retry-After header (seconds) on 429.
+   * We wait the specified time and retry, up to maxRetries.
+   * Non-429 errors are re-thrown immediately.
+   */
+  async _retryOn429<T>(
+    fn: () => Promise<T>,
+    maxRetries = 3
+  ): Promise<T> {
+    let lastError: any;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (e: any) {
+        lastError = e;
+        // Obsidian's request() throws on non-2xx; fetch() we check manually.
+        // The error may carry .status or be a string containing "429".
+        const status: number | undefined =
+          e?.status ?? e?.response?.status;
+        const isThrottled =
+          status === 429 ||
+          (typeof e?.message === "string" && e.message.includes("429"));
+
+        if (!isThrottled) {
+          throw e;
+        }
+        if (attempt >= maxRetries) {
+          throw e;
+        }
+        // Retry-After is in seconds; fall back to exponential backoff.
+        const retryAfterRaw: string | undefined =
+          (e?.headers as any)?.["Retry-After"] ||
+          (e?.headers as any)?.["retry-after"] ||
+          (e?.response?.headers as any)?.["Retry-After"];
+        const retryAfterSec = retryAfterRaw
+          ? Number.parseInt(retryAfterRaw, 10)
+          : Math.min(2 ** attempt, 10);
+        const waitMs = retryAfterSec * 1000;
+        console.warn(
+          `Graph API throttled (429), waiting ${retryAfterSec}s ` +
+            `(attempt ${attempt + 1}/${maxRetries})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+    }
+    throw lastError;
+  }
+
   async _getJson(pathFragOrig: string) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`getJson, theUrl=${theUrl}`);
-    return JSON.parse(
-      await request({
-        url: theUrl,
-        method: "GET",
-        contentType: "application/json",
-        headers: {
-          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-          "Cache-Control": "no-cache",
-        },
-      })
-    );
+    return await this._retryOn429(async () => {
+      return JSON.parse(
+        await request({
+          url: theUrl,
+          method: "GET",
+          contentType: "application/json",
+          headers: {
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+            "Cache-Control": "no-cache",
+          },
+        })
+      );
+    });
   }
 
   async _postJson(pathFragOrig: string, payload: any) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`postJson, theUrl=${theUrl}`);
-    return JSON.parse(
-      await request({
-        url: theUrl,
-        method: "POST",
-        contentType: "application/json",
-        body: JSON.stringify(payload),
-        headers: {
-          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-        },
-      })
-    );
+    return await this._retryOn429(async () => {
+      return JSON.parse(
+        await request({
+          url: theUrl,
+          method: "POST",
+          contentType: "application/json",
+          body: JSON.stringify(payload),
+          headers: {
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+          },
+        })
+      );
+    });
   }
 
   async _patchJson(pathFragOrig: string, payload: any) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`patchJson, theUrl=${theUrl}`);
-    return JSON.parse(
-      await request({
-        url: theUrl,
-        method: "PATCH",
-        contentType: "application/json",
-        body: JSON.stringify(payload),
-        headers: {
-          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-        },
-      })
-    );
+    return await this._retryOn429(async () => {
+      return JSON.parse(
+        await request({
+          url: theUrl,
+          method: "PATCH",
+          contentType: "application/json",
+          body: JSON.stringify(payload),
+          headers: {
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+          },
+        })
+      );
+    });
   }
 
   async _deleteJson(pathFragOrig: string) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`deleteJson, theUrl=${theUrl}`);
-    if (VALID_REQURL) {
-      await requestUrl({
-        url: theUrl,
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-        },
-      });
-    } else {
-      await fetch(theUrl, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-        },
-      });
-    }
+    await this._retryOn429(async () => {
+      if (VALID_REQURL) {
+        await requestUrl({
+          url: theUrl,
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+          },
+        });
+      } else {
+        const res = await fetch(theUrl, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+          },
+        });
+        if (!res.ok && res.status !== 204) {
+          throw { status: res.status, headers: res.headers } as any;
+        }
+      }
+    });
   }
 
   async _putArrayBuffer(pathFragOrig: string, payload: ArrayBuffer) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`putArrayBuffer, theUrl=${theUrl}`);
-    // TODO:
-    // 20220401: On Android, requestUrl has issue that text becomes base64.
-    // Use fetch everywhere instead!
-    // biome-ignore lint/correctness/noConstantCondition: hard code
-    if (false /*VALID_REQURL*/) {
-      const res = await requestUrl({
-        url: theUrl,
-        method: "PUT",
-        body: payload,
-        contentType: DEFAULT_CONTENT_TYPE,
-        headers: {
-          "Content-Type": DEFAULT_CONTENT_TYPE,
-          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-        },
-      });
-      return res.json as DriveItem | UploadSession;
-    } else {
-      const res = await fetch(theUrl, {
-        method: "PUT",
-        body: payload,
-        headers: {
-          "Content-Type": DEFAULT_CONTENT_TYPE,
-          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-        },
-      });
-      return (await res.json()) as DriveItem | UploadSession;
-    }
+    return await this._retryOn429(async () => {
+      // TODO:
+      // 20220401: On Android, requestUrl has issue that text becomes base64.
+      // Use fetch everywhere instead!
+      // biome-ignore lint/correctness/noConstantCondition: hard code
+      if (false /*VALID_REQURL*/) {
+        const res = await requestUrl({
+          url: theUrl,
+          method: "PUT",
+          body: payload,
+          contentType: DEFAULT_CONTENT_TYPE,
+          headers: {
+            "Content-Type": DEFAULT_CONTENT_TYPE,
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+          },
+        });
+        return res.json as DriveItem | UploadSession;
+      } else {
+        const res = await fetch(theUrl, {
+          method: "PUT",
+          body: payload,
+          headers: {
+            "Content-Type": DEFAULT_CONTENT_TYPE,
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+          },
+        });
+        if (res.status === 429) {
+          throw { status: 429, headers: res.headers } as any;
+        }
+        return (await res.json()) as DriveItem | UploadSession;
+      }
+    });
   }
 
   /**
@@ -740,41 +825,55 @@ export class FakeFsOnedrive extends FakeFs {
         rangeEnd - 1
       }, len=${rangeEnd - rangeStart}, size=${size}`
     );
-    // NO AUTH HEADER here!
-    // TODO:
-    // 20220401: On Android, requestUrl has issue that text becomes base64.
-    // Use fetch everywhere instead!
-    // biome-ignore lint/correctness/noConstantCondition: hard code
-    if (false /*VALID_REQURL*/) {
-      const res = await requestUrl({
-        url: theUrl,
-        method: "PUT",
-        body: bufferToArrayBuffer(payload.subarray(rangeStart, rangeEnd)),
-        contentType: DEFAULT_CONTENT_TYPE,
-        headers: {
-          // no "Content-Length" allowed here
-          "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
-          /* "Cache-Control": "no-cache", not allowed here!!! */
-        },
-      });
-      return res.json as DriveItem | UploadSession;
-    } else {
-      const res = await fetch(theUrl, {
-        method: "PUT",
-        body: payload.subarray(rangeStart, rangeEnd) as Uint8Array<ArrayBuffer>,
-        headers: {
-          "Content-Length": `${rangeEnd - rangeStart}`,
-          "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
-          "Content-Type": DEFAULT_CONTENT_TYPE,
-          /* "Cache-Control": "no-cache", not allowed here!!! */
-        },
-      });
-      return (await res.json()) as DriveItem | UploadSession;
-    }
+    return await this._retryOn429(async () => {
+      // NO AUTH HEADER here!
+      // TODO:
+      // 20220401: On Android, requestUrl has issue that text becomes base64.
+      // Use fetch everywhere instead!
+      // biome-ignore lint/correctness/noConstantCondition: hard code
+      if (false /*VALID_REQURL*/) {
+        const res = await requestUrl({
+          url: theUrl,
+          method: "PUT",
+          body: bufferToArrayBuffer(payload.subarray(rangeStart, rangeEnd)),
+          contentType: DEFAULT_CONTENT_TYPE,
+          headers: {
+            // no "Content-Length" allowed here
+            "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
+            /* "Cache-Control": "no-cache", not allowed here!!! */
+          },
+        });
+        return res.json as DriveItem | UploadSession;
+      } else {
+        const res = await fetch(theUrl, {
+          method: "PUT",
+          body: payload.subarray(rangeStart, rangeEnd) as Uint8Array<ArrayBuffer>,
+          headers: {
+            "Content-Length": `${rangeEnd - rangeStart}`,
+            "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
+            "Content-Type": DEFAULT_CONTENT_TYPE,
+            /* "Cache-Control": "no-cache", not allowed here!!! */
+          },
+        });
+        if (res.status === 429) {
+          throw { status: 429, headers: res.headers } as any;
+        }
+        return (await res.json()) as DriveItem | UploadSession;
+      }
+    });
   }
 
   /**
-   * Use delta api to list all files and folders
+   * List all files and folders on the remote.
+   *
+   * Uses the OneDrive delta API. When a `deltaLink` from a previous sync
+   * is available AND `prevRemoteEntities` is set, the deltaLink is queried
+   * instead of the base delta endpoint — the Graph API then returns ONLY
+   * items that changed since the last sync (additions, modifications,
+   * deletions). Those incremental results are merged with the previous
+   * full state to reconstruct the complete file list, avoiding a full
+   * re-enumeration of all remote files on every sync.
+   *
    * https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_delta?view=odsp-graph-online
    */
   async walk(): Promise<Entity[]> {
@@ -783,29 +882,98 @@ export class FakeFsOnedrive extends FakeFs {
     const NEXT_LINK_KEY = "@odata.nextLink";
     const DELTA_LINK_KEY = "@odata.deltaLink";
 
-    let res = await this._getJson(
-      `/drive/special/approot:/${this.remoteBaseDir}:/delta`
+    let canIncremental =
+      this.onedriveConfig.deltaLink !== "" &&
+      this.prevRemoteEntities != null;
+
+    let startUrl = buildDeltaStartUrl(
+      canIncremental,
+      this.onedriveConfig.deltaLink,
+      this.remoteBaseDir
     );
+
+    let res: any;
+    try {
+      res = await this._getJson(startUrl);
+    } catch (e) {
+      if (canIncremental) {
+        // deltaLink may have expired — fall back to full enumeration
+        console.info(
+          "deltaLink query failed, falling back to full enumeration",
+          e
+        );
+        canIncremental = false;
+        startUrl = buildDeltaStartUrl(false, "", this.remoteBaseDir);
+        res = await this._getJson(startUrl);
+      } else {
+        throw e;
+      }
+    }
+
     const driveItems = res.value as DriveItem[];
-    // console.debug(driveItems);
 
     while (NEXT_LINK_KEY in res) {
       res = await this._getJson(res[NEXT_LINK_KEY]);
-      driveItems.push(...cloneDeep(res.value as DriveItem[]));
+      driveItems.push(...(res.value as DriveItem[]));
     }
 
-    // lastly we should have delta link?
+    // Save deltaLink for next sync's incremental query
     if (DELTA_LINK_KEY in res) {
       this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY];
       await this.saveUpdatedConfigFunc();
     }
 
-    // unify everything to Entity
-    const unifiedContents = driveItems
-      .map((x) => fromDriveItemToEntity(x, this.remoteBaseDir))
-      .filter((x) => x.key !== "/");
+    if (canIncremental && this.prevRemoteEntities) {
+      // Merge incremental delta results with the previous full state
+      const deltaEntities: Entity[] = [];
+      const deletedKeys = new Set<string>();
 
-    return unifiedContents;
+      for (const item of driveItems) {
+        if ("@removed" in item) {
+          // Deleted item — extract just the key (no mtime required)
+          try {
+            const entity = fromDriveItemToEntity(
+              item,
+              this.remoteBaseDir,
+              false
+            );
+            if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
+              deletedKeys.add(entity.keyRaw);
+            }
+          } catch {
+            // Skip items we can't parse the key for
+          }
+        } else {
+          // Added or modified item
+          try {
+            const entity = fromDriveItemToEntity(item, this.remoteBaseDir);
+            if (entity.key !== "/") {
+              deltaEntities.push(entity);
+            }
+          } catch {
+            // Skip items we can't parse
+          }
+        }
+      }
+
+      const merged = mergeDeltaWithPrevState(
+        this.prevRemoteEntities,
+        deltaEntities,
+        deletedKeys
+      );
+      this.lastWalkResult = merged;
+      this.lastWalkDeltaCount = driveItems.length;
+      return merged;
+    } else {
+      // Full enumeration — convert all items to entities
+      const unifiedContents = driveItems
+        .map((x) => fromDriveItemToEntity(x, this.remoteBaseDir))
+        .filter((x) => x.key !== "/");
+
+      this.lastWalkResult = unifiedContents;
+      this.lastWalkDeltaCount = undefined;
+      return unifiedContents;
+    }
   }
 
   async walkPartial(): Promise<Entity[]> {
@@ -956,19 +1124,32 @@ export class FakeFsOnedrive extends FakeFs {
 
     if (content.byteLength < DIRECT_UPLOAD_MAX_SIZE) {
       // directly using put!
-      await this._putArrayBuffer(
+      // The PUT response already contains the full DriveItem, and the PATCH
+      // response (if sent) also returns the updated DriveItem. Use that
+      // instead of making a redundant _statFromRoot API call.
+      let driveItem: any;
+      driveItem = await this._putArrayBuffer(
         `${key}:/content?${new URLSearchParams({
           "@microsoft.graph.conflictBehavior": "replace",
         })}`,
         content
       );
       if (mtime !== 0 && ctime !== 0) {
-        await this._patchJson(key, {
+        driveItem = await this._patchJson(key, {
           fileSystemInfo: {
             lastModifiedDateTime: mtimeStr,
             createdDateTime: ctimeStr,
           } as FileSystemInfo,
         });
+      }
+      try {
+        return fromDriveItemToEntity(
+          driveItem as DriveItem,
+          this.remoteBaseDir
+        );
+      } catch {
+        // Fallback: if the response lacks required fields, use stat
+        return await this._statFromRoot(key);
       }
     } else {
       // upload large files!
@@ -1007,9 +1188,11 @@ export class FakeFsOnedrive extends FakeFs {
       const uint8 = new Uint8Array(content);
 
       // upload the ranges one by one
+      // The last range PUT returns the completed DriveItem.
       let rangeStart = 0;
+      let lastResult: any;
       while (rangeStart < uint8.byteLength) {
-        await this._putUint8ArrayByRange(
+        lastResult = await this._putUint8ArrayByRange(
           uploadUrl,
           uint8,
           rangeStart,
@@ -1018,10 +1201,20 @@ export class FakeFsOnedrive extends FakeFs {
         );
         rangeStart += RANGE_SIZE;
       }
+      // Use the completed DriveItem from the last range PUT instead of
+      // making a redundant _statFromRoot API call.
+      try {
+        if (lastResult && "name" in lastResult) {
+          return fromDriveItemToEntity(
+            lastResult as DriveItem,
+            this.remoteBaseDir
+          );
+        }
+      } catch {
+        // Fallback below
+      }
+      return await this._statFromRoot(key);
     }
-
-    const res = await this._statFromRoot(key);
-    return res;
   }
 
   async readFile(key: string): Promise<ArrayBuffer> {
@@ -1031,6 +1224,63 @@ export class FakeFsOnedrive extends FakeFs {
     }
     const downloadFile = getOnedrivePath(key, this.remoteBaseDir);
     return await this._readFileFromRoot(downloadFile);
+  }
+
+  /**
+   * Combined stat + readFile: fetches metadata AND the pre-authenticated
+   * download URL in a single Graph API call (one $select that includes both
+   * regular properties and @microsoft.graph.downloadUrl), then downloads
+   * the content. Saves one HTTP round-trip per file download vs. calling
+   * stat() + readFile() separately.
+   */
+  async readFileWithStat(key: string): Promise<{ entity: Entity; content: ArrayBuffer }> {
+    await this._init();
+    if (key.endsWith("/")) {
+      throw new Error(`you should not call readFile on folder ${key}`);
+    }
+    const downloadFile = getOnedrivePath(key, this.remoteBaseDir);
+
+    // Single GET: metadata fields + download URL annotation
+    const rsp = await this._getJson(
+      `${downloadFile}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,@microsoft.graph.downloadUrl`
+    );
+    const driveItem = rsp as DriveItem;
+    const entity = fromDriveItemToEntity(driveItem, this.remoteBaseDir);
+
+    const downloadUrl: string = rsp["@microsoft.graph.downloadUrl"];
+    if (!downloadUrl) {
+      // Fallback: if the annotation is absent (folders, some items),
+      // use the two-call path.
+      const content = await this._readFileFromRoot(downloadFile);
+      return { entity, content };
+    }
+
+    // Download content using the pre-authenticated URL
+    let content: ArrayBuffer;
+    // biome-ignore lint/correctness/noConstantCondition: hard code
+    if (false /*VALID_REQURL*/) {
+      content = (
+        await requestUrl({
+          url: downloadUrl,
+          headers: { "Cache-Control": "no-cache" },
+        })
+      ).arrayBuffer;
+    } else {
+      try {
+        content = await (
+          await fetch(downloadUrl, { cache: "no-store" })
+        ).arrayBuffer();
+      } catch (e) {
+        // CORS fallback
+        content = (
+          await requestUrl({
+            url: downloadUrl,
+            headers: { "Cache-Control": "no-cache" },
+          })
+        ).arrayBuffer;
+      }
+    }
+    return { entity, content };
   }
 
   async _readFileFromRoot(key: string): Promise<ArrayBuffer> {

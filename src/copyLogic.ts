@@ -17,6 +17,11 @@ export async function copyFile(key: string, left: FakeFs, right: FakeFs) {
   if (key.endsWith("/")) {
     throw Error(`should not call ${key} in copyFile`);
   }
+  // Use separate stat + readFile calls. While FakeFsOnedrive.readFileWithStat
+  // can combine them into one API call, the @microsoft.graph.downloadUrl
+  // annotation is not reliably returned for OneDrive App Folder, causing
+  // the combined call to fall back to the two-call path anyway — but with
+  // extra latency from the server attempting to generate the pre-auth URL.
   const statsLeft = await left.stat(key);
   const content = await left.readFile(key);
 

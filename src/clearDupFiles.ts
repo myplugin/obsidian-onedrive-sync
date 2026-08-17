@@ -1,7 +1,7 @@
 // License: PolyForm Strict 1.0.0 (source-available). See LICENSE.pro.
 
-import type { FakeFsLocal } from "./fsLocal";
 import { getFileRenameForDup } from "./conflictLogic";
+import type { FakeFsLocal } from "./fsLocal";
 
 export const getDupFiles = async (fsLocal: FakeFsLocal) => {
   const allFilesAndFolders = await fsLocal.walk();

@@ -579,13 +579,10 @@ describe("Misc: testPathAgainstRegexList", () => {
   });
 
   it("should skip empty and whitespace-only entries", () => {
-    assert.deepEqual(
-      misc.testPathAgainstRegexList(["", "  ", "abc"], "abc"),
-      {
-        matched: true,
-        matchedRegexes: ["abc"],
-      }
-    );
+    assert.deepEqual(misc.testPathAgainstRegexList(["", "  ", "abc"], "abc"), {
+      matched: true,
+      matchedRegexes: ["abc"],
+    });
   });
 });
 

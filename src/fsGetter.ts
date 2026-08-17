@@ -1,4 +1,4 @@
-import type { RemotelySavePluginSettings } from "./baseTypes";
+import type { Entity, RemotelySavePluginSettings } from "./baseTypes";
 import type { FakeFs } from "./fsAll";
 import { FakeFsOnedrive } from "./fsOnedrive";
 
@@ -8,14 +8,16 @@ import { FakeFsOnedrive } from "./fsOnedrive";
 export function getClient(
   settings: RemotelySavePluginSettings,
   vaultName: string,
-  saveUpdatedConfigFunc: () => Promise<any>
+  saveUpdatedConfigFunc: () => Promise<any>,
+  prevRemoteEntities?: Entity[]
 ): FakeFs {
   switch (settings.serviceType) {
     case "onedrive":
       return new FakeFsOnedrive(
         settings.onedrive,
         vaultName,
-        saveUpdatedConfigFunc
+        saveUpdatedConfigFunc,
+        prevRemoteEntities
       );
     default:
       throw Error(`cannot init client for serviceType=${settings.serviceType}`);

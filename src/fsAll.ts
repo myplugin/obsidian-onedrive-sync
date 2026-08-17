@@ -4,6 +4,19 @@ import type { Entity } from "./baseTypes";
 
 export abstract class FakeFs {
   abstract kind: string;
+  /**
+   * The result of the most recent walk() call. Set by implementations that
+   * support incremental enumeration (e.g. FakeFsOnedrive). main.ts saves this
+   * to the DB after sync so the next sync can use it as prevRemoteEntities.
+   */
+  lastWalkResult?: Entity[];
+  /**
+   * Number of items returned by the delta API in the last walk().
+   * 0 = incremental query returned no remote changes (safe to skip sync).
+   * undefined = full enumeration (first sync or deltaLink expired, cannot skip).
+   * Set by FakeFsOnedrive.walk() for use by shouldSkipSync in sync.ts.
+   */
+  lastWalkDeltaCount?: number;
   abstract walk(): Promise<Entity[]>;
   abstract walkPartial(): Promise<Entity[]>;
   abstract stat(key: string): Promise<Entity>;
@@ -15,6 +28,17 @@ export abstract class FakeFs {
     ctime: number
   ): Promise<Entity>;
   abstract readFile(key: string): Promise<ArrayBuffer>;
+  /**
+   * Combined stat + readFile in one call. Default implementation does two
+   * separate calls; backends that can fetch metadata + content in a single
+   * API request (e.g. OneDrive's $select with @microsoft.graph.downloadUrl)
+   * should override this to save one HTTP round-trip per file download.
+   */
+  async readFileWithStat(key: string): Promise<{ entity: Entity; content: ArrayBuffer }> {
+    const entity = await this.stat(key);
+    const content = await this.readFile(key);
+    return { entity, content };
+  }
   abstract rename(key1: string, key2: string): Promise<void>;
   abstract rm(key: string): Promise<void>;
   abstract checkConnect(callbackFunc?: any): Promise<boolean>;

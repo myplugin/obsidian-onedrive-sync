@@ -476,6 +476,30 @@ export const upsertPrevSyncRecordByVaultAndProfile = async (
   );
 };
 
+/**
+ * Batch upsert multiple prevSync records in parallel. Uses Promise.all to
+ * parallelize the individual IndexedDB writes, improving throughput when
+ * many records need to be written (e.g., first sync after migration where
+ * all "equal" files need their prevSync record created).
+ */
+export const batchUpsertPrevSyncRecords = async (
+  db: InternalDBs,
+  vaultRandomID: string,
+  profileID: string,
+  records: Entity[]
+): Promise<void> => {
+  await Promise.all(
+    records.map((record) =>
+      upsertPrevSyncRecordByVaultAndProfile(
+        db,
+        vaultRandomID,
+        profileID,
+        record
+      )
+    )
+  );
+};
+
 export const clearPrevSyncRecordByVaultAndProfile = async (
   db: InternalDBs,
   vaultRandomID: string,
@@ -678,4 +702,36 @@ export const upsertOnedriveAuthByVault = async (
   auth: OnedriveAuthFields
 ): Promise<void> => {
   await db.simpleKVForMiscTbl.setItem(`${vaultRandomID}-onedriveAuth`, auth);
+};
+
+/**
+ * Load the full remote entity list saved after the previous sync's walk().
+ * Used as prevRemoteEntities to enable incremental OneDrive delta enumeration
+ * (only changed items are fetched instead of re-listing all remote files).
+ */
+export const getPrevRemoteEntities = async (
+  db: InternalDBs,
+  vaultRandomID: string
+): Promise<Entity[] | undefined> => {
+  const result = await db.simpleKVForMiscTbl.getItem(
+    `${vaultRandomID}-prevRemoteEntities`
+  );
+  // localforage returns null when the key doesn't exist; normalize to
+  // undefined so callers can safely use !== undefined / truthy checks.
+  return (result ?? undefined) as Entity[] | undefined;
+};
+
+/**
+ * Save the full remote entity list after a sync so the next sync can use it
+ * for incremental delta enumeration.
+ */
+export const savePrevRemoteEntities = async (
+  db: InternalDBs,
+  vaultRandomID: string,
+  entities: Entity[]
+): Promise<void> => {
+  await db.simpleKVForMiscTbl.setItem(
+    `${vaultRandomID}-prevRemoteEntities`,
+    entities
+  );
 };
