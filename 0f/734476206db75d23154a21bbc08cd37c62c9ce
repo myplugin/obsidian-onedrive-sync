@@ -1,0 +1,69 @@
+styles.css
+  s_2b48016cfee379::t_c866aed3fade3b 310-318,333-342,344-347,349,353-355,358,360-365,368-371,375-377,380-381,384-386,390-397
+  s_2b48016cfee379::t_99dc8b71ab6556 307-309
+src/fsOnedrive.ts
+  s_cc4771fdfbfd7a::t_f056cd887497e4 927-935
+  s_fac6d591c1101b::t_1d97316f8d63a7 960-969
+  s_cc4771fdfbfd7a::t_0a54c77a36087c 21
+src/deltaMerge.ts
+  s_cc4771fdfbfd7a::t_337756c978596d 58-142
+tests/deltaMerge.test.ts
+  s_cc4771fdfbfd7a::t_e393226e325c3d 5
+  s_cc4771fdfbfd7a::t_2f7911dd9b0eee 198-397
+src/langs/zh_tw.json
+  s_2b48016cfee379::t_8a2d4af120053e 132,290-293
+src/langs/zh_cn.json
+  s_2b48016cfee379::t_80df845b1017b4 133,291-294
+src/settings.ts
+  s_33cfa31e76b3c1::t_ba1f7b306b6a03 922-926
+  s_33cfa31e76b3c1::t_ddbf97aa33fab1 1243-1247
+  s_33cfa31e76b3c1::t_de5a51bc15634d 981-985
+  s_33cfa31e76b3c1::t_b41bf6581144ca 1082-1192
+src/regexListSetting.ts
+  s_2b48016cfee379::t_5cb741042174de 191-194,285,287,289-291,293-295
+  s_2b48016cfee379::t_382b16f9d12c75 95-117,119,130-132,145,150-152
+  s_2b48016cfee379::t_4ecd970b339842 76,85-90,93-94
+  s_2b48016cfee379::t_dbd15113aa3465 1
+src/langs/en.json
+  s_2b48016cfee379::t_79ba454e522605 132,290-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "0f734476206db75d23154a21bbc08cd37c62c9ce",
+  "prompts": {},
+  "sessions": {
+    "s_2b48016cfee379": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdcaf736fffeXGfuchjuZFkORe",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    },
+    "s_33cfa31e76b3c1": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdd45a252ffeej0TISnN9lNpYe",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    },
+    "s_cc4771fdfbfd7a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fed8c6f3cffeeKcD4H6BAjhrqG",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    },
+    "s_fac6d591c1101b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fdd94b8e9ffeVnkU3AFbAIMX86",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
