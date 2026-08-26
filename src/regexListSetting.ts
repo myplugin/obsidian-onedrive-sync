@@ -1,3 +1,4 @@
+import { ChevronRight, createElement } from "lucide";
 import { type App, Modal, Notice, Platform } from "obsidian";
 import type { TransItemType } from "./i18n";
 import { testPathAgainstRegexList, validateRegex } from "./misc";
@@ -71,7 +72,8 @@ function confirmDeleteRegex(
 export function renderRegexListSetting(opts: RegexListSettingOptions): void {
   const { app, containerEl, getValues, setValues, t, placeholder } = opts;
 
-  // chip list + add row + tester, rendered into the Setting's controlEl.
+  // chip list (with a row-end collapse toggle) + collapsible add/test
+  // panel, rendered into the Setting's controlEl.
   const blockEl = containerEl.createEl("div", { cls: "rs-regex-block" });
   // On mobile, render chips as stacked full-width rows (one regex per line,
   // full text visible) instead of the PC chip capsule — the flex-wrap chip
@@ -80,11 +82,41 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     blockEl.addClass("rs-regex-mobile");
   }
 
-  // chips container — cleared & re-rendered on every mutation
+  // chips container — renderChips re-anchors the collapse toggle to the
+  // end of this list (appendChild moves it after every chip), so it sits
+  // inline at the row end, reading as a peer of the chips (same 20px
+  // footprint as a chip's × delete). renderChips swaps only chip
+  // children, never the toggle, so it survives every re-render and stays
+  // at the row end.
   const chipsEl = blockEl.createEl("div", { cls: "rs-regex-list" });
 
+  // collapse toggle — Add and Test are both low-frequency, so they are
+  // collapsed by default and revealed on demand via this small icon at
+  // the row end. Mirrors the rs-disclaimer callout's ChevronRight
+  // disclosure (rotate 90° on expand) for one consistent
+  // collapsible-section language across the plugin.
+  const toggleBtnEl = chipsEl.createEl("button", {
+    cls: "rs-regex-collapse-toggle",
+    attr: {
+      type: "button",
+      "aria-expanded": "false",
+      "aria-label": t("settings_regex_manage_aria"),
+      title: t("settings_regex_manage_aria"),
+    },
+  });
+  const caretEl = toggleBtnEl.createEl("span", {
+    cls: "rs-regex-collapse-caret",
+  });
+  caretEl.innerHTML = createElement(ChevronRight).outerHTML;
+
+  // collapsible panel — holds the add row and the test row (both
+  // low-frequency), collapsed by default; the toggle above reveals it.
+  const panelEl = blockEl.createEl("div", {
+    cls: "rs-regex-panel rs-is-collapsed",
+  });
+
   // add row
-  const addRow = blockEl.createEl("div", { cls: "rs-regex-add-row" });
+  const addRow = panelEl.createEl("div", { cls: "rs-regex-add-row" });
   const addInputEl = addRow.createEl("input", {
     type: "text",
     attr: { placeholder: placeholder ?? "", spellcheck: "false" },
@@ -95,26 +127,9 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     cls: "mod-cta rs-regex-add-button",
   });
 
-  // tester toggle — the path tester is low-frequency, so it is
-  // collapsed by default and expanded on demand via this button.
-  const testerToggleEl = blockEl.createEl("button", {
-    cls: "rs-regex-tester-toggle",
-    attr: { type: "button", "aria-expanded": "false" },
-  });
-  testerToggleEl.createEl("span", {
-    cls: "rs-regex-tester-toggle-caret",
-    text: "\u25b8", // ▸
-  });
-  const toggleLabelEl = testerToggleEl.createEl("span", {
-    cls: "rs-regex-tester-toggle-label",
-    text: t("settings_regex_test_toggle_show"),
-  });
-
-  // tester (hidden until the toggle above expands it)
-  const testerEl = blockEl.createEl("div", {
-    cls: "rs-regex-tester rs-is-collapsed",
-  });
-  const testRow = testerEl.createEl("div", { cls: "rs-regex-test-row" });
+  // test row — sits below the add row, separated by a subtle dashed
+  // divider (see .rs-regex-panel .rs-regex-test-row in styles.css).
+  const testRow = panelEl.createEl("div", { cls: "rs-regex-test-row" });
   const testInputEl = testRow.createEl("input", {
     type: "text",
     attr: {
@@ -127,12 +142,14 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     text: t("settings_regex_test_button"),
     cls: "rs-regex-test-button",
   });
-  const testResultEl = testerEl.createEl("div", {
+  const testResultEl = panelEl.createEl("div", {
     cls: "rs-regex-test-result",
   });
 
   const renderChips = () => {
-    chipsEl.empty();
+    // Swap out only stale chips; the collapse-toggle must survive
+    // re-renders and stay inline with the chips.
+    chipsEl.querySelectorAll(".rs-regex-chip").forEach((c) => c.remove());
     const values = getValues();
     values.forEach((value, index) => {
       const chip = chipsEl.createEl("span", { cls: "rs-regex-chip" });
@@ -171,6 +188,10 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
         renderChips();
       });
     });
+    // re-anchor the toggle as the last child so it always sits at the
+    // row end, after every chip. appendChild on an already-attached node
+    // is a move, so its listeners survive.
+    chipsEl.appendChild(toggleBtnEl);
   };
 
   const handleAdd = async () => {
@@ -261,19 +282,17 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     }
   });
 
-  testerToggleEl.addEventListener("click", (e) => {
+  toggleBtnEl.addEventListener("click", (e) => {
     e.preventDefault();
-    const collapsed = testerEl.hasClass("rs-is-collapsed");
+    const collapsed = panelEl.hasClass("rs-is-collapsed");
     if (collapsed) {
-      testerEl.removeClass("rs-is-collapsed");
-      testerToggleEl.addClass("rs-is-expanded");
-      testerToggleEl.setAttribute("aria-expanded", "true");
-      toggleLabelEl.setText(t("settings_regex_test_toggle_hide"));
+      panelEl.removeClass("rs-is-collapsed");
+      toggleBtnEl.addClass("rs-is-expanded");
+      toggleBtnEl.setAttribute("aria-expanded", "true");
     } else {
-      testerEl.addClass("rs-is-collapsed");
-      testerToggleEl.removeClass("rs-is-expanded");
-      testerToggleEl.setAttribute("aria-expanded", "false");
-      toggleLabelEl.setText(t("settings_regex_test_toggle_show"));
+      panelEl.addClass("rs-is-collapsed");
+      toggleBtnEl.removeClass("rs-is-expanded");
+      toggleBtnEl.setAttribute("aria-expanded", "false");
     }
   });
 

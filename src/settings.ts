@@ -919,6 +919,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
+    containerEl.createEl("h3", {
+      text: t("settings_section_sync_direction"),
+      cls: "rs-subheading",
+    });
+
     new Setting(containerEl)
       .setName(t("setting_syncdirection"))
       .setDesc(stringToFragment(t("setting_syncdirection_desc")))
@@ -972,6 +977,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
+
+    containerEl.createEl("h3", {
+      text: t("settings_section_sync_automatic"),
+      cls: "rs-subheading",
+    });
 
     const autoRunSetting = new Setting(containerEl)
       .setName(t("settings_autorun"))
@@ -1069,6 +1079,117 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       t
     );
 
+    containerEl.createEl("h3", {
+      text: t("settings_section_sync_scope"),
+      cls: "rs-subheading",
+    });
+
+    new Setting(containerEl)
+      .setName(t("settings_syncunderscore"))
+      .setDesc(t("settings_syncunderscore_desc"))
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncUnderscoreItems ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncUnderscoreItems = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t("settings_syncdot"))
+      .setDesc(t("settings_syncdot_desc"))
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncDotItems ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncDotItems = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t("settings_configdir"))
+      .setDesc(
+        t("settings_configdir_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+
+        const bridge = {
+          secondConfirm: false,
+        };
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncConfigDir ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            if (val === "enable" && !bridge.secondConfirm) {
+              dropdown.setValue("disable");
+              new SyncConfigDirModal(this.app, this.plugin, () => {
+                bridge.secondConfirm = true;
+                dropdown.setValue("enable");
+              }).open();
+            } else {
+              bridge.secondConfirm = false;
+              this.plugin.settings.syncConfigDir = false;
+              await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t("settings_appearance"))
+      .setDesc(
+        t("settings_appearance_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncAppearance ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncAppearance = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t("settings_bookmarks"))
+      .setDesc(
+        t("settings_bookmarks_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncBookmarks ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncBookmarks = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
     new Setting(containerEl)
       .setName(t("settings_skiplargefiles"))
       .setDesc(t("settings_skiplargefiles_desc"))
@@ -1117,6 +1238,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       },
       t,
       placeholder: t("settings_regex_add_placeholder"),
+    });
+
+    containerEl.createEl("h3", {
+      text: t("settings_section_sync_protection"),
+      cls: "rs-subheading",
     });
 
     new Setting(containerEl)
@@ -1319,112 +1445,6 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     const t = (x: TransItemType, vars?: any) => {
       return this.plugin.i18n.t(x, vars);
     };
-
-    new Setting(containerEl)
-      .setName(t("settings_syncunderscore"))
-      .setDesc(t("settings_syncunderscore_desc"))
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncUnderscoreItems ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            this.plugin.settings.syncUnderscoreItems = val === "enable";
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName(t("settings_syncdot"))
-      .setDesc(t("settings_syncdot_desc"))
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncDotItems ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            this.plugin.settings.syncDotItems = val === "enable";
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName(t("settings_configdir"))
-      .setDesc(
-        t("settings_configdir_desc", {
-          configDir: this.app.vault.configDir,
-        })
-      )
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-
-        const bridge = {
-          secondConfirm: false,
-        };
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncConfigDir ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            if (val === "enable" && !bridge.secondConfirm) {
-              dropdown.setValue("disable");
-              new SyncConfigDirModal(this.app, this.plugin, () => {
-                bridge.secondConfirm = true;
-                dropdown.setValue("enable");
-              }).open();
-            } else {
-              bridge.secondConfirm = false;
-              this.plugin.settings.syncConfigDir = false;
-              await this.plugin.saveSettings();
-            }
-          });
-      });
-
-    new Setting(containerEl)
-      .setName(t("settings_appearance"))
-      .setDesc(
-        t("settings_appearance_desc", {
-          configDir: this.app.vault.configDir,
-        })
-      )
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncAppearance ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            this.plugin.settings.syncAppearance = val === "enable";
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName(t("settings_bookmarks"))
-      .setDesc(
-        t("settings_bookmarks_desc", {
-          configDir: this.app.vault.configDir,
-        })
-      )
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncBookmarks ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            this.plugin.settings.syncBookmarks = val === "enable";
-            await this.plugin.saveSettings();
-          });
-      });
 
     // status bar
     // custom status bar items is not supported on mobile

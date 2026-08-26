@@ -18,7 +18,7 @@ import {
   type OnedriveConfig,
 } from "./baseTypes";
 import { VALID_REQURL } from "./baseTypes";
-import { mergeDeltaWithPrevState } from "./deltaMerge";
+import { classifyDeltaItems, mergeDeltaWithPrevState } from "./deltaMerge";
 import { buildDeltaStartUrl } from "./syncOptimize";
 import { FakeFs } from "./fsAll";
 import { bufferToArrayBuffer } from "./misc";
@@ -924,37 +924,15 @@ export class FakeFsOnedrive extends FakeFs {
     }
 
     if (canIncremental && this.prevRemoteEntities) {
-      // Merge incremental delta results with the previous full state
-      const deltaEntities: Entity[] = [];
-      const deletedKeys = new Set<string>();
-
-      for (const item of driveItems) {
-        if ("@removed" in item) {
-          // Deleted item — extract just the key (no mtime required)
-          try {
-            const entity = fromDriveItemToEntity(
-              item,
-              this.remoteBaseDir,
-              false
-            );
-            if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
-              deletedKeys.add(entity.keyRaw);
-            }
-          } catch {
-            // Skip items we can't parse the key for
-          }
-        } else {
-          // Added or modified item
-          try {
-            const entity = fromDriveItemToEntity(item, this.remoteBaseDir);
-            if (entity.key !== "/") {
-              deltaEntities.push(entity);
-            }
-          } catch {
-            // Skip items we can't parse
-          }
-        }
-      }
+      // Merge incremental delta results with the previous full state.
+      // classifyDeltaItems handles BOTH @removed and the `deleted` facet —
+      // Graph uses either marker to signal deletions depending on tenant.
+      // Checking only @removed leaks stale entries → 404 AggregateErrors.
+      const { deltaEntities, deletedKeys } = classifyDeltaItems(
+        driveItems,
+        this.remoteBaseDir,
+        fromDriveItemToEntity
+      );
 
       const merged = mergeDeltaWithPrevState(
         this.prevRemoteEntities,
@@ -979,19 +957,21 @@ export class FakeFsOnedrive extends FakeFs {
   async walkPartial(): Promise<Entity[]> {
     await this._init();
 
-    const DELTA_LINK_KEY = "@odata.deltaLink";
-
+    // Do NOT save @odata.deltaLink here. walkPartial() only feeds
+    // isPasswordOk()'s sanity check (first remote item); it queries the BASE
+    // /delta endpoint, and when the result fits in one page the response
+    // carries a deltaLink representing "now". Persisting that would make
+    // walk() in step 3 query it and get 0 changes, so it would return stale
+    // prevRemoteEntities and cause HTTP 404 AggregateErrors during step 7
+    // (stat on files deleted on OneDrive since the last sync — e.g. by
+    // another device's sync). walk() saves its own deltaLink at the end of
+    // every enumeration (full and incremental), so this save was redundant
+    // and harmful. See deltaMerge.ts for the documented 404 path.
     const res = await this._getJson(
       `/drive/special/approot:/${this.remoteBaseDir}:/delta`
     );
     const driveItems = res.value as DriveItem[];
     // console.debug(driveItems);
-
-    // lastly we should have delta link?
-    if (DELTA_LINK_KEY in res) {
-      this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY];
-      await this.saveUpdatedConfigFunc();
-    }
 
     // unify everything to Entity
     const unifiedContents = driveItems

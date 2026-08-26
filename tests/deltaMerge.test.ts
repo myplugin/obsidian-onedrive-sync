@@ -2,7 +2,7 @@
 
 import { strict as assert } from "assert";
 import type { Entity } from "../src/baseTypes";
-import { mergeDeltaWithPrevState } from "../src/deltaMerge";
+import { classifyDeltaItems, mergeDeltaWithPrevState } from "../src/deltaMerge";
 
 function makeEntity(key: string, mtime?: number, size?: number): Entity {
   return {
@@ -193,5 +193,205 @@ describe("deltaMerge", () => {
     assert.ok(result.some((e) => e.keyRaw === "a/b/d.md"));
     assert.ok(result.some((e) => e.keyRaw === "a/b/e.md"));
     assert.ok(!result.some((e) => e.keyRaw === "x/y.md"));
+  });
+});
+
+describe("classifyDeltaItems", () => {
+  // Mock fromDriveItemToEntity: treats item.key as the entity keyRaw.
+  // Real converter parses parentReference.path; for classification tests
+  // we only care that the right branch (deleted vs added) is taken and
+  // the converter is invoked with the right requireMtime flag.
+  const mockConverter = (
+    item: any,
+    _remoteBaseDir: string,
+    _requireMtime?: boolean
+  ): Entity => {
+    return makeEntity(item.key, item.mtime, item.size);
+  };
+
+  it("classifies @removed items as deleted", () => {
+    const items = [
+      { key: "a.md", mtime: 1000 },
+      { key: "b.md", mtime: 1000, "@removed": { reason: "deleted" } },
+    ];
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      items,
+      "vault",
+      mockConverter
+    );
+
+    assert.strictEqual(deltaEntities.length, 1);
+    assert.strictEqual(deltaEntities[0].keyRaw, "a.md");
+    assert.strictEqual(deletedKeys.size, 1);
+    assert.ok(deletedKeys.has("b.md"));
+  });
+
+  // REGRESSION: this is the exact bug that caused the reported 404
+  // AggregateError. Graph sometimes signals deletion via the `deleted`
+  // facet on the DriveItem WITHOUT the @removed annotation. The previous
+  // implementation only checked `@removed`, so these items were treated
+  // as live files, kept in prevRemoteEntities, and sync later tried to
+  // download/stat them → HTTP 404.
+  it("classifies items with the `deleted` facet (no @removed) as deleted", () => {
+    const items = [
+      { key: "a.md", mtime: 1000 },
+      { key: "ghost.md", mtime: 1000, deleted: {} },
+    ];
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      items,
+      "vault",
+      mockConverter
+    );
+
+    assert.strictEqual(deltaEntities.length, 1);
+    assert.strictEqual(deltaEntities[0].keyRaw, "a.md");
+    assert.ok(deletedKeys.has("ghost.md"));
+    assert.ok(!deltaEntities.some((e) => e.keyRaw === "ghost.md"));
+  });
+
+  it("classifies items with both markers as deleted", () => {
+    const items = [
+      {
+        key: "x.md",
+        "@removed": { reason: "deleted" },
+        deleted: {},
+      },
+    ];
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      items,
+      "vault",
+      mockConverter
+    );
+
+    assert.strictEqual(deltaEntities.length, 0);
+    assert.ok(deletedKeys.has("x.md"));
+  });
+
+  it("passes requireMtime=false to the converter for deleted items", () => {
+    // Deleted delta items often lack fileSystemInfo; the converter must
+    // be told not to require mtime, else it throws and the deletion is
+    // silently dropped (re-introducing the stale-entry bug).
+    let seenRequireMtime: boolean | undefined;
+    const trackingConverter = (
+      _item: any,
+      _remoteBaseDir: string,
+      requireMtime?: boolean
+    ): Entity => {
+      seenRequireMtime = requireMtime;
+      return makeEntity("ghost.md");
+    };
+    const items = [{ key: "ghost.md", deleted: {} }];
+    classifyDeltaItems(items, "vault", trackingConverter);
+
+    assert.strictEqual(seenRequireMtime, false);
+  });
+
+  it("passes requireMtime=undefined (default true) for added items", () => {
+    let seenRequireMtime: boolean | undefined;
+    const trackingConverter = (
+      _item: any,
+      _remoteBaseDir: string,
+      requireMtime?: boolean
+    ): Entity => {
+      seenRequireMtime = requireMtime;
+      return makeEntity("live.md");
+    };
+    const items = [{ key: "live.md", mtime: 1000 }];
+    classifyDeltaItems(items, "vault", trackingConverter);
+
+    assert.strictEqual(seenRequireMtime, undefined);
+  });
+
+  it("skips deleted items whose converter throws", () => {
+    const throwingConverter = (
+      item: any,
+      _remoteBaseDir: string,
+      _requireMtime?: boolean
+    ): Entity => {
+      if (item.key === "bad.md") throw new Error("parse fail");
+      return makeEntity(item.key);
+    };
+    const items = [
+      { key: "bad.md", deleted: {} },
+      { key: "good.md" },
+    ];
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      items,
+      "vault",
+      throwingConverter
+    );
+
+    // bad.md (deleted, threw) → not in deletedKeys, not in deltaEntities
+    assert.strictEqual(deltaEntities.length, 1);
+    assert.strictEqual(deltaEntities[0].keyRaw, "good.md");
+    assert.strictEqual(deletedKeys.size, 0);
+  });
+
+  it("skips added items whose converter throws", () => {
+    const throwingConverter = (
+      item: any,
+      _remoteBaseDir: string,
+      _requireMtime?: boolean
+    ): Entity => {
+      if (item.key === "bad.md") throw new Error("parse fail");
+      return makeEntity(item.key);
+    };
+    const items = [
+      { key: "bad.md", mtime: 1000 },
+      { key: "good.md", mtime: 1000 },
+    ];
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      items,
+      "vault",
+      throwingConverter
+    );
+
+    assert.strictEqual(deltaEntities.length, 1);
+    assert.strictEqual(deltaEntities[0].keyRaw, "good.md");
+    assert.strictEqual(deletedKeys.size, 0);
+  });
+
+  it("excludes root key from deletedKeys", () => {
+    const items = [{ key: "/", deleted: {} }];
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      items,
+      "vault",
+      mockConverter
+    );
+
+    assert.strictEqual(deletedKeys.size, 0);
+  });
+
+  it("excludes empty keyRaw from deletedKeys", () => {
+    const items = [{ key: "", deleted: {} }];
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      items,
+      "vault",
+      mockConverter
+    );
+
+    assert.strictEqual(deletedKeys.size, 0);
+  });
+
+  it("excludes root entity from deltaEntities", () => {
+    const items = [{ key: "/" }];
+    const { deltaEntities } = classifyDeltaItems(
+      items,
+      "vault",
+      mockConverter
+    );
+
+    assert.strictEqual(deltaEntities.length, 0);
+  });
+
+  it("returns empty results for empty input", () => {
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      [],
+      "vault",
+      mockConverter
+    );
+
+    assert.strictEqual(deltaEntities.length, 0);
+    assert.strictEqual(deletedKeys.size, 0);
   });
 });

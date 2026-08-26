@@ -55,3 +55,88 @@ export function mergeDeltaWithPrevState(
 
   return Array.from(entityMap.values());
 }
+
+/**
+ * Callback shape for converting a Graph DriveItem into an Entity.
+ * Injected so this pure function can be unit-tested without importing
+ * the heavy fsOnedrive module (which pulls in @azure/msal-node etc.).
+ */
+export type DriveItemToEntity = (
+  item: any,
+  remoteBaseDir: string,
+  requireMtime?: boolean
+) => Entity;
+
+/**
+ * Result of classifying a page of Graph delta-API DriveItems into
+ * additions/modifications vs. deletions.
+ */
+export interface ClassifiedDelta {
+  deltaEntities: Entity[];
+  deletedKeys: Set<string>;
+}
+
+/**
+ * Classify Graph delta-API DriveItems into "added/modified" entities and
+ * "deleted" keys.
+ *
+ * ## Why both @removed and the `deleted` facet
+ *
+ * The Microsoft Graph driveItem delta API signals a deletion via EITHER:
+ *  - the `@removed` annotation (e.g. `{"@removed": {"reason": "deleted"}}`), OR
+ *  - the `deleted` facet on the DriveItem (e.g. `{"id": "...", "deleted": {}}`).
+ *
+ * Different tenants/scenarios return one or the other, and the official docs
+ * show the `deleted` facet in their example responses. Checking ONLY
+ * `@removed` (as this codebase previously did) misses deletions on tenants
+ * that use the `deleted` facet, which causes stale entries to survive in the
+ * merged remote entity list — sync then tries to download/stat files that
+ * no longer exist on OneDrive, surfacing as HTTP 404 AggregateErrors during
+ * `dispatchOperationToActualV3` (copyFile → stat → _getJson).
+ *
+ * Items whose key cannot be parsed by `fromDriveItemToEntity` are silently
+ * skipped (same tolerance as the previous inline implementation).
+ *
+ * @param driveItems            Raw DriveItem[] from the delta response
+ *                              (already flattened across @odata.nextLink pages).
+ * @param remoteBaseDir         The vault's remote base directory.
+ * @param fromDriveItemToEntity Converter (injected from fsOnedrive to keep
+ *                              this function pure and testable).
+ */
+export function classifyDeltaItems(
+  driveItems: any[],
+  remoteBaseDir: string,
+  fromDriveItemToEntity: DriveItemToEntity
+): ClassifiedDelta {
+  const deltaEntities: Entity[] = [];
+  const deletedKeys = new Set<string>();
+
+  for (const item of driveItems) {
+    // Graph uses both markers — see function doc. Checking only @removed
+    // leaks stale entries → 404 AggregateErrors during sync operations.
+    const isDeleted = "@removed" in item || "deleted" in item;
+    if (isDeleted) {
+      // Deleted item — extract just the key (no mtime required)
+      try {
+        const entity = fromDriveItemToEntity(item, remoteBaseDir, false);
+        if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
+          deletedKeys.add(entity.keyRaw);
+        }
+      } catch {
+        // Skip items we can't parse the key for
+      }
+    } else {
+      // Added or modified item
+      try {
+        const entity = fromDriveItemToEntity(item, remoteBaseDir);
+        if (entity.key !== "/") {
+          deltaEntities.push(entity);
+        }
+      } catch {
+        // Skip items we can't parse
+      }
+    }
+  }
+
+  return { deltaEntities, deletedKeys };
+}
