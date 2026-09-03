@@ -1,0 +1,47 @@
+src/fsOnedrive.ts
+  s_332e0483e8de6e::t_e5ac489ebdc8f4 47-80,783-799,807-813,815-821,859-864,924-929
+  s_332e0483e8de6e::t_6ef9595f6c94e5 1376-1384,1416-1420
+  s_332e0483e8de6e::t_eb24d5af500554 1307-1317,1362-1375
+  s_332e0483e8de6e::t_752b9ecdf8b222 1282-1289
+  s_332e0483e8de6e::t_88d6d1ae5de556 1441-1442
+  s_332e0483e8de6e::t_2377d8b80fdb8b 1055-1062
+src/deltaMerge.ts
+  s_332e0483e8de6e::t_12e2fa1e72915b 45-49,53,57-58,60-62,134-142,151-160
+src/main.ts
+  s_332e0483e8de6e::t_e4f159ebd97ffd 539-542,544-550,554
+  s_332e0483e8de6e::t_7eb850a542b98b 355-381,383-385,387-411,415-418
+src/metadataOnRemote.ts
+  s_332e0483e8de6e::t_eaa7c1e8d09ea6 41,44
+  s_332e0483e8de6e::t_5433e31cf7cc72 56
+src/fsAll.ts
+  s_332e0483e8de6e::t_dfe81d28f932cb 20-27
+tests/deltaMerge.test.ts
+  s_bb7722168ecfe8::t_58c169441be851 398-514
+tests/metadataOnRemote.test.ts
+  s_bb7722168ecfe8::t_7ee0f9d99389dd 5-6
+  s_bb7722168ecfe8::t_553ef615db001f 83-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.25.116",
+  "base_commit_sha": "f37e39a09b86f8b771141499af7e3b8a9672c587",
+  "prompts": {},
+  "sessions": {
+    "s_332e0483e8de6e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fba19077effe5hETqSEN1gLk6w",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    },
+    "s_bb7722168ecfe8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc3352722ffe8LnhVDYe6bisWD",
+        "model": "unknown"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
