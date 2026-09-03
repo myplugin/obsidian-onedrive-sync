@@ -44,6 +44,40 @@ export const DEFAULT_ONEDRIVE_CONFIG: OnedriveConfig = {
 // Onedrive authorization using PKCE
 ////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Detect whether an error thrown by Obsidian's request/requestUrl or fetch
+ * is an HTTP 404 (Not Found). The OneDrive Graph API returns 404 when a file
+ * or folder has been deleted since the last walk — the sync's stale view
+ * then tries to stat/download it and fails.
+ *
+ * The error shape varies by transport (requestUrl attaches .status; fetch
+ * wrappers may put it in .response.status or in the message string), so we
+ * check all known locations.
+ */
+function isHttp404(e: any): boolean {
+  const status: number | undefined =
+    e?.status ?? e?.response?.status;
+  if (status === 404) return true;
+  if (typeof e?.message === "string" && e.message.includes("status 404")) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Build a recognizable error for the "remote file was deleted between the
+ * walk and the stat/download" race condition. The sync collects these in an
+ * AggregateError; main.ts groups them into a single friendly notice.
+ */
+function remoteNotFoundError(key: string): Error {
+  const err = new Error(
+    `Remote file not found (deleted since sync started): ${key}`
+  );
+  (err as any).code = "REMOTE_NOT_FOUND";
+  (err as any).key = key;
+  return err;
+}
+
 export async function getAuthUrlAndVerifier(
   clientID: string,
   authority: string
@@ -746,13 +780,23 @@ export class FakeFsOnedrive extends FakeFs {
     console.debug(`deleteJson, theUrl=${theUrl}`);
     await this._retryOn429(async () => {
       if (VALID_REQURL) {
-        await requestUrl({
-          url: theUrl,
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-          },
-        });
+        try {
+          await requestUrl({
+            url: theUrl,
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+            },
+          });
+        } catch (e: any) {
+          const status: number | undefined =
+            e?.status ?? e?.response?.status;
+          // 404 = already deleted, treat as success (idempotent delete)
+          if (status === 404) {
+            return;
+          }
+          throw e;
+        }
       } else {
         const res = await fetch(theUrl, {
           method: "DELETE",
@@ -760,8 +804,21 @@ export class FakeFsOnedrive extends FakeFs {
             Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
           },
         });
+        // 404 = already deleted, treat as success (idempotent delete)
+        if (res.status === 404) {
+          return;
+        }
+        if (res.status === 429) {
+          throw { status: 429, headers: res.headers } as any;
+        }
         if (!res.ok && res.status !== 204) {
-          throw { status: res.status, headers: res.headers } as any;
+          const body = await res.text().catch(() => "");
+          const err = new Error(
+            `OneDrive DELETE failed: ${res.status} ${pathFragOrig} ${body}`
+          );
+          (err as any).status = res.status;
+          (err as any).headers = res.headers;
+          throw err;
         }
       }
     });
@@ -798,6 +855,12 @@ export class FakeFsOnedrive extends FakeFs {
         });
         if (res.status === 429) {
           throw { status: 429, headers: res.headers } as any;
+        }
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(
+            `OneDrive PUT failed: ${res.status} ${theUrl} ${body}`
+          );
         }
         return (await res.json()) as DriveItem | UploadSession;
       }
@@ -857,6 +920,12 @@ export class FakeFsOnedrive extends FakeFs {
         });
         if (res.status === 429) {
           throw { status: 429, headers: res.headers } as any;
+        }
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(
+            `OneDrive PUT range failed: ${res.status} ${theUrl} ${body}`
+          );
         }
         return (await res.json()) as DriveItem | UploadSession;
       }
@@ -983,7 +1052,14 @@ export class FakeFsOnedrive extends FakeFs {
 
   async stat(key: string): Promise<Entity> {
     await this._init();
-    return await this._statFromRoot(getOnedrivePath(key, this.remoteBaseDir));
+    try {
+      return await this._statFromRoot(getOnedrivePath(key, this.remoteBaseDir));
+    } catch (e) {
+      if (isHttp404(e)) {
+        throw remoteNotFoundError(key);
+      }
+      throw e;
+    }
   }
 
   async _statFromRoot(key: string): Promise<Entity> {
@@ -1203,7 +1279,14 @@ export class FakeFsOnedrive extends FakeFs {
       throw new Error(`you should not call readFile on folder ${key}`);
     }
     const downloadFile = getOnedrivePath(key, this.remoteBaseDir);
-    return await this._readFileFromRoot(downloadFile);
+    try {
+      return await this._readFileFromRoot(downloadFile);
+    } catch (e) {
+      if (isHttp404(e)) {
+        throw remoteNotFoundError(key);
+      }
+      throw e;
+    }
   }
 
   /**
@@ -1221,9 +1304,17 @@ export class FakeFsOnedrive extends FakeFs {
     const downloadFile = getOnedrivePath(key, this.remoteBaseDir);
 
     // Single GET: metadata fields + download URL annotation
-    const rsp = await this._getJson(
-      `${downloadFile}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,@microsoft.graph.downloadUrl`
-    );
+    let rsp: any;
+    try {
+      rsp = await this._getJson(
+        `${downloadFile}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,@microsoft.graph.downloadUrl`
+      );
+    } catch (e) {
+      if (isHttp404(e)) {
+        throw remoteNotFoundError(key);
+      }
+      throw e;
+    }
     const driveItem = rsp as DriveItem;
     const entity = fromDriveItemToEntity(driveItem, this.remoteBaseDir);
 
@@ -1268,6 +1359,29 @@ export class FakeFsOnedrive extends FakeFs {
       `${key}?$select=@microsoft.graph.downloadUrl`
     );
     const downloadUrl: string = rsp["@microsoft.graph.downloadUrl"];
+    if (!downloadUrl) {
+      // Fallback: when the pre-auth download URL annotation is absent
+      // (not reliably returned for OneDrive App Folder), use the standard
+      // /content endpoint which returns a 302 redirect to the download URL.
+      return await this._retryOn429(async () => {
+        const res = await fetch(this._buildUrl(`${key}:/content`), {
+          headers: {
+            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+          },
+        });
+        if (res.status === 429) {
+          throw { status: 429, headers: res.headers } as any;
+        }
+        if (!res.ok) {
+          const err = new Error(
+            `OneDrive content download failed: ${res.status}`
+          );
+          (err as any).status = res.status;
+          throw err;
+        }
+        return await res.arrayBuffer();
+      });
+    }
     // biome-ignore lint/correctness/noConstantCondition: <explanation>
     if (false /*VALID_REQURL*/) {
       const content = (
@@ -1299,6 +1413,11 @@ export class FakeFsOnedrive extends FakeFs {
     }
   }
 
+  // WARNING: This method is NOT called by the sync algorithm (sync.ts).
+  // The implementation is incorrect: it passes a full Graph API path as
+  // the `name` field, but the API expects just the new filename (e.g.
+  // "new.md", not "/drive/special/approot:/vault/folder/new.md").
+  // Fix before enabling remote rename in the sync flow.
   async rename(key1: string, key2: string): Promise<void> {
     if (key1 === "" || key1 === "/" || key2 === "" || key2 === "/") {
       return;
@@ -1319,6 +1438,8 @@ export class FakeFsOnedrive extends FakeFs {
 
     await this._init();
     await this._deleteJson(remoteFileName);
+    // Track for proactive prevRemoteEntities update — see FakeFs.deletedRemotelyKeys
+    this.deletedRemotelyKeys.add(key);
   }
 
   async checkConnect(callbackFunc?: any): Promise<boolean> {

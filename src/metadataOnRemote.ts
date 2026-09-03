@@ -38,10 +38,10 @@ export const isEqualMetadataOnRemote = (
 };
 
 export const serializeMetadataOnRemote = (x: MetadataOnRemote) => {
-  const y = x;
+  const y = { ...x };
 
   if (y["version"] === undefined) {
-    y["version"] === DEFAULT_VERSION_FOR_METADATAONREMOTE;
+    y["version"] = DEFAULT_VERSION_FOR_METADATAONREMOTE;
   }
   if (y["generatedWhen"] === undefined) {
     y["generatedWhen"] = Date.now();
@@ -53,7 +53,7 @@ export const serializeMetadataOnRemote = (x: MetadataOnRemote) => {
   const z = {
     readme: DEFAULT_README_FOR_METADATAONREMOTE,
     d: reverseString(
-      base64url.stringify(Buffer.from(JSON.stringify(x), "utf-8"), {
+      base64url.stringify(Buffer.from(JSON.stringify(y), "utf-8"), {
         pad: false,
       })
     ),

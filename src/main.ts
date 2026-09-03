@@ -352,11 +352,70 @@ export default class RemotelySavePlugin extends Plugin {
 
     const errNotifyFunc = async (s: SyncTriggerSourceType, error: Error) => {
       console.error(error);
+
+      // Self-heal: when the sync hits 404 on files that were in the walk
+      // result but no longer exist on OneDrive (stale incremental delta
+      // merge — the delta API's eventual consistency hasn't reflected
+      // deletions from the previous sync), clear the stale state so the
+      // NEXT sync does a full enumeration and gets the correct file list.
+      // This is the same mechanism as the plugin-restart workaround
+      // (main.ts onload clears prevRemoteEntities), but automatic and
+      // scoped to the exact error — no manual restart needed.
+      const selfHealStaleDelta = async () => {
+        try {
+          if (this.isDbReady()) {
+            await this.db.simpleKVForMiscTbl.removeItem(
+              `${this.vaultRandomID}-prevRemoteEntities`
+            );
+          }
+          this.settings.onedrive.deltaLink = "";
+          await this.saveSettings();
+          console.info(
+            "Self-heal: cleared prevRemoteEntities + deltaLink after " +
+              "REMOTE_NOT_FOUND. Next sync will do full enumeration."
+          );
+        } catch (e) {
+          console.error("Self-heal failed:", e);
+        }
+      };
+
       if (error instanceof AggregateError) {
+        // Partition into 404 "file deleted since walk" vs other errors.
+        const notFound: any[] = [];
+        const others: Error[] = [];
         for (const e of error.errors) {
+          if ((e as any)?.code === "REMOTE_NOT_FOUND") {
+            notFound.push(e);
+          } else {
+            others.push(e);
+          }
+        }
+        // Aggregated notice for files deleted on OneDrive mid-sync
+        if (notFound.length > 0) {
+          const keys = notFound
+            .map((e) => e.key as string)
+            .filter(Boolean);
+          const shown =
+            keys.length > 5
+              ? `${keys.slice(0, 5).join(", ")}, … (+${keys.length - 5} more)`
+              : keys.join(", ");
+          const msg =
+            others.length === 0
+              ? `${notFound.length} file(s) were deleted on OneDrive since the sync started — skipped. Next sync will re-scan and catch up.\n${shown}`
+              : `${notFound.length} file(s) deleted on OneDrive since sync started (skipped): ${shown}`;
+          getNotice(s, msg, 10 * 1000);
+          // Invalidate stale delta state for the next sync
+          await selfHealStaleDelta();
+        }
+        // Show remaining (non-404) errors individually
+        for (const e of others) {
           getNotice(s, e.message, 10 * 1000);
         }
       } else {
+        // Single error — check if it's a REMOTE_NOT_FOUND
+        if ((error as any)?.code === "REMOTE_NOT_FOUND") {
+          await selfHealStaleDelta();
+        }
         getNotice(s, error?.message ?? "error while sync", 10 * 1000);
       }
     };
@@ -477,11 +536,22 @@ export default class RemotelySavePlugin extends Plugin {
 
     // Save the remote entity list so the next sync can use it for
     // incremental delta enumeration (only fetch changed items).
+    // Proactively remove files deleted on OneDrive during this sync
+    // so prevRemoteEntities doesn't contain phantom entries that
+    // would cause 404 on the next sync (OneDrive delta API eventual
+    // consistency may not reflect the deletions yet).
     if (fsRemote.lastWalkResult && this.isDbReady()) {
+      const deletedKeys = fsRemote.deletedRemotelyKeys;
+      const entities =
+        deletedKeys.size > 0
+          ? fsRemote.lastWalkResult.filter(
+              (e) => !deletedKeys.has(e.keyRaw)
+            )
+          : fsRemote.lastWalkResult;
       await savePrevRemoteEntities(
         this.db,
         this.vaultRandomID,
-        fsRemote.lastWalkResult
+        entities
       );
     }
 

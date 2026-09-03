@@ -395,3 +395,120 @@ describe("classifyDeltaItems", () => {
     assert.strictEqual(deletedKeys.size, 0);
   });
 });
+
+// ────────────────────────────────────────────────────────────
+// END-TO-END REGRESSION: the full path that caused 404
+// AggregateErrors in production. Before commit 0f73447, the
+// delta merge only checked @removed and missed the `deleted`
+// facet, so "ghost" entries survived in prevRemoteEntities.
+// Sync then tried to stat/download those non-existent files →
+// HTTP 404 → after 3 errors → AggregateError "too many errors".
+//
+// These tests exercise the COMPLETE path:
+//   raw DriveItems → classifyDeltaItems → mergeDeltaWithPrevState
+// and assert no ghost entries survive in the final list.
+// ────────────────────────────────────────────────────────────
+describe("404 regression: end-to-end delta merge path", () => {
+  const converter = (item: any, _dir: string, _req?: boolean): Entity =>
+    makeEntity(item.key, item.mtime, item.size);
+
+  it("deleted-facet items do not survive in merged output", () => {
+    // Previous sync knew about these 3 files.
+    const prev = [
+      makeEntity("keep.md", 1000),
+      makeEntity("ghost1.md", 1000),
+      makeEntity("ghost2.md", 1000),
+    ];
+
+    // Delta API response: keep.md was modified, ghost1/ghost2 were
+    // deleted — but signaled via the `deleted` facet, NOT @removed.
+    const driveItems = [
+      { key: "keep.md", mtime: 2000 },
+      { key: "ghost1.md", deleted: {} },
+      { key: "ghost2.md", deleted: {} },
+    ];
+
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      driveItems,
+      "vault",
+      converter
+    );
+    const merged = mergeDeltaWithPrevState(prev, deltaEntities, deletedKeys);
+
+    // Ghosts must be gone — if they survive, sync will 404 on them.
+    assert.strictEqual(merged.length, 1);
+    assert.strictEqual(merged[0].keyRaw, "keep.md");
+    assert.ok(!merged.some((e) => e.keyRaw === "ghost1.md"));
+    assert.ok(!merged.some((e) => e.keyRaw === "ghost2.md"));
+  });
+
+  it("mixed @removed and deleted-facet deletions all get purged", () => {
+    const prev = [
+      makeEntity("live.md", 1000),
+      makeEntity("removed.md", 1000),
+      makeEntity("faceted.md", 1000),
+      makeEntity("both.md", 1000),
+    ];
+
+    const driveItems = [
+      { key: "live.md", mtime: 2000 },
+      { key: "removed.md", "@removed": { reason: "deleted" } },
+      { key: "faceted.md", deleted: {} },
+      {
+        key: "both.md",
+        "@removed": { reason: "deleted" },
+        deleted: {},
+      },
+    ];
+
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      driveItems,
+      "vault",
+      converter
+    );
+    const merged = mergeDeltaWithPrevState(prev, deltaEntities, deletedKeys);
+
+    assert.strictEqual(merged.length, 1);
+    assert.strictEqual(merged[0].keyRaw, "live.md");
+    for (const ghost of ["removed.md", "faceted.md", "both.md"]) {
+      assert.ok(
+        !merged.some((e) => e.keyRaw === ghost),
+        `${ghost} should have been purged`
+      );
+    }
+  });
+
+  it("large batch: only live files survive after mass deletion", () => {
+    // Simulates "batch-modify notes" scenario: many files changed,
+    // some deleted via deleted facet. Verifies the merge scales.
+    const prev: Entity[] = [];
+    for (let i = 0; i < 50; i++) {
+      prev.push(makeEntity(`note${i}.md`, 1000));
+    }
+
+    const driveItems: any[] = [];
+    // notes 0-9 modified
+    for (let i = 0; i < 10; i++) {
+      driveItems.push({ key: `note${i}.md`, mtime: 2000 });
+    }
+    // notes 10-29 deleted via deleted facet (not @removed)
+    for (let i = 10; i < 30; i++) {
+      driveItems.push({ key: `note${i}.md`, deleted: {} });
+    }
+    // notes 30-49 untouched (not in delta at all)
+
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      driveItems,
+      "vault",
+      converter
+    );
+    const merged = mergeDeltaWithPrevState(prev, deltaEntities, deletedKeys);
+
+    // 10 modified + 20 untouched = 30 survivors; 20 ghosts purged.
+    assert.strictEqual(merged.length, 30);
+    assert.ok(merged.some((e) => e.keyRaw === "note0.md")); // modified
+    assert.ok(merged.some((e) => e.keyRaw === "note49.md")); // untouched
+    assert.ok(!merged.some((e) => e.keyRaw === "note10.md")); // deleted
+    assert.ok(!merged.some((e) => e.keyRaw === "note29.md")); // deleted
+  });
+});

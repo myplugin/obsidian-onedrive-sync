@@ -17,6 +17,14 @@ export abstract class FakeFs {
    * Set by FakeFsOnedrive.walk() for use by shouldSkipSync in sync.ts.
    */
   lastWalkDeltaCount?: number;
+  /**
+   * Keys deleted on the remote during the current sync (via rm()).
+   * main.ts uses this after sync to remove deleted entries from
+   * lastWalkResult before saving as prevRemoteEntities — preventing
+   * phantom entries that cause 404 on the next sync when OneDrive's
+   * delta API hasn't yet reflected the deletions (eventual consistency).
+   */
+  deletedRemotelyKeys: Set<string> = new Set();
   abstract walk(): Promise<Entity[]>;
   abstract walkPartial(): Promise<Entity[]>;
   abstract stat(key: string): Promise<Entity>;

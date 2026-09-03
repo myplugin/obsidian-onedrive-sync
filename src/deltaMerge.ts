@@ -42,15 +42,24 @@ export function mergeDeltaWithPrevState(
   }
 
   // Apply additions and modifications from the delta.
+  // Track which keys were added/modified so deletions can be
+  // deconflicted — if a key appears as both live (restored) and
+  // @removed (deleted) in the same delta window, the live entry
+  // represents the net state and must survive.
+  const liveKeys = new Set<string>();
   for (const e of deltaEntities) {
     if (e.keyRaw !== undefined && e.keyRaw !== "" && e.keyRaw !== "/") {
       entityMap.set(e.keyRaw, e);
+      liveKeys.add(e.keyRaw);
     }
   }
 
-  // Apply deletions.
+  // Apply deletions — skip keys that also have a live entry
+  // (delete-then-restore within one delta window: last state wins).
   for (const key of deletedKeys) {
-    entityMap.delete(key);
+    if (!liveKeys.has(key)) {
+      entityMap.delete(key);
+    }
   }
 
   return Array.from(entityMap.values());
@@ -122,8 +131,15 @@ export function classifyDeltaItems(
         if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
           deletedKeys.add(entity.keyRaw);
         }
-      } catch {
-        // Skip items we can't parse the key for
+      } catch (e) {
+        // If we can't parse the key, the deletion is lost and the file
+        // survives as a phantom in prevRemoteEntities → 404 on next
+        // sync → self-heal recovers. Log so it's diagnosable.
+        console.warn(
+          "classifyDeltaItems: skipping deleted item (parse failed)",
+          e instanceof Error ? e.message : e,
+          JSON.stringify(item).slice(0, 200)
+        );
       }
     } else {
       // Added or modified item
@@ -132,8 +148,16 @@ export function classifyDeltaItems(
         if (entity.key !== "/") {
           deltaEntities.push(entity);
         }
-      } catch {
-        // Skip items we can't parse
+      } catch (e) {
+        // If we can't parse the key, the addition is lost — the file
+        // won't appear in the merged list and sync will never pull it.
+        // There is NO self-heal for this (no 404, no error signal).
+        // Log so it's diagnosable.
+        console.warn(
+          "classifyDeltaItems: skipping added/modified item (parse failed)",
+          e instanceof Error ? e.message : e,
+          JSON.stringify(item).slice(0, 200)
+        );
       }
     }
   }
