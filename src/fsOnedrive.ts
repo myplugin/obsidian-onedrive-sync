@@ -65,6 +65,28 @@ function isHttp404(e: any): boolean {
 }
 
 /**
+ * Extract the HTTP status code from a thrown error across the transports this
+ * file uses. Obsidian's request()/requestUrl() throw
+ * `Error("Request failed, status XXX")` with no `.status` property, while the
+ * fetch() paths throw either `{ status }` objects or
+ * `Error("OneDrive ... failed: XXX ...")`. This unifies both so the retry
+ * wrapper can decide whether an error is transient.
+ */
+function extractHttpStatus(e: any): number | undefined {
+  const fromProps: unknown = e?.status ?? e?.response?.status;
+  if (typeof fromProps === "number") {
+    return fromProps;
+  }
+  if (typeof e?.message === "string") {
+    const m = e.message.match(/(?:status\s+|:\s+)(\d{3})/i);
+    if (m !== null) {
+      return Number.parseInt(m[1], 10);
+    }
+  }
+  return undefined;
+}
+
+/**
  * Build a recognizable error for the "remote file was deleted between the
  * walk and the stat/download" race condition. The sync collects these in an
  * AggregateError; main.ts groups them into a single friendly notice.
@@ -673,12 +695,17 @@ export class FakeFsOnedrive extends FakeFs {
   }
 
   /**
-   * Retry wrapper for Graph API calls that may be throttled (HTTP 429).
-   * OneDrive always returns a Retry-After header (seconds) on 429.
-   * We wait the specified time and retry, up to maxRetries.
-   * Non-429 errors are re-thrown immediately.
+   * Retry wrapper for Graph API calls that fail transiently:
+   * - HTTP 429 (throttling): OneDrive returns a Retry-After header (seconds).
+   * - HTTP 500/502/503/504 (server-side gateway/transient outages).
+   *
+   * A 504 "Gateway Timeout" is common when syncing a large backlog — a single
+   * slow Graph request times out at an intermediate gateway. Without a retry
+   * here, one transient 504 aborts the whole sync (surfaced as an
+   * AggregateError in sync.ts). We wait and retry, up to maxRetries.
+   * Non-transient errors are re-thrown immediately.
    */
-  async _retryOn429<T>(
+  async _retryOnTransientError<T>(
     fn: () => Promise<T>,
     maxRetries = 3
   ): Promise<T> {
@@ -688,21 +715,23 @@ export class FakeFsOnedrive extends FakeFs {
         return await fn();
       } catch (e: any) {
         lastError = e;
-        // Obsidian's request() throws on non-2xx; fetch() we check manually.
-        // The error may carry .status or be a string containing "429".
-        const status: number | undefined =
-          e?.status ?? e?.response?.status;
-        const isThrottled =
-          status === 429 ||
-          (typeof e?.message === "string" && e.message.includes("429"));
+        const status = extractHttpStatus(e);
+        const isThrottled = status === 429;
+        const isTransientServerError =
+          status !== undefined &&
+          (status === 500 ||
+            status === 502 ||
+            status === 503 ||
+            status === 504);
 
-        if (!isThrottled) {
+        if (!isThrottled && !isTransientServerError) {
           throw e;
         }
         if (attempt >= maxRetries) {
           throw e;
         }
-        // Retry-After is in seconds; fall back to exponential backoff.
+        // Retry-After (seconds) is authoritative when present; otherwise
+        // fall back to exponential backoff, capped to avoid unbounded waits.
         const retryAfterRaw: string | undefined =
           (e?.headers as any)?.["Retry-After"] ||
           (e?.headers as any)?.["retry-after"] ||
@@ -712,8 +741,8 @@ export class FakeFsOnedrive extends FakeFs {
           : Math.min(2 ** attempt, 10);
         const waitMs = retryAfterSec * 1000;
         console.warn(
-          `Graph API throttled (429), waiting ${retryAfterSec}s ` +
-            `(attempt ${attempt + 1}/${maxRetries})`
+          `Graph API transient error (status ${status ?? "unknown"}), ` +
+            `waiting ${retryAfterSec}s (attempt ${attempt + 1}/${maxRetries})`
         );
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
@@ -724,7 +753,7 @@ export class FakeFsOnedrive extends FakeFs {
   async _getJson(pathFragOrig: string) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`getJson, theUrl=${theUrl}`);
-    return await this._retryOn429(async () => {
+    return await this._retryOnTransientError(async () => {
       return JSON.parse(
         await request({
           url: theUrl,
@@ -742,7 +771,7 @@ export class FakeFsOnedrive extends FakeFs {
   async _postJson(pathFragOrig: string, payload: any) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`postJson, theUrl=${theUrl}`);
-    return await this._retryOn429(async () => {
+    return await this._retryOnTransientError(async () => {
       return JSON.parse(
         await request({
           url: theUrl,
@@ -760,7 +789,7 @@ export class FakeFsOnedrive extends FakeFs {
   async _patchJson(pathFragOrig: string, payload: any) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`patchJson, theUrl=${theUrl}`);
-    return await this._retryOn429(async () => {
+    return await this._retryOnTransientError(async () => {
       return JSON.parse(
         await request({
           url: theUrl,
@@ -778,7 +807,7 @@ export class FakeFsOnedrive extends FakeFs {
   async _deleteJson(pathFragOrig: string) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`deleteJson, theUrl=${theUrl}`);
-    await this._retryOn429(async () => {
+    await this._retryOnTransientError(async () => {
       if (VALID_REQURL) {
         try {
           await requestUrl({
@@ -827,7 +856,7 @@ export class FakeFsOnedrive extends FakeFs {
   async _putArrayBuffer(pathFragOrig: string, payload: ArrayBuffer) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`putArrayBuffer, theUrl=${theUrl}`);
-    return await this._retryOn429(async () => {
+    return await this._retryOnTransientError(async () => {
       // TODO:
       // 20220401: On Android, requestUrl has issue that text becomes base64.
       // Use fetch everywhere instead!
@@ -888,7 +917,7 @@ export class FakeFsOnedrive extends FakeFs {
         rangeEnd - 1
       }, len=${rangeEnd - rangeStart}, size=${size}`
     );
-    return await this._retryOn429(async () => {
+    return await this._retryOnTransientError(async () => {
       // NO AUTH HEADER here!
       // TODO:
       // 20220401: On Android, requestUrl has issue that text becomes base64.
@@ -1363,7 +1392,7 @@ export class FakeFsOnedrive extends FakeFs {
       // Fallback: when the pre-auth download URL annotation is absent
       // (not reliably returned for OneDrive App Folder), use the standard
       // /content endpoint which returns a 302 redirect to the download URL.
-      return await this._retryOn429(async () => {
+      return await this._retryOnTransientError(async () => {
         const res = await fetch(this._buildUrl(`${key}:/content`), {
           headers: {
             Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
