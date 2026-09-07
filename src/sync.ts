@@ -2161,17 +2161,21 @@ export async function syncer(
 
     profiler?.insert("finish error branch");
   } finally {
+    profiler?.insert("finish syncRun");
+    // console.debug(profiler?.toString());
+    await profiler?.save(db, vaultRandomID, settings.serviceType);
+
+    step = 8;
+    await notifyFunc?.(triggerSource, step);
+    await ribboonFunc?.(triggerSource, step);
+    await statusBarFunc?.(triggerSource, step, everythingOk);
+
+    console.info(`ending sync.`);
+    // Always clear the in-progress flag in `finally` so a throw anywhere in
+    // error handling (errNotifyFunc) or the final status update can never
+    // leave isSyncing stuck true. A stuck flag would make every subsequent
+    // scheduled auto-sync hit the re-entrancy guard in syncRun() and return
+    // silently — i.e. auto sync would look dead until the plugin reloads.
+    markIsSyncingFunc(false);
   }
-
-  profiler?.insert("finish syncRun");
-  // console.debug(profiler?.toString());
-  await profiler?.save(db, vaultRandomID, settings.serviceType);
-
-  step = 8;
-  await notifyFunc?.(triggerSource, step);
-  await ribboonFunc?.(triggerSource, step);
-  await statusBarFunc?.(triggerSource, step, everythingOk);
-
-  console.info(`ending sync.`);
-  markIsSyncingFunc(false);
 }
