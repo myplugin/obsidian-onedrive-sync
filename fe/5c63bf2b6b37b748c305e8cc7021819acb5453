@@ -1,0 +1,48 @@
+docs/architecture/README.md
+  s_e0ad37cc084e4b::t_ea54545bb23ab6 1-11
+docs/remote_services/onedrive/README.md
+  s_e0ad37cc084e4b::t_7508b175354a5e 28-33
+docs/sync_algorithm/README.md
+  s_e0ad37cc084e4b::t_c5d6d9f0b5e7f2 8-12
+docs/guides/README.md
+  s_e0ad37cc084e4b::t_42d37576263b80 1-9
+docs/README.md
+  s_e0ad37cc084e4b::t_7cf646641b3d33 1-23
+docs/browser_env/README.md
+  s_e0ad37cc084e4b::t_05f3e4be04fb08 9-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "fe5c63bf2b6b37b748c305e8cc7021819acb5453",
+  "prompts": {},
+  "sessions": {
+    "s_6f63b4c5ec9287": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f56e4a2e1ffe37Tvd9UZHENhPT",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 4
+    },
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    },
+    "s_e0ad37cc084e4b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57eca5b0ffetPc45nlJx3I41w",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 4
+    }
+  }
+}
