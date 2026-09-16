@@ -431,59 +431,6 @@ export class OnedriveRevokeAuthModal extends Modal {
   }
 }
 
-class SyncConfigDirModal extends Modal {
-  plugin: RemotelySavePlugin;
-  saveDropdownFunc: () => void;
-  constructor(
-    app: App,
-    plugin: RemotelySavePlugin,
-    saveDropdownFunc: () => void
-  ) {
-    super(app);
-    this.plugin = plugin;
-    this.saveDropdownFunc = saveDropdownFunc;
-  }
-
-  async onOpen() {
-    const { contentEl } = this;
-
-    const t = (x: TransItemType, vars?: any) => {
-      return this.plugin.i18n.t(x, vars);
-    };
-
-    t("modal_syncconfig_attn")
-      .split("\n")
-      .forEach((val) => {
-        contentEl.createEl("p", {
-          text: val,
-        });
-      });
-
-    new Setting(contentEl)
-      .addButton((button) => {
-        button.setButtonText(t("modal_syncconfig_secondconfirm"));
-        button.onClick(async () => {
-          this.plugin.settings.syncConfigDir = true;
-          await this.plugin.saveSettings();
-          this.saveDropdownFunc();
-          new Notice(t("modal_syncconfig_notice"));
-          this.close();
-        });
-      })
-      .addButton((button) => {
-        button.setButtonText(t("goback"));
-        button.onClick(() => {
-          this.close();
-        });
-      });
-  }
-
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-  }
-}
-
 class ExportSettingsQrCodeModal extends Modal {
   plugin: RemotelySavePlugin;
   exportType: QRExportType;
@@ -1080,9 +1027,122 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     );
 
     containerEl.createEl("h3", {
-      text: t("settings_section_sync_scope"),
+      text: t("settings_section_obsidian_sync"),
       cls: "rs-subheading",
     });
+
+    // Blacklist notice
+    containerEl.createEl("p", {
+      text: t("settings_blacklist_notice"),
+      cls: "setting-item-description",
+    });
+
+    // syncObsidianConfig (default ON)
+    new Setting(containerEl)
+      .setName(t("settings_obsidian_config"))
+      .setDesc(
+        t("settings_obsidian_config_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncObsidianConfig ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncObsidianConfig = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    // syncAppearance (keep existing)
+    new Setting(containerEl)
+      .setName(t("settings_appearance"))
+      .setDesc(
+        t("settings_appearance_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncAppearance ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncAppearance = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    // syncBookmarks (keep existing)
+    new Setting(containerEl)
+      .setName(t("settings_bookmarks"))
+      .setDesc(
+        t("settings_bookmarks_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncBookmarks ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncBookmarks = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    // syncThirdPartyPlugins (default ON)
+    new Setting(containerEl)
+      .setName(t("settings_third_party_plugins"))
+      .setDesc(
+        t("settings_third_party_plugins_desc", {
+          configDir: this.app.vault.configDir,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncThirdPartyPlugins ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncThirdPartyPlugins = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    // syncSelfPlugin (default ON)
+    new Setting(containerEl)
+      .setName(t("settings_self_plugin"))
+      .setDesc(
+        t("settings_self_plugin_desc", {
+          configDir: this.app.vault.configDir,
+          pluginId: this.plugin.manifest.id,
+        })
+      )
+      .addDropdown((dropdown) => {
+        dropdown.addOption("disable", t("disable"));
+        dropdown.addOption("enable", t("enable"));
+        dropdown
+          .setValue(
+            `${this.plugin.settings.syncSelfPlugin ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            this.plugin.settings.syncSelfPlugin = val === "enable";
+            await this.plugin.saveSettings();
+          });
+      });
 
     new Setting(containerEl)
       .setName(t("settings_syncunderscore"))
@@ -1112,80 +1172,6 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           )
           .onChange(async (val) => {
             this.plugin.settings.syncDotItems = val === "enable";
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName(t("settings_configdir"))
-      .setDesc(
-        t("settings_configdir_desc", {
-          configDir: this.app.vault.configDir,
-        })
-      )
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-
-        const bridge = {
-          secondConfirm: false,
-        };
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncConfigDir ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            if (val === "enable" && !bridge.secondConfirm) {
-              dropdown.setValue("disable");
-              new SyncConfigDirModal(this.app, this.plugin, () => {
-                bridge.secondConfirm = true;
-                dropdown.setValue("enable");
-              }).open();
-            } else {
-              bridge.secondConfirm = false;
-              this.plugin.settings.syncConfigDir = false;
-              await this.plugin.saveSettings();
-            }
-          });
-      });
-
-    new Setting(containerEl)
-      .setName(t("settings_appearance"))
-      .setDesc(
-        t("settings_appearance_desc", {
-          configDir: this.app.vault.configDir,
-        })
-      )
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncAppearance ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            this.plugin.settings.syncAppearance = val === "enable";
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName(t("settings_bookmarks"))
-      .setDesc(
-        t("settings_bookmarks_desc", {
-          configDir: this.app.vault.configDir,
-        })
-      )
-      .addDropdown((dropdown) => {
-        dropdown.addOption("disable", t("disable"));
-        dropdown.addOption("enable", t("enable"));
-
-        dropdown
-          .setValue(
-            `${this.plugin.settings.syncBookmarks ? "enable" : "disable"}`
-          )
-          .onChange(async (val) => {
-            this.plugin.settings.syncBookmarks = val === "enable";
             await this.plugin.saveSettings();
           });
       });
