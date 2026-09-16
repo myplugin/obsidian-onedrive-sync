@@ -1,7 +1,7 @@
 {
   "id": "remotely-save-onedrive",
   "name": "Remotely Save (OneDrive)",
-  "version": "0.6.0",
+  "version": "0.6.3",
   "minAppVersion": "0.13.21",
   "description": "Sync your Obsidian vault with OneDrive (personal, App Folder).",
   "author": "pef",

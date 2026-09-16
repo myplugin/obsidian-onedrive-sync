@@ -403,20 +403,23 @@ export default class RemotelySavePlugin extends Plugin {
             others.length === 0
               ? `${notFound.length} file(s) were deleted on OneDrive since the sync started — skipped. Next sync will re-scan and catch up.\n${shown}`
               : `${notFound.length} file(s) deleted on OneDrive since sync started (skipped): ${shown}`;
-          getNotice(s, msg, 10 * 1000);
+          // Always show errors, even for auto-sync — getNotice suppresses
+          // non-manual triggers, but errors must never be silent.
+          new Notice(msg, 10 * 1000);
           // Invalidate stale delta state for the next sync
           await selfHealStaleDelta();
         }
         // Show remaining (non-404) errors individually
         for (const e of others) {
-          getNotice(s, e.message, 10 * 1000);
+          new Notice(e.message, 10 * 1000);
         }
       } else {
         // Single error — check if it's a REMOTE_NOT_FOUND
         if ((error as any)?.code === "REMOTE_NOT_FOUND") {
           await selfHealStaleDelta();
         }
-        getNotice(s, error?.message ?? "error while sync", 10 * 1000);
+        // Always show errors, even for auto-sync.
+        new Notice(error?.message ?? "error while sync", 10 * 1000);
       }
     };
 
@@ -510,54 +513,64 @@ export default class RemotelySavePlugin extends Plugin {
       );
     };
 
-    await syncer(
-      fsLocal,
-      fsRemote,
-      fsEncrypt,
-      profiler,
-      this.db,
-      triggerSource,
-      profileID,
-      this.vaultRandomID,
-      this.app.vault.configDir,
-      this.settings,
-      this.manifest.version,
-      configSaver,
-      getProtectError,
-      markIsSyncingFunc,
-      notifyFunc,
-      errNotifyFunc,
-      ribboonFunc,
-      statusBarFunc,
-      callbackSyncProcess
-    );
-
-    fsEncrypt.closeResources();
-
-    // Save the remote entity list so the next sync can use it for
-    // incremental delta enumeration (only fetch changed items).
-    // Proactively remove files deleted on OneDrive during this sync
-    // so prevRemoteEntities doesn't contain phantom entries that
-    // would cause 404 on the next sync (OneDrive delta API eventual
-    // consistency may not reflect the deletions yet).
-    if (fsRemote.lastWalkResult && this.isDbReady()) {
-      const deletedKeys = fsRemote.deletedRemotelyKeys;
-      const entities =
-        deletedKeys.size > 0
-          ? fsRemote.lastWalkResult.filter(
-              (e) => !deletedKeys.has(e.keyRaw)
-            )
-          : fsRemote.lastWalkResult;
-      await savePrevRemoteEntities(
+    try {
+      await syncer(
+        fsLocal,
+        fsRemote,
+        fsEncrypt,
+        profiler,
         this.db,
+        triggerSource,
+        profileID,
         this.vaultRandomID,
-        entities
+        this.app.vault.configDir,
+        this.settings,
+        this.manifest.version,
+        configSaver,
+        getProtectError,
+        markIsSyncingFunc,
+        notifyFunc,
+        errNotifyFunc,
+        ribboonFunc,
+        statusBarFunc,
+        callbackSyncProcess
       );
+    } finally {
+      // Ensure resource cleanup, prevRemoteEntities save, and SYNC_DONE
+      // always run — even if syncer throws. Without this, a throw skips
+      // fsEncrypt.closeResources() (resource leak) and SYNC_DONE (blocks
+      // syncOnSave + sidecar reconciliation listeners).
+      try {
+        fsEncrypt.closeResources();
+
+        // Save the remote entity list so the next sync can use it for
+        // incremental delta enumeration (only fetch changed items).
+        // Proactively remove files deleted on OneDrive during this sync
+        // so prevRemoteEntities doesn't contain phantom entries that
+        // would cause 404 on the next sync (OneDrive delta API eventual
+        // consistency may not reflect the deletions yet).
+        if (fsRemote.lastWalkResult && this.isDbReady()) {
+          const deletedKeys = fsRemote.deletedRemotelyKeys;
+          const entities =
+            deletedKeys.size > 0
+              ? fsRemote.lastWalkResult.filter(
+                  (e) => !deletedKeys.has(e.keyRaw)
+                )
+              : fsRemote.lastWalkResult;
+          await savePrevRemoteEntities(
+            this.db,
+            this.vaultRandomID,
+            entities
+          );
+        }
+      } catch (cleanupErr) {
+        console.error("Error during post-sync cleanup:", cleanupErr);
+      }
+
+      (profiler as Profiler | undefined)?.clear();
+
+      this.syncEvent?.trigger("SYNC_DONE");
     }
-
-    (profiler as Profiler | undefined)?.clear();
-
-    this.syncEvent?.trigger("SYNC_DONE");
   }
 
   async onload() {
@@ -1340,7 +1353,9 @@ export default class RemotelySavePlugin extends Plugin {
     ) {
       this.app.workspace.onLayoutReady(() => {
         const intervalID = window.setInterval(() => {
-          this.syncRun("auto");
+          this.syncRun("auto").catch((e) => {
+            console.error("Auto-sync failed:", e);
+          });
         }, this.settings.autoRunEveryMilliseconds);
         this.autoRunIntervalID = intervalID;
         this.registerInterval(intervalID);
@@ -1356,7 +1371,9 @@ export default class RemotelySavePlugin extends Plugin {
     ) {
       this.app.workspace.onLayoutReady(() => {
         window.setTimeout(() => {
-          this.syncRun("auto_once_init");
+          this.syncRun("auto_once_init").catch((e) => {
+            console.error("Init-sync failed:", e);
+          });
         }, this.settings.initRunAfterMilliseconds);
       });
     }
@@ -1399,7 +1416,9 @@ export default class RemotelySavePlugin extends Plugin {
         } else {
           if (this.hasPendingSyncOnSave || caller === "FILE_CHANGES") {
             this.hasPendingSyncOnSave = false;
-            await this.syncRun("auto_sync_on_save");
+            await this.syncRun("auto_sync_on_save").catch((e) => {
+              console.error("Sync-on-save failed:", e);
+            });
           }
           return;
         }
