@@ -1,0 +1,33 @@
+package.json
+  s_e0ad37cc084e4b::t_cbbfe4c3fc52e9 3
+src/main.ts
+  s_e0ad37cc084e4b::t_5ca52ecd41f711 1419-1421
+manifest-beta.json
+  s_e0ad37cc084e4b::t_6773e8e2e27e12 4
+manifest.json
+  s_e0ad37cc084e4b::t_43fad22cff44ef 4
+versions.json
+  s_e0ad37cc084e4b::t_8842881f1bdd53 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "8c79d0f2f6902b98ad4c8a37c1db97a5e9f1b1dc",
+  "prompts": {},
+  "humans": {
+    "h_b8e9e22b7b320f": {
+      "author": "chenyude <chenyude@h-partners.com>"
+    }
+  },
+  "sessions": {
+    "s_e0ad37cc084e4b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57eca5b0ffetPc45nlJx3I41w",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 53
+    }
+  }
+}
