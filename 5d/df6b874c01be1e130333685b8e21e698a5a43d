@@ -1,0 +1,32 @@
+docs/superpowers/specs/2026-09-16-obsidian-config-sync-design.md
+  s_e0ad37cc084e4b::t_6219ade7eff6a9 32,34,36-40,42-44
+  s_e0ad37cc084e4b::t_896e207975493e 2,6,8,10,13,15,17,19,27,29,31,33,35,45,47,54,56,58,60-64,66-67,97-99,103-104,109,111,114,118,120,123-124,126,128,138,140-146,148,150,152,154,156,158,160,162,164,166-168,172-173
+  s_e0ad37cc084e4b::t_5af9a8fb4ca0fa 129-135
+  s_e0ad37cc084e4b::t_76a8e893a0cf7a 1,3-5,7,9,11-12,14,16,18,20-26,28,30,41,46,48-53,55,57,59,65,68-96,100-102,105-108,110,112-113,115-117,119,121-122,125,127,136-137,139,147,149,151,153,155,157,159,161,163,165,169-171,174-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "5ddf6b874c01be1e130333685b8e21e698a5a43d",
+  "prompts": {},
+  "sessions": {
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    },
+    "s_e0ad37cc084e4b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57eca5b0ffetPc45nlJx3I41w",
+        "model": "glm-5.2"
+      },
+      "human_author": null,
+      "total_deletions": 13
+    }
+  }
+}
