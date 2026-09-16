@@ -1,0 +1,30 @@
+docs/superpowers/specs/2026-09-16-obsidian-config-sync-design.md
+  s_e0ad37cc084e4b::t_896e207975493e 1-174,178-226
+  s_e0ad37cc084e4b::t_7d67d9b192c5bc 175-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "1e29aa38e3e44e7c4adf5d04307952e4310210e9",
+  "prompts": {},
+  "sessions": {
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    },
+    "s_e0ad37cc084e4b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57eca5b0ffetPc45nlJx3I41w",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 2
+    }
+  }
+}
