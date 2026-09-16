@@ -30,7 +30,6 @@ import {
   insertSyncPlanRecordByVault,
   upsertPrevSyncRecordByVaultAndProfile,
 } from "./localdb";
-import { shouldSkipSync, splitUploadDownloadOps } from "./syncOptimize";
 import {
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE,
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2,
@@ -46,6 +45,7 @@ import {
   unixTimeToStr,
 } from "./misc";
 import type { Profiler } from "./profiler";
+import { shouldSkipSync, splitUploadDownloadOps } from "./syncOptimize";
 
 const copyEntityAndFixTimeFormat = (
   src: Entity,
@@ -135,13 +135,17 @@ interface IsSkipResult {
 
 export const checkIsSkipItemOrNotByName = (
   key: string,
-  syncConfigDir: boolean,
+  syncObsidianConfig: boolean,
+  syncThirdPartyPlugins: boolean,
+  syncSelfPlugin: boolean,
   syncBookmarks: boolean,
+  syncAppearance: boolean,
   syncUnderscoreItems: boolean,
   syncDotItems: boolean,
   configDir: string,
   ignorePaths: string[],
-  onlyAllowPaths: string[]
+  onlyAllowPaths: string[],
+  selfPluginId: string
 ): IsSkipResult => {
   if (key === undefined) {
     throw Error(`checkIsSkipItemOrNotByName meets undefinded key!`);
@@ -192,36 +196,60 @@ export const checkIsSkipItemOrNotByName = (
     }
   }
 
-  // sync config, not sync bookmarks: sync config and **force syncing bookmarks as well**
-  // not sync config, sync bookmarks: sync bookmars, not other config
-  // not sync config, not sync bookmarks: not sync config
+  // Built-in blacklist: always excluded
+  const OBSIDIAN_BLACKLIST = [
+    "workspace.json",
+    "workspace-mobile.json",
+    "workspaces.json",
+    "core-plugins-migration.json",
+  ];
+  const SELF_PLUGIN_ALLOWED = [
+    "main.js",
+    "manifest.json",
+    "styles.css",
+    "synced_settings.json",
+    ".gitignore",
+  ];
+
   if (finalIsIgnored === undefined) {
-    if (syncConfigDir) {
-      if (isInsideObsFolder(key, configDir)) {
-        // force sync everything
-        finalIsIgnored = false;
-      } else {
-        // not config files, do not judge now, do nothing
-      }
-    } else if (syncBookmarks) {
-      // not sync config, sync bookmarks
-      if (isBookmarksFile(key, configDir)) {
-        // sync everything of bookmarks
-        finalIsIgnored = false;
-      } else if (isInsideObsFolder(key, configDir)) {
-        // not sync any other thing in config
+    if (isInsideObsFolder(key, configDir)) {
+      const basename = normalizedKey.split("/").pop() ?? "";
+      const selfPluginPrefix = `${configDir}/plugins/${selfPluginId}/`;
+      const inSelfPlugin =
+        normalizedKey.startsWith(selfPluginPrefix) ||
+        normalizedKey === `${configDir}/plugins/${selfPluginId}`;
+      const pluginsPrefix = `${configDir}/plugins/`;
+      const inOtherPlugins =
+        normalizedKey.startsWith(pluginsPrefix) && !inSelfPlugin;
+      // Config root (.obsidian/ itself) stays walkable when any toggle is on
+      const isConfigRoot =
+        normalizedKey === `${configDir}/` || normalizedKey === configDir;
+
+      if (isConfigRoot) {
+        finalIsIgnored = !(
+          syncObsidianConfig ||
+          syncAppearance ||
+          syncBookmarks ||
+          syncThirdPartyPlugins ||
+          syncSelfPlugin
+        );
+      } else if (OBSIDIAN_BLACKLIST.includes(basename)) {
         finalIsIgnored = true;
+      } else if (basename === "appearance.json") {
+        finalIsIgnored = !syncAppearance;
+      } else if (basename === "bookmarks.json") {
+        finalIsIgnored = !syncBookmarks;
+      } else if (inSelfPlugin) {
+        finalIsIgnored = SELF_PLUGIN_ALLOWED.includes(basename)
+          ? !syncSelfPlugin
+          : true;
+      } else if (inOtherPlugins) {
+        finalIsIgnored = !syncThirdPartyPlugins;
       } else {
-        // not config files, do not judge now, do nothing
+        finalIsIgnored = !syncObsidianConfig;
       }
     } else {
-      // not sync config, and not sync bookmarks
-      if (isInsideObsFolder(key, configDir)) {
-        // not sync any thing in config
-        finalIsIgnored = true;
-      } else {
-        // not config files, do not judge now, do nothing
-      }
+      // not config files, do not judge now, do nothing
     }
   }
 
@@ -350,13 +378,17 @@ const ensembleMixedEnties = async (
   prevSyncEntityList: Entity[],
   remoteEntityList: Entity[],
 
-  syncConfigDir: boolean,
+  syncObsidianConfig: boolean,
+  syncThirdPartyPlugins: boolean,
+  syncSelfPlugin: boolean,
   syncBookmarks: boolean,
+  syncAppearance: boolean,
   configDir: string,
   syncUnderscoreItems: boolean,
   syncDotItems: boolean,
   ignorePaths: string[],
   onlyAllowPaths: string[],
+  selfPluginId: string,
   fsEncrypt: FakeFsEncrypt,
   serviceType: SUPPORTED_SERVICES_TYPE,
 
@@ -383,13 +415,17 @@ const ensembleMixedEnties = async (
 
     const skipOrNot = checkIsSkipItemOrNotByName(
       key,
-      syncConfigDir,
+      syncObsidianConfig,
+      syncThirdPartyPlugins,
+      syncSelfPlugin,
       syncBookmarks,
+      syncAppearance,
       syncUnderscoreItems,
       syncDotItems,
       configDir,
       ignorePaths,
-      onlyAllowPaths
+      onlyAllowPaths,
+      selfPluginId
     );
     skipOrNotResults[key] = skipOrNot;
     if (skipOrNot.finalIsIgnored && !key.startsWith(configDir)) {
@@ -434,13 +470,17 @@ const ensembleMixedEnties = async (
       if (!(key in skipOrNotResults)) {
         const skipOrNot = checkIsSkipItemOrNotByName(
           key,
-          syncConfigDir,
+          syncObsidianConfig,
+          syncThirdPartyPlugins,
+          syncSelfPlugin,
           syncBookmarks,
+          syncAppearance,
           syncUnderscoreItems,
           syncDotItems,
           configDir,
           ignorePaths,
-          onlyAllowPaths
+          onlyAllowPaths,
+          selfPluginId
         );
         skipOrNotResults[key] = skipOrNot;
       }
@@ -472,13 +512,17 @@ const ensembleMixedEnties = async (
     if (!(key in skipOrNotResults)) {
       const skipOrNot = checkIsSkipItemOrNotByName(
         key,
-        syncConfigDir,
+        syncObsidianConfig,
+        syncThirdPartyPlugins,
+        syncSelfPlugin,
         syncBookmarks,
+        syncAppearance,
         syncUnderscoreItems,
         syncDotItems,
         configDir,
         ignorePaths,
-        onlyAllowPaths
+        onlyAllowPaths,
+        selfPluginId
       );
       skipOrNotResults[key] = skipOrNot;
     }
@@ -1213,8 +1257,11 @@ const getSyncPlanInplace = async (
       service: settings.serviceType,
       concurrency: settings.concurrency,
       hasPassword: settings.password !== "",
-      syncConfigDir: settings.syncConfigDir,
+      syncObsidianConfig: settings.syncObsidianConfig,
+      syncThirdPartyPlugins: settings.syncThirdPartyPlugins,
+      syncSelfPlugin: settings.syncSelfPlugin,
       syncBookmarks: settings.syncBookmarks,
+      syncAppearance: settings.syncAppearance,
       syncUnderscoreItems: settings.syncUnderscoreItems,
       syncDotItems: settings.syncDotItems,
       skipSizeLargerThan: settings.skipSizeLargerThan,
@@ -1816,9 +1863,7 @@ export const doActualSync = async (
       remoteDeltaCount === 0 &&
       conflictAction !== "smart_conflict"
     ) {
-      console.debug(
-        "Skipping onlyMarkSyncedOps: remote unchanged (delta=0)"
-      );
+      console.debug("Skipping onlyMarkSyncedOps: remote unchanged (delta=0)");
       profiler?.insert(
         "doActualSync: skipped step 0 (onlyMarkSyncedOps, delta=0)"
       );
@@ -1843,9 +1888,7 @@ export const doActualSync = async (
       // D optimization: For upload/download step (i=3), split into
       // dual queues for parallel upload+download execution.
       if (i === 3) {
-        const { uploads, downloads } = splitUploadDownloadOps(
-          singleLevelOps
-        );
+        const { uploads, downloads } = splitUploadDownloadOps(singleLevelOps);
         const uploadQueue = new PQueue({
           concurrency,
           autoStart: true,
@@ -1902,10 +1945,7 @@ export const doActualSync = async (
           downloadQueue.add(makeFn(val)).catch(makeCatch());
         }
 
-        await Promise.all([
-          uploadQueue.onIdle(),
-          downloadQueue.onIdle(),
-        ]);
+        await Promise.all([uploadQueue.onIdle(), downloadQueue.onIdle()]);
       } else {
         // Single queue (steps 0-2: onlyMarkSyncedOps, folderCreation, deletion)
         const queue = new PQueue({
@@ -2003,6 +2043,7 @@ export async function syncer(
   profileID: string,
   vaultRandomID: string,
   configDir: string,
+  selfPluginId: string,
   settings: RemotelySavePluginSettings,
   pluginVersion: string,
   configSaver: () => Promise<any>,
@@ -2096,83 +2137,87 @@ export async function syncer(
         "early exit: no changes detected, skipping sync plan and execution"
       );
     } else {
-    step = 6;
-    await notifyFunc?.(triggerSource, step);
-    await ribboonFunc?.(triggerSource, step);
-    await statusBarFunc?.(triggerSource, step, everythingOk);
-    let mixedEntityMappings = await ensembleMixedEnties(
-      localEntityList,
-      prevSyncEntityList,
-      remoteEntityList,
-      settings.syncConfigDir ?? false,
-      settings.syncBookmarks ?? false,
-      configDir,
-      settings.syncUnderscoreItems ?? false,
-      settings.syncDotItems ?? false,
-      settings.ignorePaths ?? [],
-      settings.onlyAllowPaths ?? [],
-      fsEncrypt,
-      settings.serviceType,
-      profiler
-    );
-    profiler?.insert(`finish step${step} (build partial mixedEntity)`);
-
-    mixedEntityMappings = await getSyncPlanInplace(
-      mixedEntityMappings,
-      settings.skipSizeLargerThan ?? -1,
-      settings.conflictAction ?? "keep_newer",
-      settings.syncDirection ?? "bidirectional",
-      profiler,
-      settings,
-      triggerSource,
-      configDir
-    );
-    console.debug(`mixedEntityMappings:`);
-    console.debug(mixedEntityMappings); // for debugging
-    profiler?.insert("finish building full sync plan");
-
-    await insertSyncPlanRecordByVault(
-      db,
-      mixedEntityMappings,
-      vaultRandomID,
-      settings.serviceType
-    );
-    profiler?.insert("finish writing sync plan");
-    profiler?.insert(`finish step${step} (make plan)`);
-
-    // The operations above are almost read only and kind of safe.
-    // The operations below begins to write or delete (!!!) something.
-
-    step = 7;
-    if (triggerSource !== "dry") {
+      step = 6;
       await notifyFunc?.(triggerSource, step);
       await ribboonFunc?.(triggerSource, step);
       await statusBarFunc?.(triggerSource, step, everythingOk);
-      await doActualSync(
-        mixedEntityMappings,
-        fsLocal,
+      let mixedEntityMappings = await ensembleMixedEnties(
+        localEntityList,
+        prevSyncEntityList,
+        remoteEntityList,
+        settings.syncObsidianConfig ?? true,
+        settings.syncThirdPartyPlugins ?? true,
+        settings.syncSelfPlugin ?? true,
+        settings.syncBookmarks ?? false,
+        settings.syncAppearance ?? false,
+        configDir,
+        settings.syncUnderscoreItems ?? false,
+        settings.syncDotItems ?? false,
+        settings.ignorePaths ?? [],
+        settings.onlyAllowPaths ?? [],
+        selfPluginId,
         fsEncrypt,
-        vaultRandomID,
-        profileID,
-        settings.concurrency ?? 5,
-        settings.protectModifyPercentage ?? 50,
-        getProtectModifyPercentageErrorStrFunc,
-        db,
-        profiler,
+        settings.serviceType,
+        profiler
+      );
+      profiler?.insert(`finish step${step} (build partial mixedEntity)`);
+
+      mixedEntityMappings = await getSyncPlanInplace(
+        mixedEntityMappings,
+        settings.skipSizeLargerThan ?? -1,
         settings.conflictAction ?? "keep_newer",
+        settings.syncDirection ?? "bidirectional",
+        profiler,
+        settings,
         triggerSource,
-        callbackSyncProcess,
-        fsRemote.lastWalkDeltaCount
+        configDir
       );
-      profiler?.insert(`finish step${step} (actual sync)`);
-    } else {
-      await notifyFunc?.(triggerSource, step);
-      await ribboonFunc?.(triggerSource, step);
-      await statusBarFunc?.(triggerSource, step, everythingOk);
-      profiler?.insert(
-        `finish step${step} (skip actual sync because of dry run)`
+      console.debug(`mixedEntityMappings:`);
+      console.debug(mixedEntityMappings); // for debugging
+      profiler?.insert("finish building full sync plan");
+
+      await insertSyncPlanRecordByVault(
+        db,
+        mixedEntityMappings,
+        vaultRandomID,
+        settings.serviceType
       );
-    }
+      profiler?.insert("finish writing sync plan");
+      profiler?.insert(`finish step${step} (make plan)`);
+
+      // The operations above are almost read only and kind of safe.
+      // The operations below begins to write or delete (!!!) something.
+
+      step = 7;
+      if (triggerSource !== "dry") {
+        await notifyFunc?.(triggerSource, step);
+        await ribboonFunc?.(triggerSource, step);
+        await statusBarFunc?.(triggerSource, step, everythingOk);
+        await doActualSync(
+          mixedEntityMappings,
+          fsLocal,
+          fsEncrypt,
+          vaultRandomID,
+          profileID,
+          settings.concurrency ?? 5,
+          settings.protectModifyPercentage ?? 50,
+          getProtectModifyPercentageErrorStrFunc,
+          db,
+          profiler,
+          settings.conflictAction ?? "keep_newer",
+          triggerSource,
+          callbackSyncProcess,
+          fsRemote.lastWalkDeltaCount
+        );
+        profiler?.insert(`finish step${step} (actual sync)`);
+      } else {
+        await notifyFunc?.(triggerSource, step);
+        await ribboonFunc?.(triggerSource, step);
+        await statusBarFunc?.(triggerSource, step, everythingOk);
+        profiler?.insert(
+          `finish step${step} (skip actual sync because of dry run)`
+        );
+      }
     } // end skipSync else block — steps 6-7 only run when changes detected
   } catch (error: any) {
     profiler?.insert("start error branch");
