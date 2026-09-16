@@ -1,0 +1,36 @@
+tests/obsidianSyncFilter.test.ts
+  s_6f63b4c5ec9287::t_6ac197d0095064 67,84,142
+  s_6f63b4c5ec9287::t_b8ee733893a36c 1-66,68-83,85-141,143-202
+src/skipFilter.ts
+  s_6f63b4c5ec9287::t_e165e687fbed1e 85-92
+  s_6f63b4c5ec9287::t_a3b28f7652bcab 8-33,35,37-39,47-53,77-79,93-97,99-114,128-155
+  s_6f63b4c5ec9287::t_e17fbc94a13db4 115-127
+tests/sync.test.ts
+  s_6f63b4c5ec9287::t_c6e42c9215f319 4-40,42,45-48,53,56,59,64,67,70,75-78,81-84,88-89,93-94,98-99,103-104,108-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "fe38a6ddab81c16551e4b01f35b46e8f21cf8cbd",
+  "prompts": {},
+  "sessions": {
+    "s_6f63b4c5ec9287": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f56e4a2e1ffe37Tvd9UZHENhPT",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 246
+    },
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    }
+  }
+}
