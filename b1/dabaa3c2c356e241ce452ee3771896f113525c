@@ -1,0 +1,34 @@
+src/baseTypes.ts
+  s_b9e28710875aae::t_470c7a796a3769 68-70
+src/syncSettings.ts
+  s_b9e28710875aae::t_ca775dacf1b9a3 17-19
+src/main.ts
+  s_b9e28710875aae::t_d18bbcd22c52a6 1086-1097
+  s_b9e28710875aae::t_300c95697adbd9 84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "b1dabaa3c2c356e241ce452ee3771896f113525c",
+  "prompts": {},
+  "sessions": {
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    },
+    "s_b9e28710875aae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f56ea7a62ffeZC4dttkwFFjL7u",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 0
+    }
+  }
+}
