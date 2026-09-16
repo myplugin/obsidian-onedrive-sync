@@ -1,0 +1,37 @@
+manifest-beta.json
+  s_6f63b4c5ec9287::t_b4379c9160a9d2 4
+manifest.json
+  s_6f63b4c5ec9287::t_652d6ecfb754a6 4
+package.json
+  s_6f63b4c5ec9287::t_add2100f16c653 3
+versions.json
+  s_6f63b4c5ec9287::t_a3def3fee47e63 4-5
+tests/obsidianSyncMigration.test.ts
+  s_6f63b4c5ec9287::t_3a920c72d2ed12 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "d70eb3882b5dd9aa54c98177b7359ce3a4e8b9de",
+  "prompts": {},
+  "sessions": {
+    "s_6f63b4c5ec9287": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f56e4a2e1ffe37Tvd9UZHENhPT",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 4
+    },
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    }
+  }
+}
