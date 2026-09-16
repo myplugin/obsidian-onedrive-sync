@@ -1,0 +1,33 @@
+tests/obsFolderLister.test.ts
+  s_6f63b4c5ec9287::t_2ee10d2581b956 139
+  s_6f63b4c5ec9287::t_93e20190db14a6 1-138,140-227
+src/obsFolderLister.ts
+  s_6f63b4c5ec9287::t_e1e9bb67df0341 34-45,50-54,56-67,70-84,88-90,92-129,184-186,197
+  s_6f63b4c5ec9287::t_d05406f1a3b251 198-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "7b94cd97158c828dc9ea7ae853f756b8bb7ca3e9",
+  "prompts": {},
+  "sessions": {
+    "s_6f63b4c5ec9287": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f56e4a2e1ffe37Tvd9UZHENhPT",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 25
+    },
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    }
+  }
+}
