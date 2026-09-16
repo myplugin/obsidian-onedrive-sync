@@ -65,6 +65,9 @@ export interface RemotelySavePluginSettings {
 
   concurrency?: number;
   syncConfigDir?: boolean;
+  syncObsidianConfig?: boolean;
+  syncThirdPartyPlugins?: boolean;
+  syncSelfPlugin?: boolean;
   syncBookmarks?: boolean;
   syncAppearance?: boolean;
   syncUnderscoreItems?: boolean;

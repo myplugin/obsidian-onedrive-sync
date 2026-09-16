@@ -81,6 +81,9 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   agreeToUploadExtraMetadata: true, // as of 20240106, it's safe to assume every new user agrees with this
   concurrency: 5,
   syncConfigDir: false,
+  syncObsidianConfig: true,
+  syncThirdPartyPlugins: true,
+  syncSelfPlugin: true,
   syncBookmarks: false,
   syncAppearance: false,
   syncUnderscoreItems: false,
@@ -1079,6 +1082,18 @@ export default class RemotelySavePlugin extends Plugin {
     if (this.settings.profiler.recordSize === undefined) {
       this.settings.profiler.recordSize = false;
     }
+
+    // Migrate old syncConfigDir to new toggles
+    if (this.settings.syncConfigDir === true) {
+      this.settings.syncObsidianConfig = true;
+      this.settings.syncThirdPartyPlugins = true;
+      this.settings.syncSelfPlugin = true;
+      this.settings.syncConfigDir = false;
+    }
+    // Apply defaults for new fields if missing
+    this.settings.syncObsidianConfig ??= true;
+    this.settings.syncThirdPartyPlugins ??= true;
+    this.settings.syncSelfPlugin ??= true;
 
     await this.saveSettings();
   }
