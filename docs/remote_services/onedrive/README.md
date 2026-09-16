@@ -25,3 +25,9 @@ The solution is simple:
 ### Empty file is not uploaded
 
 Onedrive's API does not allow uploading empty files. You can choose to skip them or raise errors in Remotely Save plugin's settings.
+
+## Related
+
+- [Browser Environment: OAuth PKCE](../../browser_env/oauth2_pkce.md) — why the OAuth flow requires PKCE
+- [Browser Environment: CORS](../../browser_env/cors.md) — cross-origin request limitations
+- [Encryption](../../encryption/README.md) — password-based end-to-end encryption
