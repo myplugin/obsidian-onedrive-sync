@@ -1,0 +1,35 @@
+src/langs/en.json
+  s_6f63b4c5ec9287::t_5cf3f1aa814c78 294-301
+src/langs/zh_cn.json
+  s_6f63b4c5ec9287::t_5cf3f1aa814c78 295-302
+src/settings.ts
+  s_6f63b4c5ec9287::t_160d189835ce87 1030,1034-1040,1042-1047,1053,1056,1061,1063-1068,1074,1077,1082,1084,1086,1096,1099-1100,1104,1106,1108,1117,1120,1125,1127,1129,1131,1137-1161,1163-1168,1171,1174
+src/langs/zh_tw.json
+  s_6f63b4c5ec9287::t_5cf3f1aa814c78 294-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "59e310a347a1afefac3c5afcc890e32f8783dfb2",
+  "prompts": {},
+  "sessions": {
+    "s_6f63b4c5ec9287": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f56e4a2e1ffe37Tvd9UZHENhPT",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 117
+    },
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    }
+  }
+}
