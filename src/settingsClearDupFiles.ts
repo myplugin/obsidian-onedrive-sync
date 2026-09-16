@@ -75,7 +75,9 @@ export const generateClearDupFilesSettingsPart = (
       button.onClick(async () => {
         const fsLocal = new FakeFsLocal(
           app.vault,
-          plugin.settings.syncConfigDir ?? false,
+          plugin.settings.syncObsidianConfig ?? true,
+          plugin.settings.syncThirdPartyPlugins ?? true,
+          plugin.settings.syncSelfPlugin ?? true,
           plugin.settings.syncBookmarks ?? false,
           plugin.settings.syncAppearance ?? false,
           app.vault.configDir,

@@ -195,7 +195,9 @@ export default class RemotelySavePlugin extends Plugin {
     }
     const fsLocal = new FakeFsLocal(
       this.app.vault,
-      this.settings.syncConfigDir ?? false,
+      this.settings.syncObsidianConfig ?? true,
+      this.settings.syncThirdPartyPlugins ?? true,
+      this.settings.syncSelfPlugin ?? true,
       this.settings.syncBookmarks ?? false,
       this.settings.syncAppearance ?? false,
       this.app.vault.configDir,
@@ -396,9 +398,7 @@ export default class RemotelySavePlugin extends Plugin {
         }
         // Aggregated notice for files deleted on OneDrive mid-sync
         if (notFound.length > 0) {
-          const keys = notFound
-            .map((e) => e.key as string)
-            .filter(Boolean);
+          const keys = notFound.map((e) => e.key as string).filter(Boolean);
           const shown =
             keys.length > 5
               ? `${keys.slice(0, 5).join(", ")}, … (+${keys.length - 5} more)`
@@ -528,6 +528,7 @@ export default class RemotelySavePlugin extends Plugin {
         profileID,
         this.vaultRandomID,
         this.app.vault.configDir,
+        this.manifest.id,
         this.settings,
         this.manifest.version,
         configSaver,
@@ -572,11 +573,7 @@ export default class RemotelySavePlugin extends Plugin {
               }
             }
           }
-          await savePrevRemoteEntities(
-            this.db,
-            this.vaultRandomID,
-            entities
-          );
+          await savePrevRemoteEntities(this.db, this.vaultRandomID, entities);
         }
       } catch (cleanupErr) {
         console.error("Error during post-sync cleanup:", cleanupErr);
@@ -1499,7 +1496,9 @@ export default class RemotelySavePlugin extends Plugin {
         // listen to current file save changes
         // Use _syncOnSaveModifyHandler for "modify" to track the actual
         // modified file, not just getActiveFile() at throttle time.
-        this.registerEvent(this.app.vault.on("modify", this._syncOnSaveModifyHandler));
+        this.registerEvent(
+          this.app.vault.on("modify", this._syncOnSaveModifyHandler)
+        );
         this.registerEvent(this.app.vault.on("create", this._syncOnSaveEvent2));
         this.registerEvent(this.app.vault.on("delete", this._syncOnSaveEvent2));
         this.registerEvent(this.app.vault.on("rename", this._syncOnSaveEvent2));
@@ -1541,7 +1540,9 @@ export default class RemotelySavePlugin extends Plugin {
                 const filePath = file.path;
                 const fsLocal = new FakeFsLocal(
                   this.app.vault,
-                  this.settings.syncConfigDir ?? false,
+                  this.settings.syncObsidianConfig ?? true,
+                  this.settings.syncThirdPartyPlugins ?? true,
+                  this.settings.syncSelfPlugin ?? true,
                   this.settings.syncBookmarks ?? false,
                   this.settings.syncAppearance ?? false,
                   this.app.vault.configDir,

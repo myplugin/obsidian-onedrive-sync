@@ -8,7 +8,9 @@ import type { Profiler } from "./profiler";
 
 export class FakeFsLocal extends FakeFs {
   vault: Vault;
-  syncConfigDir: boolean;
+  syncObsidianConfig: boolean;
+  syncThirdPartyPlugins: boolean;
+  syncSelfPlugin: boolean;
   syncBookmarks: boolean;
   syncAppearance: boolean;
   configDir: string;
@@ -18,7 +20,9 @@ export class FakeFsLocal extends FakeFs {
   kind: "local";
   constructor(
     vault: Vault,
-    syncConfigDir: boolean,
+    syncObsidianConfig: boolean,
+    syncThirdPartyPlugins: boolean,
+    syncSelfPlugin: boolean,
     syncBookmarks: boolean,
     syncAppearance: boolean,
     configDir: string,
@@ -29,7 +33,9 @@ export class FakeFsLocal extends FakeFs {
     super();
 
     this.vault = vault;
-    this.syncConfigDir = syncConfigDir;
+    this.syncObsidianConfig = syncObsidianConfig;
+    this.syncThirdPartyPlugins = syncThirdPartyPlugins;
+    this.syncSelfPlugin = syncSelfPlugin;
     this.syncBookmarks = syncBookmarks;
     this.syncAppearance = syncAppearance;
     this.configDir = configDir;
@@ -102,15 +108,23 @@ export class FakeFsLocal extends FakeFs {
 
     this.profiler?.insert("finish transforming walk for local");
 
-    if (this.syncConfigDir || this.syncBookmarks) {
-      this.profiler?.insert("into syncConfigDir or syncBookmarks");
-      const bookmarksOnly = !this.syncConfigDir;
+    if (
+      this.syncObsidianConfig ||
+      this.syncBookmarks ||
+      this.syncThirdPartyPlugins ||
+      this.syncSelfPlugin ||
+      this.syncAppearance
+    ) {
+      this.profiler?.insert("into obsidian config sync");
       const syncFiles = await listFilesInObsFolder(
         this.configDir,
         this.vault,
         this.pluginID,
-        bookmarksOnly,
-        this.syncAppearance
+        this.syncObsidianConfig,
+        this.syncAppearance,
+        this.syncBookmarks,
+        this.syncThirdPartyPlugins,
+        this.syncSelfPlugin
       );
       // console.debug(`syncFiles in obs: ${JSON.stringify(syncFiles, null, 2)}`);
       for (const f of syncFiles) {
