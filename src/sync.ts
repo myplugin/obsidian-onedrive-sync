@@ -240,9 +240,19 @@ export const checkIsSkipItemOrNotByName = (
       } else if (basename === "bookmarks.json") {
         finalIsIgnored = !syncBookmarks;
       } else if (inSelfPlugin) {
-        finalIsIgnored = SELF_PLUGIN_ALLOWED.includes(basename)
-          ? !syncSelfPlugin
-          : true;
+        if (normalizedKey.endsWith("/")) {
+          // Folder: include if syncSelfPlugin (don't filter by SELF_PLUGIN_ALLOWED)
+          finalIsIgnored = !syncSelfPlugin;
+        } else {
+          finalIsIgnored = SELF_PLUGIN_ALLOWED.includes(basename)
+            ? !syncSelfPlugin
+            : true;
+        }
+      } else if (
+        // The plugins/ directory itself: include if either plugin toggle is on
+        normalizedKey === `${configDir}/plugins/`
+      ) {
+        finalIsIgnored = !(syncSelfPlugin || syncThirdPartyPlugins);
       } else if (inOtherPlugins) {
         finalIsIgnored = !syncThirdPartyPlugins;
       } else {

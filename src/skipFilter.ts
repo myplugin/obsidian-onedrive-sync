@@ -131,12 +131,20 @@ export function checkIsSkipItemOrNotByName(
     } else if (basename === "bookmarks.json") {
       finalIsIgnored = !syncBookmarks;
     } else if (inSelfPlugin) {
-      // Self plugin directory: only sync allowed files
-      if (SELF_PLUGIN_ALLOWED.includes(basename)) {
+      // Self plugin directory
+      if (normalizedKey.endsWith("/")) {
+        // Folder: include if syncSelfPlugin (don't filter by SELF_PLUGIN_ALLOWED)
+        finalIsIgnored = !syncSelfPlugin;
+      } else if (SELF_PLUGIN_ALLOWED.includes(basename)) {
         finalIsIgnored = !syncSelfPlugin;
       } else {
         finalIsIgnored = true; // e.g. data.json
       }
+    } else if (
+      // The plugins/ directory itself: include if either plugin toggle is on
+      normalizedKey === `${obsidianFolder}/plugins/`
+    ) {
+      finalIsIgnored = !(syncSelfPlugin || syncThirdPartyPlugins);
     } else if (inOtherPlugins) {
       finalIsIgnored = !syncThirdPartyPlugins;
     } else {
