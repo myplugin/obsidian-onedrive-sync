@@ -1095,7 +1095,15 @@ const getSyncPlanInplace = async (
           prevSync.sizeEnc === local.sizeEnc
         ) {
           // if A is in the previous list and UNMODIFIED, A has been deleted by B
-          if (
+          // But if the file was synthesized (never actually uploaded to OneDrive
+          // because emptyFile: "skip"), don't treat it as "remote deleted" —
+          // re-push instead to avoid deleting empty notes.
+          if (prevSync.synthesizedFile === true) {
+            mixedEntry.decisionBranch = 10;
+            mixedEntry.decision = "local_is_modified_then_push";
+            mixedEntry.change = true;
+            keptFolder.add(getParentFolder(key));
+          } else if (
             syncDirection === "incremental_push_only" ||
             syncDirection === "incremental_push_and_delete_only"
           ) {
@@ -1871,7 +1879,13 @@ export const doActualSync = async (
         };
 
         const makeCatch = () => (e: any) => {
-          potentialErrors.push(new Error(e.message));
+          // Preserve .code and .key from the original error so
+          // errNotifyFunc can identify REMOTE_NOT_FOUND and trigger
+          // the self-heal (clearing stale delta state).
+          const wrapped = new Error(e.message);
+          (wrapped as any).code = (e as any)?.code;
+          (wrapped as any).key = (e as any)?.key;
+          potentialErrors.push(wrapped);
           if (potentialErrors.length >= 3) {
             tooManyErrors = true;
             uploadQueue.pause();
@@ -1928,7 +1942,13 @@ export const doActualSync = async (
 
           queue.add(fn).catch((e) => {
             const msg = `${key}: ${e.message}`;
-            potentialErrors.push(new Error(msg));
+            // Preserve .code and .key from the original error so
+            // errNotifyFunc can identify REMOTE_NOT_FOUND and trigger
+            // the self-heal (clearing stale delta state).
+            const wrapped = new Error(msg);
+            (wrapped as any).code = (e as any)?.code;
+            (wrapped as any).key = (e as any)?.key;
+            potentialErrors.push(wrapped);
             if (potentialErrors.length >= 3) {
               tooManyErrors = true;
               queue.pause();

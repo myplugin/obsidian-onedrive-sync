@@ -15,7 +15,7 @@ export const getDupFiles = async (fsLocal: FakeFsLocal) => {
     if (keyRaw.endsWith("/")) {
       continue;
     }
-    if (keyRaw.includes("dup")) {
+    if (keyRaw.includes(".dup")) {
       filenameSet.add(keyRaw);
     }
 

@@ -102,7 +102,14 @@ export function shouldSkipSync(
       if (localEntity.mtimeCli !== prevEntity.mtimeCli) {
         return false;
       }
-      if (localEntity.size !== prevEntity.size) {
+      // Only compare size when both sides have it. For encrypted vaults,
+      // prevEntity.size is undefined (set by fsEncrypt during walk), so
+      // we can't compare sizes at this stage — rely on mtime + count only.
+      if (
+        localEntity.size !== undefined &&
+        prevEntity.size !== undefined &&
+        localEntity.size !== prevEntity.size
+      ) {
         return false;
       }
     }

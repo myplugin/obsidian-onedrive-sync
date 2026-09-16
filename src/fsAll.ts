@@ -25,6 +25,15 @@ export abstract class FakeFs {
    * delta API hasn't yet reflected the deletions (eventual consistency).
    */
   deletedRemotelyKeys: Set<string> = new Set();
+  /**
+   * Entities uploaded to the remote during the current sync (via writeFile).
+   * main.ts uses this after sync to ADD uploaded entries to
+   * lastWalkResult before saving as prevRemoteEntities — preventing
+   * the next sync from seeing just-uploaded files as "remote deleted"
+   * when OneDrive's delta API hasn't yet reflected the uploads
+   * (eventual consistency lag, especially with syncOnSave rapid re-sync).
+   */
+  uploadedEntities: Entity[] = [];
   abstract walk(): Promise<Entity[]>;
   abstract walkPartial(): Promise<Entity[]>;
   abstract stat(key: string): Promise<Entity>;

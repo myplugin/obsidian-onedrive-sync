@@ -61,11 +61,10 @@ function getLCSText(a: string, b: string) {
 
   const k: string[] = [];
 
-  do {
+  while (raw !== null && raw !== undefined && raw.buffer1index !== -1) {
     k.unshift(aa[raw.buffer1index]);
-
     raw = raw.chain as any;
-  } while (raw !== null && raw !== undefined && raw.buffer1index !== -1);
+  }
 
   return k.join("\n");
 }

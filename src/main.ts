@@ -167,6 +167,7 @@ export default class RemotelySavePlugin extends Plugin {
   db!: InternalDBs;
   isSyncing!: boolean;
   hasPendingSyncOnSave!: boolean;
+  lastModifiedFile: any = null;
   statusBarElement!: HTMLSpanElement;
   oauth2Info!: OAuth2Info;
   currLogLevel!: string;
@@ -556,7 +557,18 @@ export default class RemotelySavePlugin extends Plugin {
               ? fsRemote.lastWalkResult.filter(
                   (e) => !deletedKeys.has(e.keyRaw)
                 )
-              : fsRemote.lastWalkResult;
+              : [...fsRemote.lastWalkResult];
+          // Merge in files uploaded during this sync so the next sync's
+          // delta merge has them even if the OneDrive delta API hasn't
+          // reflected the uploads yet (eventual consistency lag).
+          if (fsRemote.uploadedEntities.length > 0) {
+            const existingKeys = new Set(entities.map((e) => e.keyRaw));
+            for (const uploaded of fsRemote.uploadedEntities) {
+              if (!existingKeys.has(uploaded.keyRaw)) {
+                entities.push(uploaded);
+              }
+            }
+          }
           await savePrevRemoteEntities(
             this.db,
             this.vaultRandomID,
@@ -1381,7 +1393,13 @@ export default class RemotelySavePlugin extends Plugin {
 
   async _checkCurrFileModified(caller: "SYNC" | "FILE_CHANGES") {
     console.debug(`inside checkCurrFileModified`);
-    const currentFile = this.app.workspace.getActiveFile();
+    // For FILE_CHANGES, use the actual modified file (tracked by
+    // _syncOnSaveModifyHandler) instead of getActiveFile(), which may
+    // return a different file if the user switched after saving.
+    const currentFile =
+      caller === "FILE_CHANGES" && this.lastModifiedFile
+        ? this.lastModifiedFile
+        : this.app.workspace.getActiveFile();
 
     if (currentFile) {
       console.debug(`we have currentFile=${currentFile.path}`);
@@ -1432,6 +1450,14 @@ export default class RemotelySavePlugin extends Plugin {
     this._checkCurrFileModified("SYNC");
   };
 
+  _syncOnSaveModifyHandler = (file: any) => {
+    // Track the actual modified file (not just getActiveFile()) so
+    // _checkCurrFileModified checks the right file even if the user
+    // switched to a different file before the throttle fires.
+    this.lastModifiedFile = file;
+    this._syncOnSaveEvent2();
+  };
+
   _syncOnSaveEvent2 = throttle(
     async () => {
       await this._checkCurrFileModified("FILE_CHANGES");
@@ -1456,14 +1482,16 @@ export default class RemotelySavePlugin extends Plugin {
         );
 
         // listen to current file save changes
-        this.registerEvent(this.app.vault.on("modify", this._syncOnSaveEvent2));
+        // Use _syncOnSaveModifyHandler for "modify" to track the actual
+        // modified file, not just getActiveFile() at throttle time.
+        this.registerEvent(this.app.vault.on("modify", this._syncOnSaveModifyHandler));
         this.registerEvent(this.app.vault.on("create", this._syncOnSaveEvent2));
         this.registerEvent(this.app.vault.on("delete", this._syncOnSaveEvent2));
         this.registerEvent(this.app.vault.on("rename", this._syncOnSaveEvent2));
       });
     } else {
       this.syncEvent?.off("SYNC_DONE", this._syncOnSaveEvent1);
-      this.app.vault.off("modify", this._syncOnSaveEvent2);
+      this.app.vault.off("modify", this._syncOnSaveModifyHandler);
       this.app.vault.off("create", this._syncOnSaveEvent2);
       this.app.vault.off("delete", this._syncOnSaveEvent2);
       this.app.vault.off("rename", this._syncOnSaveEvent2);

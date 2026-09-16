@@ -1,6 +1,6 @@
 {
   "name": "remotely-save-onedrive",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Sync your Obsidian vault with OneDrive (personal, App Folder).",
   "scripts": {
     "dev": "node esbuild.config.mjs --watch",
@@ -44,6 +44,7 @@
     "@types/mustache": "^4.2.5",
     "@types/node": "^20.14.12",
     "@types/qrcode": "^1.5.5",
+    "c8": "^12.0.0",
     "dotenv": "^16.4.5",
     "esbuild": "^0.23.0",
     "esbuild-plugin-inline-worker": "^0.1.1",

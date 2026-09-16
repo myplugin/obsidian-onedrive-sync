@@ -630,3 +630,26 @@ describe("Misc: testPathAgainstRegexList slash compatibility", () => {
     });
   });
 });
+
+describe("Misc: isSpecialFolderNameToSkip [L1 fix]", () => {
+  // L1: "__MACOSX " had a trailing space that prevented matching real
+  // __MACOSX folders. After the fix, it matches correctly.
+  it("should match __MACOSX folder (no trailing space)", () => {
+    assert.ok(misc.isSpecialFolderNameToSkip("__MACOSX", []));
+  });
+
+  it("should match __MACOSX as a subfolder path", () => {
+    assert.ok(misc.isSpecialFolderNameToSkip("some/__MACOSX", []));
+  });
+
+  it("should still match other special folders", () => {
+    assert.ok(misc.isSpecialFolderNameToSkip(".git", []));
+    assert.ok(misc.isSpecialFolderNameToSkip("node_modules", []));
+    assert.ok(misc.isSpecialFolderNameToSkip(".DS_Store", []));
+  });
+
+  it("should NOT match non-special folders", () => {
+    assert.ok(!misc.isSpecialFolderNameToSkip("my_folder", []));
+    assert.ok(!misc.isSpecialFolderNameToSkip("notes", []));
+  });
+});

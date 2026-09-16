@@ -1,4 +1,4 @@
-import { deepStrictEqual, rejects, throws } from "assert";
+import { deepStrictEqual, ok, rejects, throws } from "assert";
 import {
   getFileRenameForDup,
   threeWayMerge,
@@ -292,5 +292,42 @@ bbb
 * [ ] A4
 `;
     deepStrictEqual(expected, res);
+  });
+});
+
+describe("Two way merge: no common lines [M2 fix]", () => {
+  // M2: getLCSText's do...while bug pushed aa[-1]=undefined when LCS was
+  // empty, producing "undefined" as the common ancestor string. After the
+  // fix (while loop), empty LCS returns "" and merges are sensible.
+  it("should not produce 'undefined' string when texts have no common lines", () => {
+    const a = "line1\nline2";
+    const b = "line3\nline4";
+    const result = twoWayMerge(a, b);
+    ok(
+      !result.includes("undefined"),
+      `result should not contain 'undefined': ${result}`
+    );
+  });
+
+  it("should handle completely different single-line texts", () => {
+    const a = "hello";
+    const b = "world";
+    const result = twoWayMerge(a, b);
+    ok(result.length > 0);
+    ok(
+      !result.includes("undefined"),
+      `result should not contain 'undefined': ${result}`
+    );
+  });
+
+  it("should still merge correctly when texts share common lines", () => {
+    const a = "shared\nlineA";
+    const b = "shared\nlineB";
+    const result = twoWayMerge(a, b);
+    ok(result.includes("shared"));
+    ok(
+      !result.includes("undefined"),
+      `result should not contain 'undefined': ${result}`
+    );
   });
 });

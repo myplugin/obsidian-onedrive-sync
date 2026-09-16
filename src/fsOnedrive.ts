@@ -544,6 +544,7 @@ ${constructFromDriveItemToEntityError(x)}`
 class MyAuthProvider implements AuthenticationProvider {
   onedriveConfig: OnedriveConfig;
   saveUpdatedConfigFunc: () => Promise<any>;
+  private refreshPromise: Promise<string> | null = null;
   constructor(
     onedriveConfig: OnedriveConfig,
     saveUpdatedConfigFunc: () => Promise<any>
@@ -564,28 +565,44 @@ class MyAuthProvider implements AuthenticationProvider {
     if (this.onedriveConfig.accessTokenExpiresAtTime > currentTs) {
       return this.onedriveConfig.accessToken;
     } else {
-      // use refreshToken to refresh
-      const r = await sendRefreshTokenReq(
-        this.onedriveConfig.clientID,
-        this.onedriveConfig.authority,
-        this.onedriveConfig.refreshToken
-      );
-      if ((r as any).error !== undefined) {
-        const r2 = r as AccessCodeResponseFailedType;
-        throw Error(
-          `Error while refreshing accessToken: ${r2.error}, ${r2.error_codes}: ${r2.error_description}`
-        );
+      // Token refresh mutex: if a refresh is already in-flight,
+      // await the same promise instead of initiating a concurrent
+      // refresh. Microsoft rotates refresh tokens, so concurrent
+      // refreshes can invalidate each other (invalid_grant error).
+      if (this.refreshPromise !== null) {
+        return this.refreshPromise;
       }
-      const r2 = r as AccessCodeResponseSuccessfulType;
-      this.onedriveConfig.accessToken = r2.access_token;
-      this.onedriveConfig.refreshToken = r2.refresh_token!;
-      this.onedriveConfig.accessTokenExpiresInSeconds = r2.expires_in;
-      this.onedriveConfig.accessTokenExpiresAtTime =
-        currentTs + r2.expires_in * 1000 - 60 * 2 * 1000;
-      await this.saveUpdatedConfigFunc();
-      console.info("Onedrive accessToken updated");
-      return this.onedriveConfig.accessToken;
+      this.refreshPromise = this._doRefresh();
+      try {
+        return await this.refreshPromise;
+      } finally {
+        this.refreshPromise = null;
+      }
     }
+  }
+
+  private async _doRefresh(): Promise<string> {
+    const currentTs = Date.now();
+    const r = await sendRefreshTokenReq(
+      this.onedriveConfig.clientID,
+      this.onedriveConfig.authority,
+      this.onedriveConfig.refreshToken
+    );
+    if ((r as any).error !== undefined) {
+      const r2 = r as AccessCodeResponseFailedType;
+      throw Error(
+        `Error while refreshing accessToken: ${r2.error}, ${r2.error_codes}: ${r2.error_description}`
+      );
+    }
+    const r2 = r as AccessCodeResponseSuccessfulType;
+    this.onedriveConfig.accessToken = r2.access_token;
+    this.onedriveConfig.refreshToken = r2.refresh_token!;
+    this.onedriveConfig.accessTokenExpiresInSeconds = r2.expires_in;
+    this.onedriveConfig.accessTokenExpiresAtTime =
+      currentTs + r2.expires_in * 1000 - 60 * 2 * 1000;
+    await this.saveUpdatedConfigFunc();
+    console.info("Onedrive accessToken updated");
+    return this.onedriveConfig.accessToken;
   }
 }
 
@@ -1159,7 +1176,7 @@ export class FakeFsOnedrive extends FakeFs {
     await this._init();
     const uploadFile = getOnedrivePath(key, this.remoteBaseDir);
     console.debug(`uploadFile=${uploadFile}`);
-    return await this._writeFileFromRoot(
+    const result = await this._writeFileFromRoot(
       uploadFile,
       content,
       mtime,
@@ -1167,6 +1184,14 @@ export class FakeFsOnedrive extends FakeFs {
       key,
       this.onedriveConfig.emptyFile
     );
+    // Track non-synthesized uploads so main.ts can merge them into
+    // prevRemoteEntities — prevents the next sync from seeing
+    // just-uploaded files as "remote deleted" when the delta API
+    // hasn't reflected the upload yet.
+    if (!result.synthesizedFile) {
+      this.uploadedEntities.push(result);
+    }
+    return result;
   }
 
   async _writeFileFromRoot(

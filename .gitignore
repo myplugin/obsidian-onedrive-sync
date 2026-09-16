@@ -17,9 +17,12 @@ data.json
 # debug
 logs.txt
 
+# test coverage (c8 output)
+coverage
+coverage_output.txt
+
 # hidden files
 .*
 
 # local AI agent docs (not published)
-AGENTS.md
 CLEANROOM_PROGRESS.md

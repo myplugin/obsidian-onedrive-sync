@@ -343,3 +343,30 @@ describe("buildDeltaStartUrl", () => {
     assert.ok(result.includes("$select="));
   });
 });
+
+describe("shouldSkipSync: encrypted vault (prevEntity.size=undefined) [C3 fix]", () => {
+  // C3: For encrypted vaults, fsEncrypt._dealWithWalk sets size=undefined
+  // for files. shouldSkipSync must not compare size when either side is
+  // undefined — it should rely on mtime + count only.
+  it("should skip when prevEntity.size is undefined and mtime matches", () => {
+    const local = [makeFile("a.md", 1000, 100)];
+    const prev = [makeFile("a.md", 1000, 100)];
+    prev[0].size = undefined; // simulate encrypted vault
+    assert.ok(shouldSkipSync(0, local, prev));
+  });
+
+  it("should NOT skip when prevEntity.size is undefined but mtime changed", () => {
+    const local = [makeFile("a.md", 2000, 100)];
+    const prev = [makeFile("a.md", 1000, 100)];
+    prev[0].size = undefined; // simulate encrypted vault
+    assert.ok(!shouldSkipSync(0, local, prev));
+  });
+
+  it("should skip when both sizes are undefined and mtime matches", () => {
+    const local = [makeFile("a.md", 1000, 100)];
+    const prev = [makeFile("a.md", 1000, 100)];
+    local[0].size = undefined;
+    prev[0].size = undefined;
+    assert.ok(shouldSkipSync(0, local, prev));
+  });
+});

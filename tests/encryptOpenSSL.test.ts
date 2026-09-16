@@ -2,8 +2,10 @@ import { strict as assert } from "assert";
 import * as fs from "fs";
 import * as path from "path";
 import {
+  MAGIC_ENCRYPTED_PREFIX_BASE64URL,
   decryptArrayBuffer,
   decryptBase32ToString,
+  decryptBase64urlToString,
   encryptArrayBuffer,
   encryptStringToBase32,
   encryptStringToBase64url,
@@ -159,5 +161,66 @@ describe("Encryption OpenSSL tests", () => {
 
     const { minSize, maxSize } = getSizeFromEncToOrig(14787232);
     assert.ok(minSize <= 14787203 && 14787203 <= maxSize);
+  });
+
+  it("should encrypt and decrypt a string via base64url round trip", async () => {
+    const k = "jfkkjkjbce7983ycdeknkkjckooAIUHIDIBIE((*BII)njD/d/dd/d/sjxhux";
+    const password = "hfiuibec989###oiu982bj1`";
+    const enc = await encryptStringToBase64url(k, password);
+    assert.notEqual(enc, k);
+    const dec = await decryptBase64urlToString(enc, password);
+    assert.equal(dec, k);
+  });
+
+  it("should round trip unicode text via base64url", async () => {
+    const k = "中文 🍎 emoji test — ünïcödé";
+    const password = "pw-unicode";
+    const enc = await encryptStringToBase64url(k, password);
+    const dec = await decryptBase64urlToString(enc, password);
+    assert.equal(dec, k);
+  });
+
+  it("should round trip an empty string via base64url", async () => {
+    const password = "pw-empty";
+    const enc = await encryptStringToBase64url("", password);
+    // even empty plaintext produces the Salted__ prefix + salt + one block
+    assert.ok(enc.startsWith(MAGIC_ENCRYPTED_PREFIX_BASE64URL));
+    const dec = await decryptBase64urlToString(enc, password);
+    assert.equal(dec, "");
+  });
+
+  it("should raise error decrypting base64url with a different password", async () => {
+    // fixed salt keeps the padding-check failure deterministic
+    const enc = await encryptStringToBase64url(
+      "secret text",
+      "hey",
+      undefined,
+      "8302F586FAB491EC"
+    );
+    await assert.rejects(decryptBase64urlToString(enc, "hey2"));
+  });
+
+  it("should produce the openssl magic prefix in base64url output", async () => {
+    const saltHex = "8302F586FAB491EC";
+    const enc = await encryptStringToBase64url(
+      "hello",
+      "somepassword",
+      undefined,
+      saltHex
+    );
+    assert.ok(enc.startsWith(MAGIC_ENCRYPTED_PREFIX_BASE64URL));
+  });
+
+  it("should honor a custom rounds value on base64url decryption", async () => {
+    const k = "round trip with custom rounds";
+    const password = "pw-rounds";
+    const rounds = 1000;
+    // fixed salt keeps the wrong-rounds failure deterministic
+    const saltHex = "8302F586FAB491EC";
+    const enc = await encryptStringToBase64url(k, password, rounds, saltHex);
+    const dec = await decryptBase64urlToString(enc, password, rounds);
+    assert.equal(dec, k);
+    // decrypting with the wrong number of rounds must fail
+    await assert.rejects(decryptBase64urlToString(enc, password, rounds + 1));
   });
 });
