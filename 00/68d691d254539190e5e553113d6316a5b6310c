@@ -1,0 +1,158 @@
+src/misc.ts
+  s_a079ebc3064132::t_92d0d3309f03fe 456
+tests/localdb.test.ts
+  s_a50ee4e2265a03::t_87e2247b7a6197 1-157,161-200,204-219,223-330,335-345,349-352,371-514,518-704
+  s_a50ee4e2265a03::t_440fac8c0530b8 158-160,201-203,220-222,331-334,346-348,515-517
+  s_a50ee4e2265a03::t_37d6e6ca6fcc89 353-358,363-370
+  s_a50ee4e2265a03::t_2644b9ec0981fe 359-362
+src/sync.ts
+  s_e0ad37cc084e4b::t_0e0fc153ff7437 1945-1951
+  s_e0ad37cc084e4b::t_3c0f1b20a57c58 1098-1106
+  s_e0ad37cc084e4b::t_ce120cade1c080 1882-1888
+tests/miscCoverage.test.ts
+  s_e0ad37cc084e4b::t_2ad8f6d2d1adb9 12,23,33,39,43,47,51,59,67,73,79,85,91,97,103,109,115,121,127,135,146,152,156,160,165,169,173,182,188,192,196,202,206,209-273
+  s_e0ad37cc084e4b::t_4cfbeb20533aa2 9-11
+  s_e0ad37cc084e4b::t_93973444afc0f1 13-15,20-22
+  s_e0ad37cc084e4b::t_d60fdff856e561 24-26,30-32
+  s_e0ad37cc084e4b::t_9df7bdc4763fe3 34-38
+  s_e0ad37cc084e4b::t_bdbd9fdc1cc632 40-42
+  s_e0ad37cc084e4b::t_f65c75c2725f5a 44-46
+  s_e0ad37cc084e4b::t_754a4353975571 48-50
+  s_e0ad37cc084e4b::t_becdf9cdd682d3 52-54,56-58
+  s_e0ad37cc084e4b::t_fa356059463f1a 60-62,64-66
+  s_e0ad37cc084e4b::t_ad19ce0e8d6d26 68-72
+  s_e0ad37cc084e4b::t_f90b1b081bdb4c 74-78
+  s_e0ad37cc084e4b::t_42acbd9f37970b 80-84
+  s_e0ad37cc084e4b::t_7269f9cb452754 86-90
+  s_e0ad37cc084e4b::t_4e3a46fbfec0aa 92-96
+  s_e0ad37cc084e4b::t_2b6639b6410cfb 98-102
+  s_e0ad37cc084e4b::t_5603a7f9f57d17 104-108
+  s_e0ad37cc084e4b::t_d3d2cce4370964 110-114
+  s_e0ad37cc084e4b::t_513b91855d48f5 116-120
+  s_e0ad37cc084e4b::t_3b8f2cfe323a25 122-126
+  s_e0ad37cc084e4b::t_084b39abc45738 128-130,132-134
+  s_e0ad37cc084e4b::t_75e20f94dff49e 136-138,143-145
+  s_e0ad37cc084e4b::t_c39b4ad49c54e1 147-151
+  s_e0ad37cc084e4b::t_8adc42b90e209d 153-155
+  s_e0ad37cc084e4b::t_717ef2381c4448 157-159
+  s_e0ad37cc084e4b::t_c6abd0b77994c2 161-164
+  s_e0ad37cc084e4b::t_6aecdb9d48cc88 166-168
+  s_e0ad37cc084e4b::t_1510c8154f5d7b 170-172
+  s_e0ad37cc084e4b::t_8e2f17b19a67bb 174-176,179-181
+  s_e0ad37cc084e4b::t_cbf020ca9000a7 183-187
+  s_e0ad37cc084e4b::t_288c344cb7395f 189-191
+  s_e0ad37cc084e4b::t_5fdf67e7ecfd4b 193-195
+  s_e0ad37cc084e4b::t_c2268527caa600 197-201
+  s_e0ad37cc084e4b::t_16642d4d738afc 203-205
+  s_e0ad37cc084e4b::t_1c52036f14fbdf 207-208
+tests/bugfixRegression.test.ts
+  s_71041d35e3e63b::t_e9ed49a44496ec 246-305
+  s_71041d35e3e63b::t_3bb74db33bd55a 6
+  s_e0ad37cc084e4b::t_bec20109d58140 1-5,7-245
+tests/configPersist.test.ts
+  s_71041d35e3e63b::t_69280162f5a470 38-116
+tests/conflictLogicFull.test.ts
+  s_71041d35e3e63b::t_df0f54e9d2dabf 1-456
+src/syncOptimize.ts
+  s_a079ebc3064132::t_63b6bc2e59ad52 105-112
+src/fsAll.ts
+  s_e0ad37cc084e4b::t_50e41ef133a63e 28-36
+tests/conflictLogic.test.ts
+  s_e0ad37cc084e4b::t_bf35d43eb333a6 1
+  s_e0ad37cc084e4b::t_63ba6319118eab 297-305,307-315,318-326,329-333
+  s_e0ad37cc084e4b::t_0df93fdad98840 306,316-317,327-328
+tests/syncOptimize.test.ts
+  s_e0ad37cc084e4b::t_6f3ab9595a2211 346-372
+src/main.ts
+  s_e0ad37cc084e4b::t_ff3301dfc3447c 1453-1460
+  s_e0ad37cc084e4b::t_5e065aeec08788 560-571
+  s_e0ad37cc084e4b::t_57a67165bab75f 170
+  s_e0ad37cc084e4b::t_08a50a12005f0e 1485-1487,1494
+  s_e0ad37cc084e4b::t_f5368fe1d89498 1396-1402
+tests/copyLogic.test.ts
+  s_71041d35e3e63b::t_e6fe15e269b7eb 1-290
+src/conflictLogic.ts
+  s_a079ebc3064132::t_3a759f2333143b 64,67
+tests/fileContentHistory.test.ts
+  s_a50ee4e2265a03::t_92acdc732d4797 1-73,82-269
+  s_a50ee4e2265a03::t_440fac8c0530b8 74-81
+tests/metadataOnRemote.test.ts
+  s_71041d35e3e63b::t_dd8cff44470a09 2,9
+  s_71041d35e3e63b::t_2f865e46cb3006 116-239
+.gitignore
+  s_e0ad37cc084e4b::t_163e6e6de0b650 20-23
+manifest.json
+  s_e0ad37cc084e4b::t_cc87ec145caeaf 4
+tests/_globalsSetup.ts
+  s_a50ee4e2265a03::t_82a977196f796b 1-72
+src/fsOnedrive.ts
+  s_e0ad37cc084e4b::t_11915242a71188 1179,1187-1194
+  s_e0ad37cc084e4b::t_04b6a06c9fdcf3 547,568-579,583-605
+  s_e0ad37cc084e4b::t_551c7b2b8e2570 606
+manifest-beta.json
+  s_e0ad37cc084e4b::t_060662645e1989 4
+tests/syncExported.test.ts
+  s_e0ad37cc084e4b::t_c31f70b0580299 1-100
+versions.json
+  s_e0ad37cc084e4b::t_275820501a42c7 3-4
+tests/misc.test.ts
+  s_e0ad37cc084e4b::t_158386714f52b7 633-655
+src/clearDupFiles.ts
+  s_a079ebc3064132::t_baddc3f16af245 18
+tests/encryptOpenSSL.test.ts
+  s_71041d35e3e63b::t_1937319a555f9c 193-199
+  s_71041d35e3e63b::t_fcad43e904e7f8 165-192,200-217,221-225
+  s_71041d35e3e63b::t_d0736864002fdc 5,8
+  s_71041d35e3e63b::t_210cc0a0582df2 218-220
+tests/fsEncrypt.test.ts
+  s_a50ee4e2265a03::t_cf8a9745086386 325-328
+  s_a50ee4e2265a03::t_440fac8c0530b8 237-240,254-257,1013-1016
+  s_a50ee4e2265a03::t_ff5ffca17987d8 1-236,241-253,258-324,329-1012,1017-1033
+package.json
+  s_e0ad37cc084e4b::t_4730429eede2dc 47
+  s_e0ad37cc084e4b::t_fed131359c11fa 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "0068d691d254539190e5e553113d6316a5b6310c",
+  "prompts": {},
+  "sessions": {
+    "s_71041d35e3e63b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f579169bdffey7ROeHfX6TAzk1",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    },
+    "s_a079ebc3064132": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57a24009ffeBVxgb2wWSfkhkB",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 6
+    },
+    "s_a50ee4e2265a03": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57913746ffesdetXNLW7i56Dq",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 32
+    },
+    "s_e0ad37cc084e4b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f57eca5b0ffetPc45nlJx3I41w",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 128
+    }
+  }
+}
