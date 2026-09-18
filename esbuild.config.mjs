@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import esbuild from "esbuild";
@@ -40,12 +41,33 @@ function deployPlugin(pluginDir) {
           console.log(
             `[deploy] main.js + manifest.json + styles.css -> ${pluginDir}`
           );
+          reloadPlugin("remotely-save-onedrive");
         } catch (e) {
           console.error(`[deploy] failed: ${e.message}`);
         }
       });
     },
   };
+}
+
+// Reload the plugin in the running Obsidian instance so deployed changes take
+// effect immediately. Uses the `obsidian` CLI (https://help.obsidian.md/cli);
+// requires Obsidian to be open. Gracefully no-ops (warning only) when the CLI
+// is missing or Obsidian isn't running, so CI / headless builds are unaffected.
+function reloadPlugin(pluginId) {
+  const res = spawnSync("obsidian", ["plugin:reload", `id=${pluginId}`], {
+    shell: true,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (res.error || res.status !== 0) {
+    console.warn(
+      `[deploy] plugin reload skipped — install the Obsidian CLI and open ` +
+        `Obsidian to auto-reload, or toggle the plugin off/on manually.`
+    );
+    return;
+  }
+  console.log(`[deploy] reloaded plugin "${pluginId}" in Obsidian.`);
 }
 
 // `aggregate-error` -> `clean-stack` imports `node:url` for `fileURLToPath`,

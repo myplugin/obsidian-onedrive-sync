@@ -12,6 +12,7 @@
 // (The esbuild watch/build auto-deploy is a SEPARATE inline plugin in
 // esbuild.config.mjs and is unaffected by changes here.)
 import "dotenv/config";
+import { spawnSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -21,6 +22,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
 const PLUGIN_ID = "remotely-save-onedrive";
 const FILES = ["main.js", "manifest.json", "styles.css"];
+
+// Reload the plugin in the running Obsidian instance so deployed changes take
+// effect immediately. Uses the `obsidian` CLI (https://help.obsidian.md/cli);
+// requires Obsidian to be open. Gracefully no-ops (warning only) when the CLI
+// is missing or Obsidian isn't running, so this is safe in CI / headless use.
+function reloadPlugin(pluginId) {
+  const res = spawnSync("obsidian", ["plugin:reload", `id=${pluginId}`], {
+    shell: true,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (res.error || res.status !== 0) {
+    console.warn(
+      `[deploy] plugin reload skipped — install the Obsidian CLI and open ` +
+        `Obsidian to auto-reload, or toggle the plugin off/on manually.`
+    );
+    return;
+  }
+  console.log(`[deploy] reloaded plugin "${pluginId}" in Obsidian.`);
+}
 
 // Path to Obsidian's global config, which lists every known vault + its path.
 function obsidianConfigPath() {
@@ -109,7 +130,7 @@ for (const file of FILES) {
     console.warn(`[deploy] ${file} not found in project root — skipping.`);
   }
 }
+reloadPlugin(PLUGIN_ID);
 console.log(
-  `[deploy] done (${copied}/${FILES.length} files${discovered ? ", auto-discovered" : ""}). ` +
-    "In Obsidian: toggle the plugin off/on (or restart the app) to pick up changes."
+  `[deploy] done (${copied}/${FILES.length} files${discovered ? ", auto-discovered" : ""}).`
 );
