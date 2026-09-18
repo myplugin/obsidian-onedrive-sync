@@ -45,6 +45,7 @@ Guidance for AI agents working in `remotely-save-onedrive` — a OneDrive-only f
 - Folders are always represented by strings ending with `/`.
 - Biome style: 2-space indent, LF, 80-col width, double quotes for JSX, semicolons, `es5` trailing commas. `noExplicitAny`, `noNonNullAssertion`, and several other defaults are **off** — `any` and non-null assertions are accepted here; don't "fix" them.
 - Versioning: keep `package.json`, `manifest.json`, and `manifest-beta.json` versions in sync. `versions.json` is Obsidian's version history.
+- **Call-mode changes require a contract re-audit.** When changing HOW an external API is invoked (e.g. full→incremental delta, `/children`→`/delta`, item→batch, v1→beta), re-read the endpoint's Remarks/notes for the NEW mode and confirm every field the code depends on is still guaranteed present. An "optimization" that switches call mode can cross into a different, documented response contract where assumed-always-present fields are omitted — and neither diff, typecheck, nor happy-path tests will catch it. See `docs/lessons/onedrive-delta-parentreference-path.md`.
 
 ## Contributing
 
@@ -56,3 +57,4 @@ Guidance for AI agents working in `remotely-save-onedrive` — a OneDrive-only f
 - `docs/sync_algorithm/v3/` — sync algorithm design (`intro.md`, `design.md`).
 - `docs/remote_services/onedrive/` — OneDrive setup notes and CORS/quirks (the only service).
 - `docs/how_to_debug/` — debugging flows (logs, sync plans export, console/vconsole).
+- `docs/lessons/` — postmortems / lessons learned (start with `onedrive-delta-parentreference-path.md`, in Chinese).
