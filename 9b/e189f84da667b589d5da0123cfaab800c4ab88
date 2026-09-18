@@ -1,0 +1,34 @@
+tests/syncOptimize.test.ts
+  s_c7970f70270c76::t_c9bcb746769dad 8
+  s_c7970f70270c76::t_c7819629f19abf 404-429
+src/syncOptimize.ts
+  s_c7970f70270c76::t_c2d31425d0a756 3
+  s_c7970f70270c76::t_3724822f38b0ba 153-169
+src/main.ts
+  s_c7970f70270c76::t_df95068c29112a 1050-1056
+  s_c7970f70270c76::t_8eda854b942808 184-192
+  s_c7970f70270c76::t_c9b95e6a0cfe8e 193
+  s_c7970f70270c76::t_e9ccd3d4dfd44d 86-90
+  s_c7970f70270c76::t_41ff88f98ad4e1 67
+  s_c7970f70270c76::t_f3a94f96986ada 483-485
+  s_c7970f70270c76::t_314c5a2a679844 1536-1542,1545,1547-1565,1574-1575
+src/settings.ts
+  s_c7970f70270c76::t_6e0ec6bf25589e 1017-1022
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "9be189f84da667b589d5da0123cfaab800c4ab88",
+  "prompts": {},
+  "sessions": {
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 17
+    }
+  }
+}
