@@ -23,6 +23,8 @@ coverage_output.txt
 
 # hidden files
 .*
+# ...except the line-ending rules for the byte-exact openssl test fixtures
+!/.gitattributes
 
 # local AI agent docs (not published)
 CLEANROOM_PROGRESS.md
