@@ -55,15 +55,27 @@ function deployPlugin(pluginDir) {
 // requires Obsidian to be open. Gracefully no-ops (warning only) when the CLI
 // is missing or Obsidian isn't running, so CI / headless builds are unaffected.
 function reloadPlugin(pluginId) {
+  // Invoke the `obsidian` CLI directly (shell:false). shell:true previously
+  // caused a FALSE success — the app launched and exited 0 without actually
+  // reloading (Node's shell:true arg concatenation, flagged DEP0190). With
+  // shell:false the args pass cleanly; the CLI connects to the running
+  // Obsidian and, on success, prints "Reloaded: <id>" to stdout — the honest
+  // signal we check (a bare exit-0 is not enough).
   const res = spawnSync("obsidian", ["plugin:reload", `id=${pluginId}`], {
-    shell: true,
+    shell: false,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
-  if (res.error || res.status !== 0) {
+  const out = (res.stdout || "").trim();
+  const ok = out.includes(`Reloaded: ${pluginId}`);
+  if (res.error || res.status !== 0 || !ok) {
+    const reason = res.error
+      ? res.error.code
+      : res.status !== 0
+        ? `obsidian CLI exit ${res.status}`
+        : "obsidian CLI did not confirm reload";
     console.warn(
-      `[deploy] plugin reload skipped — install the Obsidian CLI and open ` +
-        `Obsidian to auto-reload, or toggle the plugin off/on manually.`
+      `[deploy] plugin reload skipped — ${reason}. Ensure the obsidian CLI is on PATH and Obsidian is running, or toggle the plugin off/on manually.`
     );
     return;
   }
