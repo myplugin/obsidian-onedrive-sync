@@ -1,4 +1,4 @@
-import { CryptoProvider, PublicClientApplication } from "@azure/msal-node";
+﻿import { CryptoProvider, PublicClientApplication } from "@azure/msal-node";
 import type { AuthenticationProvider } from "@microsoft/microsoft-graph-client";
 import type {
   DriveItem,
@@ -19,9 +19,10 @@ import {
 } from "./baseTypes";
 import { VALID_REQURL } from "./baseTypes";
 import { classifyDeltaItems, mergeDeltaWithPrevState } from "./deltaMerge";
-import { buildDeltaStartUrl } from "./syncOptimize";
+import { fromDriveItemToEntity } from "./driveItemConvert";
 import { FakeFs } from "./fsAll";
 import { bufferToArrayBuffer } from "./misc";
+import { buildDeltaStartUrl } from "./syncOptimize";
 
 const SCOPES = ["User.Read", "Files.ReadWrite.AppFolder", "offline_access"];
 const REDIRECT_URI = `obsidian://${COMMAND_CALLBACK_ONEDRIVE}`;
@@ -47,7 +48,7 @@ export const DEFAULT_ONEDRIVE_CONFIG: OnedriveConfig = {
 /**
  * Detect whether an error thrown by Obsidian's request/requestUrl or fetch
  * is an HTTP 404 (Not Found). The OneDrive Graph API returns 404 when a file
- * or folder has been deleted since the last walk — the sync's stale view
+ * or folder has been deleted since the last walk 鈥?the sync's stale view
  * then tries to stat/download it and fails.
  *
  * The error shape varies by transport (requestUrl attaches .status; fetch
@@ -55,8 +56,7 @@ export const DEFAULT_ONEDRIVE_CONFIG: OnedriveConfig = {
  * check all known locations.
  */
 function isHttp404(e: any): boolean {
-  const status: number | undefined =
-    e?.status ?? e?.response?.status;
+  const status: number | undefined = e?.status ?? e?.response?.status;
   if (status === 404) return true;
   if (typeof e?.message === "string" && e.message.includes("status 404")) {
     return true;
@@ -293,249 +293,6 @@ const getOnedrivePath = (fileOrFolderPath: string, remoteBaseDir: string) => {
   return key;
 };
 
-const constructFromDriveItemToEntityError = (x: DriveItem) => {
-  return `parentPath="${
-    x.parentReference?.path ?? "(no parentReference or path)"
-  }", selfName="${x.name}"`;
-};
-
-const fromDriveItemToEntity = (
-  x: DriveItem,
-  remoteBaseDir: string,
-  requireMtime = true
-): Entity => {
-  let key = "";
-
-  // possible prefix:
-  // pure english: /drive/root:/Apps/remotely-save/${remoteBaseDir}
-  // or localized, e.g.: /drive/root:/应用/remotely-save/${remoteBaseDir}
-  const FIRST_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/remotely-save\//g;
-
-  // why?? /drive/root:/Apps/Graph
-  const FIFTH_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/Graph\//g;
-
-  // why again?? /drive/root:/Apps/Graph 1
-  const SIXTH_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/Graph 1\//g;
-  const SIXTH_COMMON_PREFIX_REGEX_V2 = /^\/drive\/root:\/[^\/]+\/Graph%201\//g;
-
-  // or the root is absolute path /Livefolders,
-  // e.g.: /Livefolders/应用/remotely-save/${remoteBaseDir}
-  const SECOND_COMMON_PREFIX_REGEX = /^\/Livefolders\/[^\/]+\/remotely-save\//g;
-
-  // another report, why???
-  // /drive/root:/something/app/remotely-save/${remoteBaseDir}
-  const THIRD_COMMON_PREFIX_REGEX =
-    /^\/drive\/root:\/[^\/]+\/app\/remotely-save\//g;
-
-  // another possibile prefix
-  const FOURTH_COMMON_PREFIX_RAW = `/drive/items/`;
-
-  // when to use decode?
-  const remoteBaseDirEncoded = encodeURIComponent(remoteBaseDir);
-
-  if (
-    x.parentReference === undefined ||
-    x.parentReference === null ||
-    x.parentReference.path === undefined ||
-    x.parentReference.path === null
-  ) {
-    throw Error("x.parentReference.path is undefinded or null");
-  }
-  const fullPathOriginal = `${x.parentReference.path}/${x.name}`;
-  const matchFirstPrefixRes = fullPathOriginal.match(FIRST_COMMON_PREFIX_REGEX);
-  const matchFifthPrefixRes = fullPathOriginal.match(FIFTH_COMMON_PREFIX_REGEX);
-  const matchSixthPrefixRes = fullPathOriginal.match(SIXTH_COMMON_PREFIX_REGEX);
-  const matchSixthV2PrefixRes = fullPathOriginal.match(
-    SIXTH_COMMON_PREFIX_REGEX_V2
-  );
-
-  const matchSecondPrefixRes = fullPathOriginal.match(
-    SECOND_COMMON_PREFIX_REGEX
-  );
-  const matchThirdPrefixRes = fullPathOriginal.match(THIRD_COMMON_PREFIX_REGEX);
-
-  // first
-  if (
-    matchFirstPrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchFirstPrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchFirstPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (
-    matchFirstPrefixRes !== null &&
-    fullPathOriginal.startsWith(
-      `${matchFirstPrefixRes[0]}${remoteBaseDirEncoded}`
-    )
-  ) {
-    const foundPrefix = `${matchFirstPrefixRes[0]}${remoteBaseDirEncoded}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  }
-
-  // fifth
-  else if (
-    matchFifthPrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchFifthPrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchFifthPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (
-    matchFifthPrefixRes !== null &&
-    fullPathOriginal.startsWith(
-      `${matchFifthPrefixRes[0]}${remoteBaseDirEncoded}`
-    )
-  ) {
-    const foundPrefix = `${matchFifthPrefixRes[0]}${remoteBaseDirEncoded}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  }
-
-  // sixth
-  else if (
-    matchSixthPrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchSixthPrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchSixthPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (
-    matchSixthPrefixRes !== null &&
-    fullPathOriginal.startsWith(
-      `${matchSixthPrefixRes[0]}${remoteBaseDirEncoded}`
-    )
-  ) {
-    const foundPrefix = `${matchSixthPrefixRes[0]}${remoteBaseDirEncoded}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  }
-
-  // sixth v2
-  else if (
-    matchSixthV2PrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchSixthV2PrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchSixthV2PrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (
-    matchSixthV2PrefixRes !== null &&
-    fullPathOriginal.startsWith(
-      `${matchSixthV2PrefixRes[0]}${remoteBaseDirEncoded}`
-    )
-  ) {
-    const foundPrefix = `${matchSixthV2PrefixRes[0]}${remoteBaseDirEncoded}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  }
-
-  // second
-  else if (
-    matchSecondPrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchSecondPrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchSecondPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (
-    matchSecondPrefixRes !== null &&
-    fullPathOriginal.startsWith(
-      `${matchSecondPrefixRes[0]}${remoteBaseDirEncoded}`
-    )
-  ) {
-    const foundPrefix = `${matchSecondPrefixRes[0]}${remoteBaseDirEncoded}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  }
-
-  // third
-  else if (
-    matchThirdPrefixRes !== null &&
-    fullPathOriginal.startsWith(`${matchThirdPrefixRes[0]}${remoteBaseDir}`)
-  ) {
-    const foundPrefix = `${matchThirdPrefixRes[0]}${remoteBaseDir}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  } else if (
-    matchThirdPrefixRes !== null &&
-    fullPathOriginal.startsWith(
-      `${matchThirdPrefixRes[0]}${remoteBaseDirEncoded}`
-    )
-  ) {
-    const foundPrefix = `${matchThirdPrefixRes[0]}${remoteBaseDirEncoded}`;
-    key = fullPathOriginal.substring(foundPrefix.length + 1);
-  }
-
-  // fourth
-  else if (x.parentReference.path.startsWith(FOURTH_COMMON_PREFIX_RAW)) {
-    // it's something like
-    // /drive/items/<some_id>!<another_id>:/${remoteBaseDir}/<subfolder>
-    // with uri encoded!
-    if (x.name === undefined || x.name === null) {
-      throw Error(
-        `OneDrive item no name variable while matching ${FOURTH_COMMON_PREFIX_RAW}`
-      );
-    }
-    const parPath = decodeURIComponent(x.parentReference.path);
-    key = parPath.substring(parPath.indexOf(":") + 1);
-    if (key.startsWith(`/${remoteBaseDir}/`)) {
-      key = key.substring(`/${remoteBaseDir}/`.length);
-      key = `${key}/${x.name}`;
-    } else if (key === `/${remoteBaseDir}`) {
-      key = x.name;
-    } else {
-      throw Error(
-        `file/folder with /drive/items/, no idea how to deal with it:
-fullPathOriginal=${fullPathOriginal}
-matchFirstPrefixRes=${matchFirstPrefixRes}
-matchFifthPrefixRes=${matchFifthPrefixRes}
-matchSixthPrefixRes=${matchSixthPrefixRes}
-matchSixthV2PrefixRes=${matchSixthV2PrefixRes}
-matchSecondPrefixRes=${matchSecondPrefixRes}
-matchThirdPrefixRes=${matchThirdPrefixRes}
-${constructFromDriveItemToEntityError(x)}`
-      );
-    }
-  }
-
-  // others
-  else {
-    throw Error(
-      `file/folder, no idea how to deal with it without known prefix:
-fullPathOriginal=${fullPathOriginal}
-matchFirstPrefixRes=${matchFirstPrefixRes}
-matchFifthPrefixRes=${matchFifthPrefixRes}
-matchSixthPrefixRes=${matchSixthPrefixRes}
-matchSixthV2PrefixRes=${matchSixthV2PrefixRes}
-matchSecondPrefixRes=${matchSecondPrefixRes}
-matchThirdPrefixRes=${matchThirdPrefixRes}
-${constructFromDriveItemToEntityError(x)}`
-    );
-  }
-
-  const isFolder = "folder" in x;
-  if (isFolder) {
-    key = `${key}/`;
-  }
-
-  const mtimeTry = x?.fileSystemInfo?.lastModifiedDateTime;
-  if (requireMtime && (mtimeTry === undefined || mtimeTry === null)) {
-    throw Error(`onedrive cannot parse mtime: ${JSON.stringify(x, null, 2)}`);
-  }
-
-  let ctimeTry = x?.fileSystemInfo?.createdDateTime;
-  if (ctimeTry === undefined || ctimeTry === null) {
-    // throw Error(`onedrive cannot parse ctime: ${JSON.stringify(x, null, 2)}`);
-    // it doesn't hurt, we just use mtimeTry to fullfill
-    ctimeTry = mtimeTry;
-  }
-
-  const mtimeSvr = mtimeTry ? Date.parse(mtimeTry) : undefined;
-  const mtimeCli = mtimeSvr;
-  const ctimeCli = ctimeTry ? Date.parse(ctimeTry) : mtimeSvr;
-  return {
-    key: key,
-    keyRaw: key,
-    mtimeSvr: mtimeSvr,
-    mtimeCli: mtimeCli,
-    ctimeCli: ctimeCli,
-    size: isFolder ? 0 : x.size!,
-    sizeRaw: isFolder ? 0 : x.size!,
-    synthesizedFile: false,
-    // hash: ?? // TODO
-  };
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 // The client.
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,7 +473,7 @@ export class FakeFsOnedrive extends FakeFs {
    * - HTTP 429 (throttling): OneDrive returns a Retry-After header (seconds).
    * - HTTP 500/502/503/504 (server-side gateway/transient outages).
    *
-   * A 504 "Gateway Timeout" is common when syncing a large backlog — a single
+   * A 504 "Gateway Timeout" is common when syncing a large backlog 鈥?a single
    * slow Graph request times out at an intermediate gateway. Without a retry
    * here, one transient 504 aborts the whole sync (surfaced as an
    * AggregateError in sync.ts). We wait and retry, up to maxRetries.
@@ -835,8 +592,7 @@ export class FakeFsOnedrive extends FakeFs {
             },
           });
         } catch (e: any) {
-          const status: number | undefined =
-            e?.status ?? e?.response?.status;
+          const status: number | undefined = e?.status ?? e?.response?.status;
           // 404 = already deleted, treat as success (idempotent delete)
           if (status === 404) {
             return;
@@ -956,7 +712,10 @@ export class FakeFsOnedrive extends FakeFs {
       } else {
         const res = await fetch(theUrl, {
           method: "PUT",
-          body: payload.subarray(rangeStart, rangeEnd) as Uint8Array<ArrayBuffer>,
+          body: payload.subarray(
+            rangeStart,
+            rangeEnd
+          ) as Uint8Array<ArrayBuffer>,
           headers: {
             "Content-Length": `${rangeEnd - rangeStart}`,
             "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
@@ -983,7 +742,7 @@ export class FakeFsOnedrive extends FakeFs {
    *
    * Uses the OneDrive delta API. When a `deltaLink` from a previous sync
    * is available AND `prevRemoteEntities` is set, the deltaLink is queried
-   * instead of the base delta endpoint — the Graph API then returns ONLY
+   * instead of the base delta endpoint 鈥?the Graph API then returns ONLY
    * items that changed since the last sync (additions, modifications,
    * deletions). Those incremental results are merged with the previous
    * full state to reconstruct the complete file list, avoiding a full
@@ -998,8 +757,7 @@ export class FakeFsOnedrive extends FakeFs {
     const DELTA_LINK_KEY = "@odata.deltaLink";
 
     let canIncremental =
-      this.onedriveConfig.deltaLink !== "" &&
-      this.prevRemoteEntities != null;
+      this.onedriveConfig.deltaLink !== "" && this.prevRemoteEntities != null;
 
     let startUrl = buildDeltaStartUrl(
       canIncremental,
@@ -1012,7 +770,7 @@ export class FakeFsOnedrive extends FakeFs {
       res = await this._getJson(startUrl);
     } catch (e) {
       if (canIncremental) {
-        // deltaLink may have expired — fall back to full enumeration
+        // deltaLink may have expired 鈥?fall back to full enumeration
         console.info(
           "deltaLink query failed, falling back to full enumeration",
           e
@@ -1040,14 +798,31 @@ export class FakeFsOnedrive extends FakeFs {
 
     if (canIncremental && this.prevRemoteEntities) {
       // Merge incremental delta results with the previous full state.
-      // classifyDeltaItems handles BOTH @removed and the `deleted` facet —
-      // Graph uses either marker to signal deletions depending on tenant.
-      // Checking only @removed leaks stale entries → 404 AggregateErrors.
-      const { deltaEntities, deletedKeys } = classifyDeltaItems(
-        driveItems,
-        this.remoteBaseDir,
-        fromDriveItemToEntity
-      );
+      // classifyDeltaItems handles BOTH @removed and the `deleted` facet 鈥?      // Graph uses either marker to signal deletions depending on tenant.
+      // Checking only @removed leaks stale entries 鈫?404 AggregateErrors.
+      const { deltaEntities, deletedKeys, skippedAddedOrModified } =
+        classifyDeltaItems(
+          driveItems,
+          this.remoteBaseDir,
+          fromDriveItemToEntity
+        );
+
+      // Self-heal for silently-skipped added/modified items: unlike the 404
+      // path (handled in main.ts), a parse failure here produces NO error
+      // signal, so the item would be permanently lost from the merged list
+      // until the deltaLink expires. Invalidate deltaLink so the NEXT sync
+      // does a full re-enumeration (which, with the full-walk tolerance
+      // above, re-fetches the item cleanly). The current sync proceeds with
+      // a minor gap (a possibly-stale entry → at most a redundant upload);
+      // next sync recovers fully.
+      if (skippedAddedOrModified > 0) {
+        console.warn(
+          `walk: ${skippedAddedOrModified} added/modified delta item(s) could not be parsed — ` +
+            "invalidating deltaLink; next sync will do a full re-enumeration."
+        );
+        this.onedriveConfig.deltaLink = "";
+        await this.saveUpdatedConfigFunc();
+      }
 
       const merged = mergeDeltaWithPrevState(
         this.prevRemoteEntities,
@@ -1058,10 +833,28 @@ export class FakeFsOnedrive extends FakeFs {
       this.lastWalkDeltaCount = driveItems.length;
       return merged;
     } else {
-      // Full enumeration — convert all items to entities
-      const unifiedContents = driveItems
-        .map((x) => fromDriveItemToEntity(x, this.remoteBaseDir))
-        .filter((x) => x.key !== "/");
+      // Full enumeration — convert all items to entities. Tolerate per-item
+      // parse failures (e.g. parentReference.path omitted for a
+      // special-folder-relative item) with a warn-and-skip, mirroring
+      // classifyDeltaItems' incremental-path tolerance — otherwise a single
+      // unparseable item would crash the whole sync, and the self-heal
+      // fallback (which re-runs full enumeration after a 404) would be
+      // fragile against the very items that triggered self-heal.
+      const unifiedContents: Entity[] = [];
+      for (const x of driveItems) {
+        try {
+          const entity = fromDriveItemToEntity(x, this.remoteBaseDir);
+          if (entity.key !== "/") {
+            unifiedContents.push(entity);
+          }
+        } catch (e) {
+          console.warn(
+            "walk: skipping item in full enumeration (parse failed)",
+            e instanceof Error ? e.message : e,
+            JSON.stringify(x).slice(0, 200)
+          );
+        }
+      }
 
       this.lastWalkResult = unifiedContents;
       this.lastWalkDeltaCount = undefined;
@@ -1078,7 +871,7 @@ export class FakeFsOnedrive extends FakeFs {
     // carries a deltaLink representing "now". Persisting that would make
     // walk() in step 3 query it and get 0 changes, so it would return stale
     // prevRemoteEntities and cause HTTP 404 AggregateErrors during step 7
-    // (stat on files deleted on OneDrive since the last sync — e.g. by
+    // (stat on files deleted on OneDrive since the last sync 鈥?e.g. by
     // another device's sync). walk() saves its own deltaLink at the end of
     // every enumeration (full and incremental), so this save was redundant
     // and harmful. See deltaMerge.ts for the documented 404 path.
@@ -1088,10 +881,23 @@ export class FakeFsOnedrive extends FakeFs {
     const driveItems = res.value as DriveItem[];
     // console.debug(driveItems);
 
-    // unify everything to Entity
-    const unifiedContents = driveItems
-      .map((x) => fromDriveItemToEntity(x, this.remoteBaseDir))
-      .filter((x) => x.key !== "/");
+    // unify everything to Entity — tolerate per-item parse failures with
+    // warn-and-skip (same posture as walk()'s full enumeration).
+    const unifiedContents: Entity[] = [];
+    for (const x of driveItems) {
+      try {
+        const entity = fromDriveItemToEntity(x, this.remoteBaseDir);
+        if (entity.key !== "/") {
+          unifiedContents.push(entity);
+        }
+      } catch (e) {
+        console.warn(
+          "walkPartial: skipping item (parse failed)",
+          e instanceof Error ? e.message : e,
+          JSON.stringify(x).slice(0, 200)
+        );
+      }
+    }
 
     return unifiedContents;
   }
@@ -1185,7 +991,7 @@ export class FakeFsOnedrive extends FakeFs {
       this.onedriveConfig.emptyFile
     );
     // Track non-synthesized uploads so main.ts can merge them into
-    // prevRemoteEntities — prevents the next sync from seeing
+    // prevRemoteEntities 鈥?prevents the next sync from seeing
     // just-uploaded files as "remote deleted" when the delta API
     // hasn't reflected the upload yet.
     if (!result.synthesizedFile) {
@@ -1350,7 +1156,9 @@ export class FakeFsOnedrive extends FakeFs {
    * the content. Saves one HTTP round-trip per file download vs. calling
    * stat() + readFile() separately.
    */
-  async readFileWithStat(key: string): Promise<{ entity: Entity; content: ArrayBuffer }> {
+  async readFileWithStat(
+    key: string
+  ): Promise<{ entity: Entity; content: ArrayBuffer }> {
     await this._init();
     if (key.endsWith("/")) {
       throw new Error(`you should not call readFile on folder ${key}`);
@@ -1492,7 +1300,7 @@ export class FakeFsOnedrive extends FakeFs {
 
     await this._init();
     await this._deleteJson(remoteFileName);
-    // Track for proactive prevRemoteEntities update — see FakeFs.deletedRemotelyKeys
+    // Track for proactive prevRemoteEntities update 鈥?see FakeFs.deletedRemotelyKeys
     this.deletedRemotelyKeys.add(key);
   }
 

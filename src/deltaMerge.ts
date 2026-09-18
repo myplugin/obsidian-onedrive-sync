@@ -1,4 +1,4 @@
-// License: Apache-2.0 (see src/LICENSE)
+﻿// License: Apache-2.0 (see src/LICENSE)
 
 import type { Entity } from "./baseTypes";
 
@@ -9,7 +9,7 @@ import type { Entity } from "./baseTypes";
  * ## Why this exists
  *
  * `FakeFsOnedrive.walk()` used to call the Graph `/delta` endpoint from
- * scratch every sync — enumerating ALL remote files even when nothing
+ * scratch every sync 鈥?enumerating ALL remote files even when nothing
  * changed. The OneDrive delta API returns a `deltaLink` that, when queried
  * on the next sync, returns ONLY items that were added, modified, or
  * deleted since the last call. This function applies those incremental
@@ -43,7 +43,7 @@ export function mergeDeltaWithPrevState(
 
   // Apply additions and modifications from the delta.
   // Track which keys were added/modified so deletions can be
-  // deconflicted — if a key appears as both live (restored) and
+  // deconflicted 鈥?if a key appears as both live (restored) and
   // @removed (deleted) in the same delta window, the live entry
   // represents the net state and must survive.
   const liveKeys = new Set<string>();
@@ -54,7 +54,7 @@ export function mergeDeltaWithPrevState(
     }
   }
 
-  // Apply deletions — skip keys that also have a live entry
+  // Apply deletions 鈥?skip keys that also have a live entry
   // (delete-then-restore within one delta window: last state wins).
   for (const key of deletedKeys) {
     if (!liveKeys.has(key)) {
@@ -83,6 +83,14 @@ export type DriveItemToEntity = (
 export interface ClassifiedDelta {
   deltaEntities: Entity[];
   deletedKeys: Set<string>;
+  /**
+   * Count of added/modified items whose conversion threw (parse failed).
+   * Unlike deleted-item skips (which self-heal via the 404 path in main.ts),
+   * these silently drop from the merged list with no error signal 鈥?so sync
+   * would never pull them. walk() reads this to invalidate the deltaLink so
+   * the NEXT sync does a full re-enumeration that re-fetches them cleanly.
+   */
+  skippedAddedOrModified: number;
 }
 
 /**
@@ -99,9 +107,9 @@ export interface ClassifiedDelta {
  * show the `deleted` facet in their example responses. Checking ONLY
  * `@removed` (as this codebase previously did) misses deletions on tenants
  * that use the `deleted` facet, which causes stale entries to survive in the
- * merged remote entity list — sync then tries to download/stat files that
+ * merged remote entity list 鈥?sync then tries to download/stat files that
  * no longer exist on OneDrive, surfacing as HTTP 404 AggregateErrors during
- * `dispatchOperationToActualV3` (copyFile → stat → _getJson).
+ * `dispatchOperationToActualV3` (copyFile 鈫?stat 鈫?_getJson).
  *
  * Items whose key cannot be parsed by `fromDriveItemToEntity` are silently
  * skipped (same tolerance as the previous inline implementation).
@@ -119,13 +127,14 @@ export function classifyDeltaItems(
 ): ClassifiedDelta {
   const deltaEntities: Entity[] = [];
   const deletedKeys = new Set<string>();
+  let skippedAddedOrModified = 0;
 
   for (const item of driveItems) {
-    // Graph uses both markers — see function doc. Checking only @removed
-    // leaks stale entries → 404 AggregateErrors during sync operations.
+    // Graph uses both markers 鈥?see function doc. Checking only @removed
+    // leaks stale entries 鈫?404 AggregateErrors during sync operations.
     const isDeleted = "@removed" in item || "deleted" in item;
     if (isDeleted) {
-      // Deleted item — extract just the key (no mtime required)
+      // Deleted item 鈥?extract just the key (no mtime required)
       try {
         const entity = fromDriveItemToEntity(item, remoteBaseDir, false);
         if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
@@ -133,8 +142,8 @@ export function classifyDeltaItems(
         }
       } catch (e) {
         // If we can't parse the key, the deletion is lost and the file
-        // survives as a phantom in prevRemoteEntities → 404 on next
-        // sync → self-heal recovers. Log so it's diagnosable.
+        // survives as a phantom in prevRemoteEntities 鈫?404 on next
+        // sync 鈫?self-heal recovers. Log so it's diagnosable.
         console.warn(
           "classifyDeltaItems: skipping deleted item (parse failed)",
           e instanceof Error ? e.message : e,
@@ -149,10 +158,11 @@ export function classifyDeltaItems(
           deltaEntities.push(entity);
         }
       } catch (e) {
-        // If we can't parse the key, the addition is lost — the file
-        // won't appear in the merged list and sync will never pull it.
-        // There is NO self-heal for this (no 404, no error signal).
-        // Log so it's diagnosable.
+        // If we can't parse the key, the addition would be lost 鈥?the file
+        // wouldn't appear in the merged list and sync would never pull it.
+        // Count it so walk() can self-heal by invalidating the deltaLink
+        // (next sync does a full re-enumeration that re-fetches it cleanly).
+        skippedAddedOrModified += 1;
         console.warn(
           "classifyDeltaItems: skipping added/modified item (parse failed)",
           e instanceof Error ? e.message : e,
@@ -162,5 +172,5 @@ export function classifyDeltaItems(
     }
   }
 
-  return { deltaEntities, deletedKeys };
+  return { deltaEntities, deletedKeys, skippedAddedOrModified };
 }

@@ -1,8 +1,9 @@
-// License: Apache-2.0 (see src/LICENSE)
+﻿// License: Apache-2.0 (see src/LICENSE)
 
 import { strict as assert } from "assert";
 import type { Entity } from "../src/baseTypes";
 import { classifyDeltaItems, mergeDeltaWithPrevState } from "../src/deltaMerge";
+import { isApprootRootDriveItem } from "../src/driveItemConvert";
 
 function makeEntity(key: string, mtime?: number, size?: number): Entity {
   return {
@@ -231,7 +232,7 @@ describe("classifyDeltaItems", () => {
   // facet on the DriveItem WITHOUT the @removed annotation. The previous
   // implementation only checked `@removed`, so these items were treated
   // as live files, kept in prevRemoteEntities, and sync later tried to
-  // download/stat them → HTTP 404.
+  // download/stat them 鈫?HTTP 404.
   it("classifies items with the `deleted` facet (no @removed) as deleted", () => {
     const items = [
       { key: "a.md", mtime: 1000 },
@@ -311,17 +312,14 @@ describe("classifyDeltaItems", () => {
       if (item.key === "bad.md") throw new Error("parse fail");
       return makeEntity(item.key);
     };
-    const items = [
-      { key: "bad.md", deleted: {} },
-      { key: "good.md" },
-    ];
+    const items = [{ key: "bad.md", deleted: {} }, { key: "good.md" }];
     const { deltaEntities, deletedKeys } = classifyDeltaItems(
       items,
       "vault",
       throwingConverter
     );
 
-    // bad.md (deleted, threw) → not in deletedKeys, not in deltaEntities
+    // bad.md (deleted, threw) 鈫?not in deletedKeys, not in deltaEntities
     assert.strictEqual(deltaEntities.length, 1);
     assert.strictEqual(deltaEntities[0].keyRaw, "good.md");
     assert.strictEqual(deletedKeys.size, 0);
@@ -375,11 +373,7 @@ describe("classifyDeltaItems", () => {
 
   it("excludes root entity from deltaEntities", () => {
     const items = [{ key: "/" }];
-    const { deltaEntities } = classifyDeltaItems(
-      items,
-      "vault",
-      mockConverter
-    );
+    const { deltaEntities } = classifyDeltaItems(items, "vault", mockConverter);
 
     assert.strictEqual(deltaEntities.length, 0);
   });
@@ -396,18 +390,17 @@ describe("classifyDeltaItems", () => {
   });
 });
 
-// ────────────────────────────────────────────────────────────
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 // END-TO-END REGRESSION: the full path that caused 404
 // AggregateErrors in production. Before commit 0f73447, the
 // delta merge only checked @removed and missed the `deleted`
 // facet, so "ghost" entries survived in prevRemoteEntities.
-// Sync then tried to stat/download those non-existent files →
-// HTTP 404 → after 3 errors → AggregateError "too many errors".
+// Sync then tried to stat/download those non-existent files 鈫?// HTTP 404 鈫?after 3 errors 鈫?AggregateError "too many errors".
 //
 // These tests exercise the COMPLETE path:
-//   raw DriveItems → classifyDeltaItems → mergeDeltaWithPrevState
+//   raw DriveItems 鈫?classifyDeltaItems 鈫?mergeDeltaWithPrevState
 // and assert no ghost entries survive in the final list.
-// ────────────────────────────────────────────────────────────
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 describe("404 regression: end-to-end delta merge path", () => {
   const converter = (item: any, _dir: string, _req?: boolean): Entity =>
     makeEntity(item.key, item.mtime, item.size);
@@ -421,7 +414,7 @@ describe("404 regression: end-to-end delta merge path", () => {
     ];
 
     // Delta API response: keep.md was modified, ghost1/ghost2 were
-    // deleted — but signaled via the `deleted` facet, NOT @removed.
+    // deleted 鈥?but signaled via the `deleted` facet, NOT @removed.
     const driveItems = [
       { key: "keep.md", mtime: 2000 },
       { key: "ghost1.md", deleted: {} },
@@ -435,7 +428,7 @@ describe("404 regression: end-to-end delta merge path", () => {
     );
     const merged = mergeDeltaWithPrevState(prev, deltaEntities, deletedKeys);
 
-    // Ghosts must be gone — if they survive, sync will 404 on them.
+    // Ghosts must be gone 鈥?if they survive, sync will 404 on them.
     assert.strictEqual(merged.length, 1);
     assert.strictEqual(merged[0].keyRaw, "keep.md");
     assert.ok(!merged.some((e) => e.keyRaw === "ghost1.md"));
@@ -510,5 +503,125 @@ describe("404 regression: end-to-end delta merge path", () => {
     assert.ok(merged.some((e) => e.keyRaw === "note49.md")); // untouched
     assert.ok(!merged.some((e) => e.keyRaw === "note10.md")); // deleted
     assert.ok(!merged.some((e) => e.keyRaw === "note29.md")); // deleted
+  });
+});
+// 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+describe("classifyDeltaItems: approot root is not a parse failure", () => {
+  // Mimics the real fromDriveItemToEntity fix: the approot root folder
+  // (no parentReference.path) maps to key "/" and is dropped cleanly,
+  // NOT thrown/skipped as a parse failure.
+  const rootAwareConverter = (
+    item: any,
+    remoteBaseDir: string,
+    _requireMtime?: boolean
+  ): Entity => {
+    if (isApprootRootDriveItem(item, remoteBaseDir)) {
+      return makeEntity("/");
+    }
+    return makeEntity(item.key, item.mtime, item.size);
+  };
+
+  it("does not warn and does not include the root in deltaEntities", () => {
+    const rootItem = {
+      id: "d!s1",
+      name: "MyVault",
+      size: 0,
+      folder: {},
+      parentReference: { driveId: "d", id: "d!sroot" },
+    };
+    const liveItem = { key: "notes/a.md", mtime: 2000 };
+
+    const warnSpy = (..._args: any[]) => {};
+    const originalWarn = console.warn;
+    let warned = false;
+    console.warn = (...args: any[]) => {
+      warned = true;
+      warnSpy(...args);
+    };
+    try {
+      const { deltaEntities, deletedKeys } = classifyDeltaItems(
+        [rootItem, liveItem],
+        "MyVault",
+        rootAwareConverter
+      );
+      assert.ok(!warned, "root folder must not log a parse-failure warning");
+      assert.strictEqual(deltaEntities.length, 1);
+      assert.strictEqual(deltaEntities[0].keyRaw, "notes/a.md");
+      assert.strictEqual(deletedKeys.size, 0);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
+  it("drops the root folder from the merged output (key '/' is filtered)", () => {
+    const prev = [makeEntity("notes/a.md", 1000)];
+    const rootItem = {
+      name: "MyVault",
+      size: 0,
+      folder: {},
+      parentReference: { driveId: "d", id: "d!sroot" },
+    };
+    const { deltaEntities, deletedKeys } = classifyDeltaItems(
+      [rootItem, { key: "notes/a.md", mtime: 2000 }],
+      "MyVault",
+      rootAwareConverter
+    );
+    const merged = mergeDeltaWithPrevState(prev, deltaEntities, deletedKeys);
+
+    assert.ok(!merged.some((e) => e.keyRaw === "/"), "root must not survive");
+    assert.strictEqual(merged.length, 1);
+    assert.strictEqual(merged[0].mtimeSvr, 2000);
+  });
+});
+
+describe("classifyDeltaItems: skippedAddedOrModified self-heal signal", () => {
+  // Converter that throws on items flagged `bad` — mimics the real
+  // fromDriveItemToEntity throwing on unparseable delta shapes. Returns a
+  // normal entity otherwise.
+  const converter = (item: any, _dir: string, _req?: boolean): Entity => {
+    if (item.bad) throw new Error("parse fail");
+    return makeEntity(item.key, item.mtime, item.size);
+  };
+
+  it("returns skippedAddedOrModified=0 when all items parse", () => {
+    const items = [
+      { key: "a.md", mtime: 1000 },
+      { key: "b.md", mtime: 2000 },
+    ];
+    const { skippedAddedOrModified } = classifyDeltaItems(
+      items,
+      "vault",
+      converter
+    );
+    assert.strictEqual(skippedAddedOrModified, 0);
+  });
+
+  it("counts added/modified items whose conversion throws", () => {
+    const items = [
+      { key: "good.md", mtime: 1000 },
+      { key: "bad1.md", mtime: 1000, bad: true },
+      { key: "bad2.md", mtime: 1000, bad: true },
+    ];
+    const { deltaEntities, deletedKeys, skippedAddedOrModified } =
+      classifyDeltaItems(items, "vault", converter);
+    assert.strictEqual(skippedAddedOrModified, 2);
+    assert.strictEqual(deltaEntities.length, 1); // only good.md survived
+    assert.strictEqual(deletedKeys.size, 0);
+  });
+
+  it("does NOT count deleted-item throws (those self-heal via 404)", () => {
+    const items = [
+      { key: "live.md", mtime: 1000 },
+      { key: "ghost.md", mtime: 1000, deleted: {}, bad: true },
+    ];
+    const { deltaEntities, deletedKeys, skippedAddedOrModified } =
+      classifyDeltaItems(items, "vault", converter);
+    // The deleted item threw during key extraction -> not in deletedKeys,
+    // but NOT counted as skippedAddedOrModified either: deleted-item skips
+    // self-heal via the 404 path in main.ts; only added/modified skips
+    // trigger the deltaLink-invalidation self-heal in walk().
+    assert.strictEqual(skippedAddedOrModified, 0);
+    assert.strictEqual(deltaEntities.length, 1);
+    assert.strictEqual(deletedKeys.size, 0);
   });
 });
