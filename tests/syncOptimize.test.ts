@@ -3,7 +3,9 @@
 import { strict as assert } from "assert";
 import type { Entity, MixedEntity } from "../src/baseTypes";
 import {
+  SYNC_ON_SAVE_RATE_LIMIT_MS,
   buildDeltaStartUrl,
+  shouldRateLimitSync,
   shouldSkipSync,
   splitUploadDownloadOps,
 } from "../src/syncOptimize";
@@ -364,5 +366,37 @@ describe("shouldSkipSync: encrypted vault (prevEntity.size=undefined) [C3 fix]",
     local[0].size = undefined;
     prev[0].size = undefined;
     assert.ok(shouldSkipSync(0, local, prev));
+  });
+});
+
+describe("shouldRateLimitSync (sync-on-save 1-min rate limit)", () => {
+  // SYNC_ON_SAVE_RATE_LIMIT_MS = 60_000. A save-triggered sync fires only
+  // if MORE than 1 minute has passed since the last successful sync; else
+  // drop (periodic auto-sync catches up). Never-synced => eligible.
+  const MS = SYNC_ON_SAVE_RATE_LIMIT_MS;
+  const NOW = 1_000_000;
+
+  it("exposes a 60_000ms interval", () => {
+    assert.strictEqual(MS, 60_000);
+  });
+
+  it("syncs when never synced before (lastSync null/undefined)", () => {
+    assert.ok(shouldRateLimitSync(NOW, null));
+    assert.ok(shouldRateLimitSync(NOW, undefined));
+  });
+
+  it("syncs when more than 1 minute has passed since last sync", () => {
+    assert.ok(shouldRateLimitSync(NOW, NOW - MS - 1)); // 60001ms ago
+    assert.ok(shouldRateLimitSync(NOW, 0)); // very old
+  });
+
+  it("drops when within the 1-minute window (<= 60000ms since last sync)", () => {
+    assert.ok(!shouldRateLimitSync(NOW, NOW - MS)); // exactly 60000ms -> drop
+    assert.ok(!shouldRateLimitSync(NOW, NOW - MS + 1)); // 59999ms -> drop
+    assert.ok(!shouldRateLimitSync(NOW, NOW - 1000)); // 1s ago -> drop
+  });
+
+  it("drops when last sync is in the future (clock skew)", () => {
+    assert.ok(!shouldRateLimitSync(NOW, NOW + 5000)); // 5s in the future
   });
 });

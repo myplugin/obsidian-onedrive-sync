@@ -63,6 +63,10 @@ import { RemotelySaveSettingTab } from "./settings";
 import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
 import {
+  SYNC_ON_SAVE_RATE_LIMIT_MS,
+  shouldRateLimitSync,
+} from "./syncOptimize";
+import {
   DEFAULT_SYNCED_FIELDS,
   applySyncedFields,
   projectSyncableFields,
@@ -78,6 +82,7 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   autoRunEveryMilliseconds: -1,
   initRunAfterMilliseconds: -1,
   syncOnSaveAfterMilliseconds: -1,
+  syncOnSaveMode: "off",
   agreeToUploadExtraMetadata: true, // as of 20240106, it's safe to assume every new user agrees with this
   concurrency: 5,
   syncConfigDir: false,
@@ -1022,6 +1027,16 @@ export default class RemotelySavePlugin extends Plugin {
     if (this.settings.syncOnSaveAfterMilliseconds === undefined) {
       this.settings.syncOnSaveAfterMilliseconds = -1;
     }
+    if (this.settings.syncOnSaveMode === undefined) {
+      // Back-compat: derive from the legacy syncOnSaveAfterMilliseconds flag
+      // (>0 meant the throttle mode was on; -1 / undefined meant off).
+      this.settings.syncOnSaveMode =
+        this.settings.syncOnSaveAfterMilliseconds !== undefined &&
+        this.settings.syncOnSaveAfterMilliseconds !== null &&
+        this.settings.syncOnSaveAfterMilliseconds > 0
+          ? "throttle"
+          : "off";
+    }
     if (this.settings.deleteToWhere === undefined) {
       this.settings.deleteToWhere = "system";
     }
@@ -1481,18 +1496,66 @@ export default class RemotelySavePlugin extends Plugin {
     }
   );
 
-  toggleSyncOnSaveIfSet() {
+  /**
+   * Sync-on-save "1-minute rate-limit" handler. On any vault change event,
+   * sync immediately UNLESS a sync happened within the last
+   * SYNC_ON_SAVE_RATE_LIMIT_MS (then drop — periodic auto-sync catches up).
+   * Requires periodic auto-sync (autoRunEveryMilliseconds > 0) as the safety
+   * net; otherwise the handler stays inert. No throttle, no SYNC_DONE
+   * listener, no defer state — the 1-min window is the rate limit.
+   */
+  _syncOnSaveRateLimitHandler = async (_file: any) => {
+    // Prerequisite: periodic auto-sync must be enabled — it catches the
+    // changes dropped within the 1-min window. If periodic is off, the
+    // rate-limit mode stays inert (no sync on save).
     if (
-      this.settings.syncOnSaveAfterMilliseconds !== undefined &&
-      this.settings.syncOnSaveAfterMilliseconds !== null &&
-      this.settings.syncOnSaveAfterMilliseconds > 0
+      this.settings.autoRunEveryMilliseconds === undefined ||
+      this.settings.autoRunEveryMilliseconds === null ||
+      this.settings.autoRunEveryMilliseconds <= 0
     ) {
+      return;
+    }
+    // Drop while a sync is in progress — periodic + the next eligible save
+    // (after the 1-min window) catch up. No defer state, no timer.
+    if (this.isSyncing) {
+      return;
+    }
+    try {
+      const lastSyncMs = await getLastSuccessSyncTimeByVault(
+        this.db,
+        this.vaultRandomID
+      );
+      if (shouldRateLimitSync(Date.now(), lastSyncMs)) {
+        await this.syncRun("auto_sync_on_save").catch((e) => {
+          console.error("Sync-on-save (rate-limit) failed:", e);
+        });
+      }
+      // else: within the 1-min window → drop (ignore this trigger).
+    } catch (e) {
+      console.error("Sync-on-save (rate-limit) check failed:", e);
+    }
+  };
+
+  toggleSyncOnSaveIfSet() {
+    // Always tear down every sync-on-save listener first so re-toggling
+    // (settings change, sync-algo notice) never double-registers.
+    this.syncEvent?.off("SYNC_DONE", this._syncOnSaveEvent1);
+    this.app.vault.off("modify", this._syncOnSaveModifyHandler);
+    this.app.vault.off("create", this._syncOnSaveEvent2);
+    this.app.vault.off("delete", this._syncOnSaveEvent2);
+    this.app.vault.off("rename", this._syncOnSaveEvent2);
+    this.app.vault.off("modify", this._syncOnSaveRateLimitHandler);
+    this.app.vault.off("create", this._syncOnSaveRateLimitHandler);
+    this.app.vault.off("delete", this._syncOnSaveRateLimitHandler);
+    this.app.vault.off("rename", this._syncOnSaveRateLimitHandler);
+
+    const mode = this.settings.syncOnSaveMode;
+    if (mode === "throttle") {
       this.app.workspace.onLayoutReady(() => {
         // listen to sync done
         this.registerEvent(
           this.syncEvent?.on("SYNC_DONE", this._syncOnSaveEvent1)!
         );
-
         // listen to current file save changes
         // Use _syncOnSaveModifyHandler for "modify" to track the actual
         // modified file, not just getActiveFile() at throttle time.
@@ -1503,13 +1566,23 @@ export default class RemotelySavePlugin extends Plugin {
         this.registerEvent(this.app.vault.on("delete", this._syncOnSaveEvent2));
         this.registerEvent(this.app.vault.on("rename", this._syncOnSaveEvent2));
       });
-    } else {
-      this.syncEvent?.off("SYNC_DONE", this._syncOnSaveEvent1);
-      this.app.vault.off("modify", this._syncOnSaveModifyHandler);
-      this.app.vault.off("create", this._syncOnSaveEvent2);
-      this.app.vault.off("delete", this._syncOnSaveEvent2);
-      this.app.vault.off("rename", this._syncOnSaveEvent2);
+    } else if (mode === "rateLimit") {
+      this.app.workspace.onLayoutReady(() => {
+        this.registerEvent(
+          this.app.vault.on("modify", this._syncOnSaveRateLimitHandler)
+        );
+        this.registerEvent(
+          this.app.vault.on("create", this._syncOnSaveRateLimitHandler)
+        );
+        this.registerEvent(
+          this.app.vault.on("delete", this._syncOnSaveRateLimitHandler)
+        );
+        this.registerEvent(
+          this.app.vault.on("rename", this._syncOnSaveRateLimitHandler)
+        );
+      });
     }
+    // mode === "off" (or unset) → nothing registered.
   }
 
   enableMobileStatusBarIfSet() {

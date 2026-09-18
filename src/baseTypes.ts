@@ -53,6 +53,9 @@ export interface ProfilerConfig {
   recordSize?: boolean;
 }
 
+/** Sync-on-save trigger mode. See RemotelySavePluginSettings.syncOnSaveMode. */
+export type SyncOnSaveMode = "off" | "throttle" | "rateLimit";
+
 export interface RemotelySavePluginSettings {
   onedrive: OnedriveConfig;
 
@@ -62,6 +65,14 @@ export interface RemotelySavePluginSettings {
   autoRunEveryMilliseconds?: number;
   initRunAfterMilliseconds?: number;
   syncOnSaveAfterMilliseconds?: number;
+  /**
+   * Sync-on-save mode: "off" (disabled), "throttle" (the classic 3s-trailing
+   * throttle that syncs if the active file changed since the last sync), or
+   * "rateLimit" (sync immediately on a vault change unless a sync happened
+   * within the last SYNC_ON_SAVE_RATE_LIMIT_MS, in which case drop — periodic
+   * auto-sync catches up; requires autoRunEveryMilliseconds > 0).
+   */
+  syncOnSaveMode?: SyncOnSaveMode;
 
   concurrency?: number;
   syncConfigDir?: boolean;

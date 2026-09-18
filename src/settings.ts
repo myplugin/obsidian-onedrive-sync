@@ -23,6 +23,7 @@ import type {
   QRExportType,
   SUPPORTED_SERVICES_TYPE_WITH_REMOTE_BASE_DIR,
   SyncDirectionType,
+  SyncOnSaveMode,
 } from "./baseTypes";
 
 import cloneDeep from "lodash/cloneDeep";
@@ -1002,29 +1003,36 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setName(t("settings_synconsave"))
       .setDesc(t("settings_synconsave_desc"))
       .addDropdown((dropdown) => {
-        dropdown.addOption("-1", t("settings_synconsave_disable"));
-        dropdown.addOption("1000", t("settings_synconsave_enable"));
-        // for backward compatibility, we need to use a number representing seconds
-        let syncOnSaveEnabled = false;
-        if ((this.plugin.settings.syncOnSaveAfterMilliseconds ?? -1) > 0) {
-          syncOnSaveEnabled = true;
-        }
+        dropdown.addOption("off", t("settings_synconsave_disable"));
+        dropdown.addOption("throttle", t("settings_synconsave_mode_throttle"));
+        dropdown.addOption(
+          "rateLimit",
+          t("settings_synconsave_mode_ratelimit")
+        );
         dropdown
-          .setValue(`${syncOnSaveEnabled ? "1000" : "-1"}`)
+          .setValue(`${this.plugin.settings.syncOnSaveMode ?? "off"}`)
           .onChange(async (val: string) => {
-            this.plugin.settings.syncOnSaveAfterMilliseconds =
-              Number.parseInt(val);
+            const mode = val as SyncOnSaveMode;
+            this.plugin.settings.syncOnSaveMode = mode;
             await this.plugin.saveSettings();
             this.plugin.toggleSyncOnSaveIfSet();
+            // rateLimit requires periodic auto-sync as the safety net for
+            // saves dropped within the 1-min window; warn immediately if
+            // the prerequisite is unmet (the handler stays inert otherwise).
+            const periodicOn =
+              this.plugin.settings.autoRunEveryMilliseconds !== undefined &&
+              this.plugin.settings.autoRunEveryMilliseconds !== null &&
+              this.plugin.settings.autoRunEveryMilliseconds > 0;
+            if (mode === "rateLimit" && !periodicOn) {
+              new Notice(
+                t("settings_synconsave_ratelimit_need_periodic"),
+                10 * 1000
+              );
+            }
           });
       });
 
-    addSyncToggle(
-      syncOnSaveSetting,
-      "syncOnSaveAfterMilliseconds",
-      this.plugin,
-      t
-    );
+    addSyncToggle(syncOnSaveSetting, "syncOnSaveMode", this.plugin, t);
 
     containerEl.createEl("h3", {
       text: t("settings_section_obsidian_sync"),

@@ -119,6 +119,37 @@ export function shouldSkipSync(
   return true;
 }
 
+/**
+ * Sync-on-save "1-minute rate limit" interval (ms). A save-triggered sync
+ * fires immediately only if MORE than this long has passed since the last
+ * successful sync; otherwise the trigger is dropped (periodic auto-sync
+ * catches up). Matches the user-facing "一分钟" spec; not user-configurable
+ * (the existing throttle delay is likewise fixed at 1000ms).
+ */
+export const SYNC_ON_SAVE_RATE_LIMIT_MS = 60_000;
+
+/**
+ * Decide whether a save-triggered sync should fire NOW, under the 1-minute
+ * rate-limit mode.
+ *
+ * - `lastSyncMs` null/undefined (never synced) → fire.
+ * - more than SYNC_ON_SAVE_RATE_LIMIT_MS since the last sync → fire.
+ * - otherwise (within the window, or clock-skew future) → drop.
+ *
+ * Pure (time-only) so it can be unit-tested without the Obsidian vault /
+ * sync state. The stateful wiring (reading lastSuccessSyncTimeByVault, the
+ * isSyncing guard, the periodic-auto-sync prerequisite) lives in main.ts.
+ */
+export function shouldRateLimitSync(
+  now: number,
+  lastSyncMs: number | null | undefined
+): boolean {
+  if (lastSyncMs == null) {
+    return true;
+  }
+  return now - lastSyncMs > SYNC_ON_SAVE_RATE_LIMIT_MS;
+}
+
 const UPLOAD_DECISIONS = new Set([
   "local_is_modified_then_push",
   "local_is_created_then_push",
