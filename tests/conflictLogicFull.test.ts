@@ -235,7 +235,12 @@ describe("conflictLogic: mergeFile", () => {
       "* [ ] New line after A2\n* [ ] A3\n";
     const left = makeMockFs("left", { "n.md": a });
     const right = makeMockFs("right", { "n.md": b });
-    const res = await mergeFile("n.md", left as any, right as any, str2ab(orig));
+    const res = await mergeFile(
+      "n.md",
+      left as any,
+      right as any,
+      str2ab(orig)
+    );
     const merged = ab2str(res.content as ArrayBuffer);
     assert.equal(merged, expected);
     assert.ok(!merged.includes("<<<<<<<"), "clean merge, no conflict markers");
@@ -249,7 +254,12 @@ describe("conflictLogic: mergeFile", () => {
     const b = "\n* [ ] changed by right\n* [ ] A3\n* [ ] A4\n";
     const left = makeMockFs("left", { "n.md": a });
     const right = makeMockFs("right", { "n.md": b });
-    const res = await mergeFile("n.md", left as any, right as any, str2ab(orig));
+    const res = await mergeFile(
+      "n.md",
+      left as any,
+      right as any,
+      str2ab(orig)
+    );
     const merged = ab2str(res.content as ArrayBuffer);
     // markers are wrapped in backticks for markdown compatibility
     assert.ok(merged.includes("`<<<<<<<`"));
@@ -401,10 +411,10 @@ describe("conflictLogic: tryDuplicateFile", () => {
   });
 
   it("picks the next free dup name when x.dup.md already exists", async () => {
-    const local = makeMockFs(
-      "local",
-      { "x.md": "local content is longer", "x.dup.md": "pre-existing" }
-    );
+    const local = makeMockFs("local", {
+      "x.md": "local content is longer",
+      "x.dup.md": "pre-existing",
+    });
     const remote = makeMockFs("remote", { "x.md": "short" });
     const rec = makeRecorders();
     const res: any = await tryDuplicateFile(

@@ -51,7 +51,9 @@ export abstract class FakeFs {
    * API request (e.g. OneDrive's $select with @microsoft.graph.downloadUrl)
    * should override this to save one HTTP round-trip per file download.
    */
-  async readFileWithStat(key: string): Promise<{ entity: Entity; content: ArrayBuffer }> {
+  async readFileWithStat(
+    key: string
+  ): Promise<{ entity: Entity; content: ArrayBuffer }> {
     const entity = await this.stat(key);
     const content = await this.readFile(key);
     return { entity, content };

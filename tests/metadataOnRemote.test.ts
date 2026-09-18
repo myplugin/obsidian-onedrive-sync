@@ -2,9 +2,9 @@ import { strict as assert } from "assert";
 import { base64url } from "rfc4648";
 import {
   type MetadataOnRemote,
+  deserializeMetadataOnRemote,
   isEqualMetadataOnRemote,
   serializeMetadataOnRemote,
-  deserializeMetadataOnRemote,
 } from "../src/metadataOnRemote";
 import { bufferToArrayBuffer, reverseString } from "../src/misc";
 

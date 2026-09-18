@@ -12,10 +12,7 @@ describe("Misc: fixEntityListCasesInplace", () => {
   });
 
   it("should fix folder name cases to match parent", () => {
-    const entities = [
-      { keyRaw: "Folder/" },
-      { keyRaw: "Folder/file.md" },
-    ];
+    const entities = [{ keyRaw: "Folder/" }, { keyRaw: "Folder/file.md" }];
     const result = misc.fixEntityListCasesInplace(entities);
     // Should preserve case consistency
     assert.ok(result[0].keyRaw.startsWith("Folder"));

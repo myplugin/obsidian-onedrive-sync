@@ -149,9 +149,10 @@ const DOWNLOAD_DECISIONS = new Set([
  *
  * Unknown/undefined decisions default to uploads as a safe fallback.
  */
-export function splitUploadDownloadOps(
-  ops: MixedEntity[]
-): { uploads: MixedEntity[]; downloads: MixedEntity[] } {
+export function splitUploadDownloadOps(ops: MixedEntity[]): {
+  uploads: MixedEntity[];
+  downloads: MixedEntity[];
+} {
   const uploads: MixedEntity[] = [];
   const downloads: MixedEntity[] = [];
   for (const op of ops) {

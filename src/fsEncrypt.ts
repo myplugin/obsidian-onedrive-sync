@@ -368,13 +368,19 @@ export class FakeFsEncrypt extends FakeFs {
    * single API call), then applies the same entity transform as stat()
    * and the same content decryption as readFile().
    */
-  async readFileWithStat(key: string): Promise<{ entity: Entity; content: ArrayBuffer }> {
+  async readFileWithStat(
+    key: string
+  ): Promise<{ entity: Entity; content: ArrayBuffer }> {
     if (!this.hasCacheMap) {
-      throw new Error("You have to build the cacheMap firstly for readFileWithStat");
+      throw new Error(
+        "You have to build the cacheMap firstly for readFileWithStat"
+      );
     }
     const keyEnc = this.cacheMapOrigToEnc[key];
     if (keyEnc === undefined) {
-      throw new Error(`no encrypted key ${key} before! cannot readFileWithStat`);
+      throw new Error(
+        `no encrypted key ${key} before! cannot readFileWithStat`
+      );
     }
 
     const { entity: innerEntity, content: contentEnc } =

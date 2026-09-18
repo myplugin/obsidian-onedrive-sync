@@ -203,28 +203,18 @@ describe("Obsidian sync: toggle independence", () => {
 
 describe("Obsidian sync: folder routing (keptFolder fix)", () => {
   it("self plugin folder not skipped when syncSelfPlugin on", () => {
-    assert.ok(
-      !skip(`${CF}/plugins/${PID}/`, false, false, false, false, true)
-    );
+    assert.ok(!skip(`${CF}/plugins/${PID}/`, false, false, false, false, true));
   });
   it("self plugin folder skipped when syncSelfPlugin off", () => {
-    assert.ok(
-      skip(`${CF}/plugins/${PID}/`, false, false, false, false, false)
-    );
+    assert.ok(skip(`${CF}/plugins/${PID}/`, false, false, false, false, false));
   });
   it("plugins/ dir not skipped when only syncSelfPlugin on", () => {
-    assert.ok(
-      !skip(`${CF}/plugins/`, false, false, false, false, true)
-    );
+    assert.ok(!skip(`${CF}/plugins/`, false, false, false, false, true));
   });
   it("plugins/ dir not skipped when only syncThirdPartyPlugins on", () => {
-    assert.ok(
-      !skip(`${CF}/plugins/`, false, false, false, true, false)
-    );
+    assert.ok(!skip(`${CF}/plugins/`, false, false, false, true, false));
   });
   it("plugins/ dir skipped when both plugin toggles off", () => {
-    assert.ok(
-      skip(`${CF}/plugins/`, false, false, false, false, false)
-    );
+    assert.ok(skip(`${CF}/plugins/`, false, false, false, false, false));
   });
 });

@@ -1,18 +1,14 @@
 // License: Apache-2.0 (see src/LICENSE)
 
 import { strict as assert } from "assert";
+import type { Entity, MixedEntity } from "../src/baseTypes";
 import {
+  buildDeltaStartUrl,
   shouldSkipSync,
   splitUploadDownloadOps,
-  buildDeltaStartUrl,
 } from "../src/syncOptimize";
-import type { Entity, MixedEntity } from "../src/baseTypes";
 
-function makeFile(
-  key: string,
-  mtime?: number,
-  size?: number
-): Entity {
+function makeFile(key: string, mtime?: number, size?: number): Entity {
   return {
     key: key,
     keyRaw: key,

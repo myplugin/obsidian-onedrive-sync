@@ -3,8 +3,8 @@
 // Covers: C1 (error .code preservation), C2 (prevRemoteEntities merge), L2 (getDupFiles).
 
 import { strict as assert } from "assert";
-import { clearDupFiles, getDupFiles } from "../src/clearDupFiles";
 import type { Entity } from "../src/baseTypes";
+import { clearDupFiles, getDupFiles } from "../src/clearDupFiles";
 
 // =============================================================================
 // C1: PQueue error handlers must preserve .code and .key properties
@@ -102,12 +102,8 @@ describe("C2: prevRemoteEntities merge with uploaded entities", () => {
   }
 
   it("should add uploaded files that are not in walkResult", () => {
-    const walkResult: Entity[] = [
-      { keyRaw: "existing.md" } as Entity,
-    ];
-    const uploaded: Entity[] = [
-      { keyRaw: "just_uploaded.md" } as Entity,
-    ];
+    const walkResult: Entity[] = [{ keyRaw: "existing.md" } as Entity];
+    const uploaded: Entity[] = [{ keyRaw: "just_uploaded.md" } as Entity];
 
     const result = mergeUploadedIntoPrevRemote(walkResult, new Set(), uploaded);
 
@@ -117,9 +113,7 @@ describe("C2: prevRemoteEntities merge with uploaded entities", () => {
   });
 
   it("should not duplicate files already in walkResult", () => {
-    const walkResult: Entity[] = [
-      { keyRaw: "overwritten.md" } as Entity,
-    ];
+    const walkResult: Entity[] = [{ keyRaw: "overwritten.md" } as Entity];
     const uploaded: Entity[] = [
       { keyRaw: "overwritten.md" } as Entity, // same key, was overwritten
       { keyRaw: "new_file.md" } as Entity,
@@ -140,9 +134,7 @@ describe("C2: prevRemoteEntities merge with uploaded entities", () => {
       { keyRaw: "deleted.md" } as Entity,
     ];
     const deletedKeys = new Set(["deleted.md"]);
-    const uploaded: Entity[] = [
-      { keyRaw: "uploaded.md" } as Entity,
-    ];
+    const uploaded: Entity[] = [{ keyRaw: "uploaded.md" } as Entity];
 
     const result = mergeUploadedIntoPrevRemote(
       walkResult,
@@ -157,9 +149,7 @@ describe("C2: prevRemoteEntities merge with uploaded entities", () => {
   });
 
   it("should handle empty uploaded list", () => {
-    const walkResult: Entity[] = [
-      { keyRaw: "a.md" } as Entity,
-    ];
+    const walkResult: Entity[] = [{ keyRaw: "a.md" } as Entity];
     const result = mergeUploadedIntoPrevRemote(walkResult, new Set(), []);
     assert.strictEqual(result.length, 1);
   });
@@ -168,12 +158,8 @@ describe("C2: prevRemoteEntities merge with uploaded entities", () => {
     // Scenario: file was uploaded in this sync, delta API hasn't caught up.
     // Without the merge, prevRemoteEntities wouldn't contain the file,
     // and the next sync would see it as "remote deleted" → delete local.
-    const walkResult: Entity[] = [
-      { keyRaw: "other.md" } as Entity,
-    ];
-    const uploaded: Entity[] = [
-      { keyRaw: "my_note.md" } as Entity,
-    ];
+    const walkResult: Entity[] = [{ keyRaw: "other.md" } as Entity];
+    const uploaded: Entity[] = [{ keyRaw: "my_note.md" } as Entity];
 
     const withoutMerge = [...walkResult]; // old behavior
     const withMerge = mergeUploadedIntoPrevRemote(
@@ -204,8 +190,7 @@ describe("L2: getDupFiles does not match false-positive 'dup' paths", () => {
   // Minimal mock that only implements walk() — the only method getDupFiles calls.
   function makeMockFs(files: string[]): any {
     return {
-      walk: async () =>
-        files.map((f) => ({ keyRaw: f }) as Entity),
+      walk: async () => files.map((f) => ({ keyRaw: f }) as Entity),
     };
   }
 
