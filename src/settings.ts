@@ -1014,6 +1014,12 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           .onChange(async (val: string) => {
             const mode = val as SyncOnSaveMode;
             this.plugin.settings.syncOnSaveMode = mode;
+            // Keep the legacy field consistent for mixed-version fleets (old
+            // builds still read syncOnSaveAfterMilliseconds): throttle=1000,
+            // off/rateLimit=-1 (rateLimit has no legacy representation; old
+            // peers treat it as off — the safe default).
+            this.plugin.settings.syncOnSaveAfterMilliseconds =
+              mode === "throttle" ? 1000 : -1;
             await this.plugin.saveSettings();
             this.plugin.toggleSyncOnSaveIfSet();
             // rateLimit requires periodic auto-sync as the safety net for

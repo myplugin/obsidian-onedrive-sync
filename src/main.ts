@@ -64,6 +64,7 @@ import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
 import {
   SYNC_ON_SAVE_RATE_LIMIT_MS,
+  deriveSyncOnSaveMode,
   shouldRateLimitSync,
 } from "./syncOptimize";
 import {
@@ -82,7 +83,11 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   autoRunEveryMilliseconds: -1,
   initRunAfterMilliseconds: -1,
   syncOnSaveAfterMilliseconds: -1,
-  syncOnSaveMode: "off",
+  // NOTE: syncOnSaveMode is intentionally NOT defaulted here. loadSettings
+  // merges DEFAULT_SETTINGS into loaded data via Object.assign, so a default
+  // here would make the back-compat migration (deriveSyncOnSaveMode) never
+  // run — silently disabling sync-on-save for upgraders. The migration
+  // derives "off" for new users from the default syncOnSaveAfterMilliseconds=-1.
   agreeToUploadExtraMetadata: true, // as of 20240106, it's safe to assume every new user agrees with this
   concurrency: 5,
   syncConfigDir: false,
@@ -176,6 +181,16 @@ export default class RemotelySavePlugin extends Plugin {
   isSyncing!: boolean;
   hasPendingSyncOnSave!: boolean;
   lastModifiedFile: any = null;
+  // In-memory cache of the last successful sync time (ms) for the rate-limit
+  // sync-on-save handler — avoids an IndexedDB read on every vault event.
+  // undefined = not yet loaded this session (lazy DB read on first use);
+  // null = loaded and never synced; number = the time. Updated synchronously
+  // on sync completion in statusBarFunc step 8.
+  lastSuccessSyncMs?: number | null;
+  // Coalesces bursts (bulk rename / find-replace fire N events): while one
+  // rate-limit check/sync is running, drop the rest — prevents N duplicate
+  // syncRun setup passes before syncRun's own isSyncing guard dedupes them.
+  rateLimitTriggerInFlight = false;
   statusBarElement!: HTMLSpanElement;
   oauth2Info!: OAuth2Info;
   currLogLevel!: string;
@@ -465,6 +480,9 @@ export default class RemotelySavePlugin extends Plugin {
       } else if (step === 8 && everythingOk) {
         const ts = Date.now();
         await upsertLastSuccessSyncTimeByVault(this.db, this.vaultRandomID, ts);
+        // Keep the rate-limit handler's in-memory cache fresh so it can
+        // decide eligibility without an extra DB read per vault event.
+        this.lastSuccessSyncMs = ts;
         this.updateLastSyncMsg(s, "not_syncing", ts, null); // hack: 'not_syncing'
       } else if (!everythingOk) {
         const ts = Date.now();
@@ -1029,13 +1047,13 @@ export default class RemotelySavePlugin extends Plugin {
     }
     if (this.settings.syncOnSaveMode === undefined) {
       // Back-compat: derive from the legacy syncOnSaveAfterMilliseconds flag
-      // (>0 meant the throttle mode was on; -1 / undefined meant off).
-      this.settings.syncOnSaveMode =
-        this.settings.syncOnSaveAfterMilliseconds !== undefined &&
-        this.settings.syncOnSaveAfterMilliseconds !== null &&
-        this.settings.syncOnSaveAfterMilliseconds > 0
-          ? "throttle"
-          : "off";
+      // (pre-syncOnSaveMode configs). NB: syncOnSaveMode must NOT have a
+      // default in DEFAULT_SETTINGS — Object.assign({}, DEFAULT, loaded)
+      // would otherwise fill it and this branch would never run, silently
+      // disabling sync-on-save for upgraders. See deriveSyncOnSaveMode + tests.
+      this.settings.syncOnSaveMode = deriveSyncOnSaveMode(
+        this.settings.syncOnSaveAfterMilliseconds
+      );
     }
     if (this.settings.deleteToWhere === undefined) {
       this.settings.deleteToWhere = "system";
@@ -1515,16 +1533,36 @@ export default class RemotelySavePlugin extends Plugin {
     ) {
       return;
     }
-    // Drop while a sync is in progress — periodic + the next eligible save
-    // (after the 1-min window) catch up. No defer state, no timer.
-    if (this.isSyncing) {
+    // Coalesce bursts (bulk rename / find-replace fire N events): while one
+    // rate-limit check/sync is already running, drop the rest. This also
+    // prevents N duplicate syncRun setup passes (each builds FakeFsLocal +
+    // reads getPrevRemoteEntities before syncRun's own isSyncing guard
+    // dedupes them). Periodic auto-sync + the next eligible save catch the
+    // dropped changes. No defer state, no timer.
+    if (this.rateLimitTriggerInFlight) {
       return;
     }
+    this.rateLimitTriggerInFlight = true;
     try {
-      const lastSyncMs = await getLastSuccessSyncTimeByVault(
-        this.db,
-        this.vaultRandomID
-      );
+      // Fast-path: skip the cache read + syncRun setup if a sync is already
+      // running. (TOCTOU fast-path, not a guard — the authoritative dedup is
+      // syncRun's own isSyncing check; the in-flight flag above is what
+      // actually coalesces bursts.)
+      if (this.isSyncing) {
+        return;
+      }
+      // Use the in-memory cache of the last successful sync time (updated
+      // synchronously on sync completion in statusBarFunc step 8) to avoid an
+      // IndexedDB read on every vault event. Lazy-load once per session
+      // (undefined = not yet loaded; null = loaded, never synced).
+      let lastSyncMs = this.lastSuccessSyncMs;
+      if (lastSyncMs === undefined) {
+        lastSyncMs = await getLastSuccessSyncTimeByVault(
+          this.db,
+          this.vaultRandomID
+        );
+        this.lastSuccessSyncMs = lastSyncMs;
+      }
       if (shouldRateLimitSync(Date.now(), lastSyncMs)) {
         await this.syncRun("auto_sync_on_save").catch((e) => {
           console.error("Sync-on-save (rate-limit) failed:", e);
@@ -1533,6 +1571,8 @@ export default class RemotelySavePlugin extends Plugin {
       // else: within the 1-min window → drop (ignore this trigger).
     } catch (e) {
       console.error("Sync-on-save (rate-limit) check failed:", e);
+    } finally {
+      this.rateLimitTriggerInFlight = false;
     }
   };
 

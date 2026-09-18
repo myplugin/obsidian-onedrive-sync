@@ -5,6 +5,7 @@ import type { Entity, MixedEntity } from "../src/baseTypes";
 import {
   SYNC_ON_SAVE_RATE_LIMIT_MS,
   buildDeltaStartUrl,
+  deriveSyncOnSaveMode,
   shouldRateLimitSync,
   shouldSkipSync,
   splitUploadDownloadOps,
@@ -398,5 +399,31 @@ describe("shouldRateLimitSync (sync-on-save 1-min rate limit)", () => {
 
   it("drops when last sync is in the future (clock skew)", () => {
     assert.ok(!shouldRateLimitSync(NOW, NOW + 5000)); // 5s in the future
+  });
+});
+
+describe("deriveSyncOnSaveMode (back-compat migration from syncOnSaveAfterMilliseconds)", () => {
+  // The loadSettings migration must derive syncOnSaveMode from the legacy
+  // syncOnSaveAfterMilliseconds flag for pre-syncOnSaveMode configs. >0
+  // meant throttle-on; everything else meant off. rateLimit is new and is
+  // NEVER derivable from the legacy flag.
+  it("derives 'throttle' from any positive legacy value", () => {
+    assert.strictEqual(deriveSyncOnSaveMode(1000), "throttle");
+    assert.strictEqual(deriveSyncOnSaveMode(3000), "throttle");
+    assert.strictEqual(deriveSyncOnSaveMode(1), "throttle");
+  });
+
+  it("derives 'off' from -1 / 0 / undefined / null", () => {
+    assert.strictEqual(deriveSyncOnSaveMode(-1), "off");
+    assert.strictEqual(deriveSyncOnSaveMode(0), "off");
+    assert.strictEqual(deriveSyncOnSaveMode(undefined), "off");
+    assert.strictEqual(deriveSyncOnSaveMode(null), "off");
+  });
+
+  it("never derives 'rateLimit' from the legacy flag (it's a new mode)", () => {
+    // Sanity: no legacy input produces rateLimit.
+    for (const v of [1000, 3000, 1, 0, -1, undefined, null]) {
+      assert.notStrictEqual(deriveSyncOnSaveMode(v as any), "rateLimit");
+    }
   });
 });

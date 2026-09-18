@@ -1,6 +1,6 @@
 // License: Apache-2.0 (see src/LICENSE)
 
-import type { Entity, MixedEntity } from "./baseTypes";
+import type { Entity, MixedEntity, SyncOnSaveMode } from "./baseTypes";
 
 /**
  * The $select parameter value for delta queries. Requests only the fields
@@ -148,6 +148,23 @@ export function shouldRateLimitSync(
     return true;
   }
   return now - lastSyncMs > SYNC_ON_SAVE_RATE_LIMIT_MS;
+}
+
+/**
+ * Derive `syncOnSaveMode` from the legacy `syncOnSaveAfterMilliseconds`
+ * flag (pre-`syncOnSaveMode` configs) for one-time back-compat migration.
+ * >0 meant the throttle mode was on; -1 / undefined / null / 0 meant off.
+ * (rateLimit is a new mode — never derivable from the legacy flag.) Pure
+ * so the migration is unit-testable; loadSettings is otherwise stateful.
+ */
+export function deriveSyncOnSaveMode(
+  syncOnSaveAfterMilliseconds: number | null | undefined
+): SyncOnSaveMode {
+  return syncOnSaveAfterMilliseconds !== undefined &&
+    syncOnSaveAfterMilliseconds !== null &&
+    syncOnSaveAfterMilliseconds > 0
+    ? "throttle"
+    : "off";
 }
 
 const UPLOAD_DECISIONS = new Set([
