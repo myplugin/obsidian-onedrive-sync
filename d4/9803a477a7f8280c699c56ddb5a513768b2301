@@ -1,0 +1,22 @@
+esbuild.config.mjs
+  s_c7970f70270c76::t_9438ac282f4328 58-63,65,69-76,78
+scripts/deploy.mjs
+  s_c7970f70270c76::t_0bed75e56cc7ee 31-36,38,42-49,51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "d49803a477a7f8280c699c56ddb5a513768b2301",
+  "prompts": {},
+  "sessions": {
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 8
+    }
+  }
+}
