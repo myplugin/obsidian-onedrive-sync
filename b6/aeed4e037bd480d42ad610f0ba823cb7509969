@@ -1,0 +1,41 @@
+tests/syncDispatchIfMatch.test.ts
+  s_ed741c418eb3a5::t_c60fa8c60720d0 1-184
+src/sync.ts
+  s_ed741c418eb3a5::t_5491a966f963f3 1655-1695,1698,1700-1701
+  s_ed741c418eb3a5::t_b60e0e3b22a760 1779-1786
+  s_ed741c418eb3a5::t_87b96ef0d3cff5 1461-1545
+tests/_fsMock.ts
+  s_ed741c418eb3a5::t_a3ea8bf98a0acf 1-116
+tests/localdb.test.ts
+  s_ed741c418eb3a5::t_56f39a8ebe54e9 52,54
+tests/conflictLogicFull.test.ts
+  s_ed741c418eb3a5::t_5bde77fe3a087d 9
+tests/_dbMock.ts
+  s_ed741c418eb3a5::t_5cbd2256ec8d26 1-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "b6aeed4e037bd480d42ad610f0ba823cb7509969",
+  "prompts": {},
+  "sessions": {
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 4
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 266
+    }
+  }
+}
