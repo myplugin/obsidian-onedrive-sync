@@ -4,11 +4,15 @@ import type { Entity, MixedEntity, SyncOnSaveMode } from "./baseTypes";
 
 /**
  * The $select parameter value for delta queries. Requests only the fields
- * that fromDriveItemToEntity actually reads, reducing the JSON payload by
- * ~60% for large vaults (drops cTag, eTag, etc.).
+ * fromDriveItemToEntity actually reads, reducing the JSON payload by
+ * ~60% for large vaults. `eTag` IS included: it is the If-Match
+ * precondition value for pushes (final-review F1) — without it,
+ * delta-walked entities have `etag: undefined` and the concurrency guard
+ * stays inactive for files unchanged since the last sync. `cTag` remains
+ * dropped (absent for folders; eTag covers metadata + content).
  */
 export const DELTA_SELECT =
-  "$select=id,name,size,fileSystemInfo,folder,file,parentReference";
+  "$select=id,name,size,fileSystemInfo,folder,file,parentReference,eTag";
 
 /**
  * Build the start URL for a delta query.

@@ -102,9 +102,13 @@ behaves exactly as before.
   alone cannot prevent lost updates, and why the If-Match guard exists.
 - The `deltaLink` is **per-device** state (`src/localdb.ts` — deliberately
   kept out of `data.json`, which syncs across devices).
-- The optimized delta path drops `eTag` (`src/syncOptimize.ts`) → **the
-  precondition etag must come from stat/walk responses, never from the
-  optimized delta**.
+- The optimized delta `$select` (`src/syncOptimize.ts`) now **includes**
+  `eTag` — added for the If-Match precondition (without it, delta-walked
+  entities carry no etag and the guard stays inactive for files unchanged
+  since the last sync). `cTag` is still dropped (absent for folders; eTag
+  covers metadata + content). Transition note: a persisted deltaLink carries
+  the `$select` it was created with, so links minted before this change keep
+  omitting eTag until a fresh full enumeration mints a new link.
 
 **How this plugin uses it:** delta powers the incremental remote walk; the
 `If-Match` value comes from the walked entities' `etag` (Task 1 mapping), and
