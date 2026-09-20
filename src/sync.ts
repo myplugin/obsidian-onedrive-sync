@@ -1458,7 +1458,91 @@ const fullfillMTimeOfRemoteEntityInplace = (
   return remote;
 };
 
-const dispatchOperationToActualV3 = async (
+/**
+ * The "heavy lifting" shared by the conflict_*_then_smart_conflict decisions:
+ * three-way merge via mergeFile for mergeable text files, otherwise
+ * tryDuplicateFile (.dup rename + upload + download). Extracted verbatim from
+ * the conflict branch of dispatchOperationToActualV3 so the push-path 412
+ * re-route (If-Match precondition failure -> REMOTE_ETAG_MISMATCH) runs the
+ * EXACT same code path as a walk-time-detected conflict.
+ */
+export const handleConflictModifiedSmartConflict = async (
+  r: MixedEntity,
+  fsLocal: FakeFs,
+  fsEncrypt: FakeFsEncrypt,
+  db: InternalDBs,
+  vaultRandomID: string,
+  profileID: string
+) => {
+  // heavy lifting
+  if (isMergable(r.local!, r.remote!)) {
+    const origContent = await getFileContentHistoryByVaultAndProfile(
+      db,
+      vaultRandomID,
+      profileID,
+      r.local!
+    );
+    // console.debug(`we get origContent:`)
+    // console.debug(origContent)
+    const { entity, content } = await mergeFile(
+      r.key,
+      fsLocal,
+      fsEncrypt,
+      origContent
+    );
+    await upsertPrevSyncRecordByVaultAndProfile(
+      db,
+      vaultRandomID,
+      profileID,
+      entity
+    );
+    await upsertFileContentHistoryByVaultAndProfile(
+      db,
+      vaultRandomID,
+      profileID,
+      entity,
+      content
+    );
+  } else {
+    // duplicate the files
+    await clearPrevSyncRecordByVaultAndProfile(
+      db,
+      vaultRandomID,
+      profileID,
+      r.key
+    );
+    const mtimeCli = (await fsLocal.stat(r.key)).mtimeCli!;
+    await tryDuplicateFile(
+      r.key,
+      fsLocal,
+      fsEncrypt,
+      async (upload) => {
+        if (upload !== undefined) {
+          // TODO: abstract away the dirty hack
+          fullfillMTimeOfRemoteEntityInplace(upload, mtimeCli);
+          await upsertPrevSyncRecordByVaultAndProfile(
+            db,
+            vaultRandomID,
+            profileID,
+            upload
+          );
+        }
+      },
+      async (download) => {
+        if (download !== undefined) {
+          await upsertPrevSyncRecordByVaultAndProfile(
+            db,
+            vaultRandomID,
+            profileID,
+            download
+          );
+        }
+      }
+    );
+  }
+};
+
+export const dispatchOperationToActualV3 = async (
   key: string,
   vaultRandomID: string,
   profileID: string,
@@ -1568,30 +1652,53 @@ const dispatchOperationToActualV3 = async (
   ) {
     // console.debug(`before upload in sync, r=${JSON.stringify(r, null, 2)}`);
     const mtimeCli = (await fsLocal.stat(r.key)).mtimeCli!;
-    const { entity, content } = await copyFileOrFolder(
-      r.key,
-      fsLocal,
-      fsEncrypt,
-      r.remote?.etag
-    );
-    // TODO: abstract away the dirty hack
-    fullfillMTimeOfRemoteEntityInplace(entity, mtimeCli);
-    // console.debug(`after fullfill, entity=${JSON.stringify(entity,null,2)}`)
-    await upsertPrevSyncRecordByVaultAndProfile(
-      db,
-      vaultRandomID,
-      profileID,
-      entity
-    );
-    if (conflictAction === "smart_conflict") {
-      if (isMergable(entity)) {
-        await upsertFileContentHistoryByVaultAndProfile(
+    try {
+      const { entity, content } = await copyFileOrFolder(
+        r.key,
+        fsLocal,
+        fsEncrypt,
+        r.remote?.etag
+      );
+      // TODO: abstract away the dirty hack
+      fullfillMTimeOfRemoteEntityInplace(entity, mtimeCli);
+      // console.debug(`after fullfill, entity=${JSON.stringify(entity,null,2)}`)
+      await upsertPrevSyncRecordByVaultAndProfile(
+        db,
+        vaultRandomID,
+        profileID,
+        entity
+      );
+      if (conflictAction === "smart_conflict") {
+        if (isMergable(entity)) {
+          await upsertFileContentHistoryByVaultAndProfile(
+            db,
+            vaultRandomID,
+            profileID,
+            entity,
+            content!
+          );
+        }
+      }
+    } catch (e: any) {
+      if ((e as any)?.code === "REMOTE_ETAG_MISMATCH") {
+        // 412 = OneDrive atomically REJECTED the write (If-Match
+        // precondition failed): nothing was written remotely and the local
+        // file is untouched, so there is no half state. Re-route this entry
+        // to the exact same path a walk-time-detected conflict takes
+        // (mergeFile for mergeable text, tryDuplicateFile otherwise)
+        // instead of silently clobbering the other device's change or
+        // hard-failing the whole sync.
+        r.decision = "conflict_modified_then_smart_conflict";
+        await handleConflictModifiedSmartConflict(
+          r,
+          fsLocal,
+          fsEncrypt,
           db,
           vaultRandomID,
-          profileID,
-          entity,
-          content!
+          profileID
         );
+      } else {
+        throw e;
       }
     }
   } else if (
@@ -1669,72 +1776,14 @@ const dispatchOperationToActualV3 = async (
     r.decision === "conflict_created_then_smart_conflict" ||
     r.decision === "conflict_modified_then_smart_conflict"
   ) {
-    // heavy lifting
-    if (isMergable(r.local!, r.remote!)) {
-      const origContent = await getFileContentHistoryByVaultAndProfile(
-        db,
-        vaultRandomID,
-        profileID,
-        r.local!
-      );
-      // console.debug(`we get origContent:`)
-      // console.debug(origContent)
-      const { entity, content } = await mergeFile(
-        r.key,
-        fsLocal,
-        fsEncrypt,
-        origContent
-      );
-      await upsertPrevSyncRecordByVaultAndProfile(
-        db,
-        vaultRandomID,
-        profileID,
-        entity
-      );
-      await upsertFileContentHistoryByVaultAndProfile(
-        db,
-        vaultRandomID,
-        profileID,
-        entity,
-        content
-      );
-    } else {
-      // duplicate the files
-      await clearPrevSyncRecordByVaultAndProfile(
-        db,
-        vaultRandomID,
-        profileID,
-        r.key
-      );
-      const mtimeCli = (await fsLocal.stat(r.key)).mtimeCli!;
-      await tryDuplicateFile(
-        r.key,
-        fsLocal,
-        fsEncrypt,
-        async (upload) => {
-          if (upload !== undefined) {
-            // TODO: abstract away the dirty hack
-            fullfillMTimeOfRemoteEntityInplace(upload, mtimeCli);
-            await upsertPrevSyncRecordByVaultAndProfile(
-              db,
-              vaultRandomID,
-              profileID,
-              upload
-            );
-          }
-        },
-        async (download) => {
-          if (download !== undefined) {
-            await upsertPrevSyncRecordByVaultAndProfile(
-              db,
-              vaultRandomID,
-              profileID,
-              download
-            );
-          }
-        }
-      );
-    }
+    await handleConflictModifiedSmartConflict(
+      r,
+      fsLocal,
+      fsEncrypt,
+      db,
+      vaultRandomID,
+      profileID
+    );
   } else if (r.decision === "folder_to_be_created") {
     await fsLocal.mkdir(r.key);
     const { entity } = await copyFolder(r.key, fsLocal, fsEncrypt);

@@ -6,116 +6,12 @@
 import { strict as assert } from "assert";
 import type { Entity } from "../src/baseTypes";
 import { isMergable, mergeFile, tryDuplicateFile } from "../src/conflictLogic";
-import { bufferToArrayBuffer } from "../src/misc";
+import { makeMockFs, str2ab } from "./_fsMock";
 
 const decoder = new TextDecoder();
 
-function str2ab(s: string): ArrayBuffer {
-  return bufferToArrayBuffer(Buffer.from(s, "utf-8"));
-}
-
 function ab2str(buf: ArrayBuffer): string {
   return decoder.decode(buf);
-}
-
-type StatMissingMode = "throw" | "undefined" | "null";
-
-interface MockFsOptions {
-  /** How stat() behaves for missing keys. Default: throw. */
-  statMissing?: StatMissingMode;
-  /** Fields overridden on the entity returned by writeFile(). */
-  writeReturn?: { mtimeCli?: number; ctimeCli?: number };
-}
-
-/**
- * Minimal in-memory FakeFs mock. Only the methods used by
- * conflictLogic (stat / readFile / writeFile / rename / rm) are
- * implemented. Missing keys make stat() throw by default, which is
- * what tryDuplicateFile relies on to find a usable ".dup" name.
- */
-function makeMockFs(
-  kind: string,
-  init: Record<string, string> = {},
-  opts: MockFsOptions = {}
-) {
-  const files = new Map<string, ArrayBuffer>();
-  for (const [k, v] of Object.entries(init)) {
-    files.set(k, str2ab(v));
-  }
-  const writeCalls: {
-    key: string;
-    content: ArrayBuffer;
-    mtime: number;
-    ctime: number;
-  }[] = [];
-  const renameCalls: { from: string; to: string }[] = [];
-  const statMissing = opts.statMissing ?? "throw";
-
-  return {
-    kind,
-    files,
-    writeCalls,
-    renameCalls,
-    async stat(key: string): Promise<Entity> {
-      const c = files.get(key);
-      if (c === undefined) {
-        if (statMissing === "undefined") {
-          return undefined as any;
-        }
-        if (statMissing === "null") {
-          return null as any;
-        }
-        throw Object.assign(new Error(`not found: ${key}`), {
-          code: "FILE_NOT_FOUND",
-        });
-      }
-      return {
-        key,
-        keyRaw: key,
-        size: c.byteLength,
-        sizeRaw: c.byteLength,
-        mtimeCli: 1000,
-        ctimeCli: 1000,
-      };
-    },
-    async readFile(key: string): Promise<ArrayBuffer> {
-      const c = files.get(key);
-      if (c === undefined) {
-        throw new Error(`not found: ${key}`);
-      }
-      return c;
-    },
-    async writeFile(
-      key: string,
-      content: ArrayBuffer,
-      mtime: number,
-      ctime: number
-    ): Promise<Entity> {
-      files.set(key, content);
-      writeCalls.push({ key, content, mtime, ctime });
-      return {
-        key,
-        keyRaw: key,
-        size: content.byteLength,
-        sizeRaw: content.byteLength,
-        mtimeCli: mtime,
-        ctimeCli: ctime,
-        ...(opts.writeReturn ?? {}),
-      };
-    },
-    async rename(key1: string, key2: string): Promise<void> {
-      const c = files.get(key1);
-      if (c === undefined) {
-        throw new Error(`not found: ${key1}`);
-      }
-      files.delete(key1);
-      files.set(key2, c);
-      renameCalls.push({ from: key1, to: key2 });
-    },
-    async rm(key: string): Promise<void> {
-      files.delete(key);
-    },
-  };
 }
 
 function makeEntity(key: string, sizeRaw: number): Entity {
