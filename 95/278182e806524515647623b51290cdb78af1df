@@ -1,0 +1,36 @@
+src/syncOptimize.ts
+  s_c7970f70270c76::t_8d897add857a29 152-155
+tests/conflictLogicFull.test.ts
+  s_c7970f70270c76::t_8d897add857a29 238-243,257-262,414-417
+tests/miscCoverage.test.ts
+  s_c7970f70270c76::t_8d897add857a29 15
+src/fsEncrypt.ts
+  s_c7970f70270c76::t_8d897add857a29 371-373,375-377,381-383
+src/fsAll.ts
+  s_c7970f70270c76::t_8d897add857a29 54-56
+tests/obsidianSyncFilter.test.ts
+  s_c7970f70270c76::t_8d897add857a29 206,209,212,215,218
+tests/metadataOnRemote.test.ts
+  s_c7970f70270c76::t_8d897add857a29 5
+tests/bugfixRegression.test.ts
+  s_c7970f70270c76::t_8d897add857a29 7,105-106,116,137,152,161-162,193
+tests/syncOptimize.test.ts
+  s_c7970f70270c76::t_8d897add857a29 4,6,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "95278182e806524515647623b51290cdb78af1df",
+  "prompts": {},
+  "sessions": {
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 535
+    }
+  }
+}

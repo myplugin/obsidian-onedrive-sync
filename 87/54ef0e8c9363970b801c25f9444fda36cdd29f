@@ -1,0 +1,35 @@
+scripts/deploy.mjs
+  s_5184619653c832::t_09924cc0e83014 133,135
+  s_5184619653c832::t_c61d241b7f37d8 26-45
+  s_5184619653c832::t_f69f0e97a62e4e 15
+esbuild.config.mjs
+  s_5184619653c832::t_a8f3c45c2e09ea 44,53-70
+  s_5184619653c832::t_f69f0e97a62e4e 2
+  s_5184619653c832::t_7c30b5b4843dcd 71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "8754ef0e8c9363970b801c25f9444fda36cdd29f",
+  "prompts": {},
+  "sessions": {
+    "s_5184619653c832": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dc1031fffea3e1IORrDpfNGZ",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 4
+    },
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 535
+    }
+  }
+}

@@ -1,0 +1,44 @@
+src/baseTypes.ts
+  s_c7970f70270c76::t_86e387e65c1663 56-58,68-75
+tests/syncOptimize.test.ts
+  s_c7970f70270c76::t_73999621078795 371-401
+  s_c7970f70270c76::t_d9dc27f2d62dab 6,402
+  s_c7970f70270c76::t_af26e8968ed7d8 8
+src/syncOptimize.ts
+  s_c7970f70270c76::t_cc651d4d10c198 122-152
+src/langs/zh_tw.json
+  s_c7970f70270c76::t_7553629cd11ac5 121-123
+src/langs/zh_cn.json
+  s_c7970f70270c76::t_02f3abc66d95ec 122-124
+src/syncSettings.ts
+  s_c7970f70270c76::t_9adb15047a8a11 33
+src/settings.ts
+  s_c7970f70270c76::t_742cc0235efae1 1006-1009,1011,1013,1015-1016,1019-1028,1030-1031,1035
+  s_c7970f70270c76::t_d9dc27f2d62dab 1010,1029
+  s_c7970f70270c76::t_11e90067293778 26
+src/main.ts
+  s_c7970f70270c76::t_ce6ad625dc3bbe 1499-1510,1512-1514,1516-1553,1569-1583,1585
+  s_c7970f70270c76::t_d9dc27f2d62dab 66-68
+  s_c7970f70270c76::t_56fd06ae2005df 85
+  s_c7970f70270c76::t_1b73e3308167fa 1030-1039
+  s_c7970f70270c76::t_2dd75b72fbce81 65
+src/langs/en.json
+  s_c7970f70270c76::t_924fa9e1dd5886 121-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "e1217ce3e23d62fb5ed60505e4ca67dd277860fd",
+  "prompts": {},
+  "sessions": {
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 31
+    }
+  }
+}

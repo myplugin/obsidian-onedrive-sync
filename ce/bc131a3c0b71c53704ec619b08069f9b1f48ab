@@ -1,0 +1,32 @@
+AGENTS.md
+  s_75c508855e23ea::t_1feb6b89b2cde2 48
+  s_75c508855e23ea::t_a71e357032665f 60
+docs/lessons/onedrive-delta-parentreference-path.md
+  s_75c508855e23ea::t_e66b0a059daaff 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "cebc131a3c0b71c53704ec619b08069f9b1f48ab",
+  "prompts": {},
+  "sessions": {
+    "s_75c508855e23ea": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4db947caffeifP7Rng19Ouco6",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 0
+    },
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 535
+    }
+  }
+}
