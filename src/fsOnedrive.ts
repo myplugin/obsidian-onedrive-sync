@@ -100,6 +100,39 @@ function remoteNotFoundError(key: string): Error {
   return err;
 }
 
+/**
+ * Build a recognizable error for the "remote file was changed by another
+ * device between the sync walk and the write" race condition, detected via
+ * an If-Match precondition request returning HTTP 412. Mirrors
+ * remoteNotFoundError: plain Error + `.code` + `.key`, so makeCatch (sync.ts)
+ * preserves them and main.ts can branch on `.code`.
+ */
+export function remoteEtagMismatchError(key: string): Error {
+  const err = new Error(
+    `Remote etag mismatch (another device changed this file since sync walk): ${key}`
+  );
+  (err as any).code = "REMOTE_ETAG_MISMATCH";
+  (err as any).key = key;
+  return err;
+}
+
+/**
+ * Classify an error thrown by a OneDrive write path into the sync-level
+ * error codes, purely from the HTTP status (via extractHttpStatus above):
+ *  - 412 Precondition Failed -> "REMOTE_ETAG_MISMATCH" (If-Match guard hit)
+ *  - 404 Not Found           -> "REMOTE_NOT_FOUND"     (deleted since walk)
+ *  - anything else           -> null (not a write-conflict signal)
+ * Pure function: shared by this file's write methods and upper layers.
+ */
+export function classifyOneDriveWriteError(
+  e: any
+): "REMOTE_ETAG_MISMATCH" | "REMOTE_NOT_FOUND" | null {
+  const status = extractHttpStatus(e);
+  if (status === 412) return "REMOTE_ETAG_MISMATCH";
+  if (status === 404) return "REMOTE_NOT_FOUND";
+  return null;
+}
+
 export async function getAuthUrlAndVerifier(
   clientID: string,
   authority: string
