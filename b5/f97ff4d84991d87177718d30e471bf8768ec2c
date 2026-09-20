@@ -1,0 +1,32 @@
+tests/syncDispatchIfMatch.test.ts
+  s_ed741c418eb3a5::t_d500b272326656 229
+  s_ed741c418eb3a5::t_11b9941d463520 185-228,230-232
+tests/_fsMock.ts
+  s_ed741c418eb3a5::t_f68a7882b08c98 43-45,92-93,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "b5f97ff4d84991d87177718d30e471bf8768ec2c",
+  "prompts": {},
+  "sessions": {
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 7
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 6
+    }
+  }
+}
