@@ -28,6 +28,7 @@ import {
 } from "./baseTypes";
 import { API_VER_ENSURE_REQURL_OK } from "./baseTypes";
 import { messyConfigToNormal, normalConfigToMessy } from "./configPersist";
+import { appendConflictLog, formatConflictLogLine } from "./conflictLog";
 import { exportVaultSyncPlansToFiles } from "./debugMode";
 import { FakeFsEncrypt } from "./fsEncrypt";
 import { getClient } from "./fsGetter";
@@ -541,7 +542,7 @@ export default class RemotelySavePlugin extends Plugin {
     };
 
     try {
-      await syncer(
+      const syncResult = await syncer(
         fsLocal,
         fsRemote,
         fsEncrypt,
@@ -563,6 +564,29 @@ export default class RemotelySavePlugin extends Plugin {
         statusBarFunc,
         callbackSyncProcess
       );
+      // C4 (Task 7): the REMOTE_ETAG_MISMATCH (412) re-route inside sync.ts
+      // ABSORBS the error — the sync completes without it ever reaching
+      // errNotifyFunc. Check the collected re-route entries post-sync to
+      // notify the user and append to the vault-root conflict log.
+      try {
+        const conflicts = syncResult?.conflictsEncountered ?? [];
+        if (conflicts.length > 0) {
+          const names = conflicts
+            .map((entry) => entry.key)
+            .slice(0, 5)
+            .join(", ");
+          new Notice(`并发冲突已合并/存副本,请查看: ${names}`, 10 * 1000);
+          const adapter = this.app.vault.adapter;
+          for (const entry of conflicts) {
+            await appendConflictLog(adapter, formatConflictLogLine(entry));
+          }
+        }
+      } catch (conflictLogErr) {
+        // Best-effort: a failed notice/log append must never turn a
+        // successful sync (conflicts already merged/duplicated) into an
+        // error path.
+        console.error("conflict log append failed:", conflictLogErr);
+      }
     } finally {
       // Ensure resource cleanup, prevRemoteEntities save, and SYNC_DONE
       // always run — even if syncer throws. Without this, a throw skips

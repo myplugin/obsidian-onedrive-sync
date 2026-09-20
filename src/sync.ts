@@ -14,6 +14,7 @@ import type {
   SyncDirectionType,
   SyncTriggerSourceType,
 } from "./baseTypes";
+import { CONFLICT_LOG_FILENAME, type ConflictLogEntry } from "./conflictLog";
 import { isMergable, mergeFile, tryDuplicateFile } from "./conflictLogic";
 import { copyFile, copyFileOrFolder, copyFolder } from "./copyLogic";
 import {
@@ -276,7 +277,10 @@ export const checkIsSkipItemOrNotByName = (
     (!syncUnderscoreItems && isHiddenPath(key, false, true)) ||
     key === "/" ||
     key === DEFAULT_FILE_NAME_FOR_METADATAONREMOTE ||
-    key === DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2;
+    key === DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2 ||
+    // The per-device 412-conflict log must never be synced (it would itself
+    // conflict between devices), even when the user syncs dot items.
+    key === CONFLICT_LOG_FILENAME;
   if (finalIsIgnored === undefined) {
     isExplictlyIgnored = checkIsHidden;
     finalIsIgnored = checkIsHidden;
@@ -1550,7 +1554,8 @@ export const dispatchOperationToActualV3 = async (
   fsLocal: FakeFs,
   fsEncrypt: FakeFsEncrypt,
   db: InternalDBs,
-  conflictAction: ConflictActionType
+  conflictAction: ConflictActionType,
+  conflictsEncountered?: ConflictLogEntry[]
 ) => {
   // console.debug(
   //   `inside dispatchOperationToActualV3, key=${key}, r=${JSON.stringify(
@@ -1697,6 +1702,19 @@ export const dispatchOperationToActualV3 = async (
           vaultRandomID,
           profileID
         );
+        // C4 (Task 7): record the SUCCESSFULLY re-routed conflict (the
+        // handler returned without throwing) so main.ts can notify the user
+        // and append to the vault-root conflict log after the sync — the
+        // absorbed error never reaches errNotifyFunc. The disposition is
+        // decided by the same condition the handler branches on.
+        conflictsEncountered?.push({
+          ts: new Date(),
+          key: r.key,
+          walkEtag: r.remote?.etag,
+          disposition: isMergable(r.local!, r.remote!)
+            ? "merged"
+            : "duplicated",
+        });
       } else {
         throw e;
       }
@@ -1837,7 +1855,8 @@ export const doActualSync = async (
   conflictAction: ConflictActionType,
   triggerSource: SyncTriggerSourceType,
   callbackSyncProcess?: any,
-  remoteDeltaCount?: number
+  remoteDeltaCount?: number,
+  conflictsEncountered?: ConflictLogEntry[]
 ) => {
   profiler?.addIndent();
   profiler?.insert("doActualSync: enter");
@@ -1977,7 +1996,8 @@ export const doActualSync = async (
             fsLocal,
             fsEncrypt,
             db,
-            conflictAction
+            conflictAction,
+            conflictsEncountered
           );
         };
 
@@ -2036,7 +2056,8 @@ export const doActualSync = async (
               fsLocal,
               fsEncrypt,
               db,
-              conflictAction
+              conflictAction,
+              conflictsEncountered
             );
           };
 
@@ -2124,6 +2145,11 @@ export async function syncer(
 
   let everythingOk = true;
   let step = 0;
+  // C4 (Task 7): 412 re-routed conflicts collected during this run. The
+  // re-route absorbs REMOTE_ETAG_MISMATCH (nothing reaches errNotifyFunc),
+  // so main.ts reads this from the return value after the sync to notify
+  // the user and append to the vault-root conflict log.
+  const conflictsEncountered: ConflictLogEntry[] = [];
 
   try {
     // try mode?
@@ -2267,7 +2293,8 @@ export async function syncer(
           settings.conflictAction ?? "keep_newer",
           triggerSource,
           callbackSyncProcess,
-          fsRemote.lastWalkDeltaCount
+          fsRemote.lastWalkDeltaCount,
+          conflictsEncountered
         );
         profiler?.insert(`finish step${step} (actual sync)`);
       } else {
@@ -2303,4 +2330,6 @@ export async function syncer(
     // silently — i.e. auto sync would look dead until the plugin reloads.
     markIsSyncingFunc(false);
   }
+
+  return { conflictsEncountered };
 }
