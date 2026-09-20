@@ -1,0 +1,47 @@
+src/conflictLog.ts
+  s_ed741c418eb3a5::t_292d66384d2830 1-51,53-57
+  s_ed741c418eb3a5::t_75c0689e0ea904 52
+src/sync.ts
+  s_ed741c418eb3a5::t_069fad8a0fce66 1705-1717
+  s_ed741c418eb3a5::t_41d31114e15cc6 2296-2297
+  s_ed741c418eb3a5::t_398bf83e5b70eb 2333-2334
+  s_ed741c418eb3a5::t_54413c251e583f 280-283
+  s_ed741c418eb3a5::t_2cfe2520ebb66c 2148-2152
+  s_ed741c418eb3a5::t_d1aa69fb3519a7 1557-1558
+  s_ed741c418eb3a5::t_a530a2b67d46f8 1858-1859
+  s_ed741c418eb3a5::t_9d9e083ba21c28 17
+  s_ed741c418eb3a5::t_4e6a7aa478d52e 2059-2060
+  s_ed741c418eb3a5::t_559a2e361632d1 1999-2000
+tests/conflictLog.test.ts
+  s_ed741c418eb3a5::t_476c92ee170962 1-51
+src/main.ts
+  s_ed741c418eb3a5::t_8cd5d068dff3f1 31
+  s_ed741c418eb3a5::t_1c19598bc9ee18 567-589
+  s_ed741c418eb3a5::t_64e46c9ed66393 545
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "b54ef6f1cc3a7f096414f0b49b0f0ff8cc0b440b",
+  "prompts": {},
+  "sessions": {
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 6
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 10
+    }
+  }
+}
