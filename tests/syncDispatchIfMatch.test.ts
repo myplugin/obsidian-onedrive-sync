@@ -182,3 +182,51 @@ describe("dispatchOperationToActualV3: 412 re-route", () => {
     );
   });
 });
+
+describe("dispatchOperationToActualV3: push success etag persistence", () => {
+  it("push success stores the new remote etag into prevSync (next round's If-Match source)", async () => {
+    // No 412 here: the remote writeFile SUCCEEDS and returns a fresh etag,
+    // modelling production where fromDriveItemToEntity maps the write
+    // response's eTag (Task 1) onto the returned Entity.
+    const local = makeMockFs("local", { "a.md": "B" });
+    const remote = makeMockFs(
+      "remote",
+      {},
+      { writeReturn: { etag: '"vNew"' } }
+    );
+    const db = asDB(createMockDB());
+    const r: any = {
+      key: "a.md",
+      local: { key: "a.md", keyRaw: "a.md", mtimeCli: 2000, sizeRaw: 1 },
+      prevSync: undefined,
+      remote: { key: "a.md", keyRaw: "a.md", etag: '"vOld"' },
+      decision: "local_is_modified_then_push",
+      conflictAction: "smart_conflict",
+    };
+    await dispatchOperationToActualV3(
+      "a.md",
+      "vault",
+      "prof",
+      r,
+      local as any,
+      remote as any,
+      db,
+      "smart_conflict"
+    );
+    // the push went through; NO re-route happened
+    assert.strictEqual(r.decision, "local_is_modified_then_push");
+    // Task 3 threading is live: the walked remote etag reached writeFile as
+    // the If-Match value (expectedEtag 5th arg)
+    assert.strictEqual(
+      (remote as any).writeCalls[0].expectedEtag,
+      '"vOld"',
+      "push must carry the walked etag as the If-Match value"
+    );
+    // The prevSync record stored for the NEXT round must carry the NEW etag
+    // from the write response — this is what makes the next sync's If-Match
+    // precondition valid (chain: write-response entity ->
+    // fullfillMTimeOfRemoteEntityInplace -> upsertPrevSyncRecord).
+    const rec: any = await db.prevSyncRecordsTbl.getItem("vault\tprof\ta.md");
+    assert.strictEqual(rec?.etag, '"vNew"');
+  });
+});

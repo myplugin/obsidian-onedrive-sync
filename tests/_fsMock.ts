@@ -17,7 +17,7 @@ export interface MockFsOptions {
   /** How stat() behaves for missing keys. Default: throw. */
   statMissing?: StatMissingMode;
   /** Fields overridden on the entity returned by writeFile(). */
-  writeReturn?: { mtimeCli?: number; ctimeCli?: number };
+  writeReturn?: { mtimeCli?: number; ctimeCli?: number; etag?: string };
 }
 
 /**
@@ -40,6 +40,9 @@ export function makeMockFs(
     content: ArrayBuffer;
     mtime: number;
     ctime: number;
+    // 5th arg of FakeFs.writeFile (Task 3): the If-Match value the caller
+    // threaded through. Recorded so tests can assert the threading.
+    expectedEtag?: string;
   }[] = [];
   const renameCalls: { from: string; to: string }[] = [];
   const statMissing = opts.statMissing ?? "throw";
@@ -86,10 +89,11 @@ export function makeMockFs(
       key: string,
       content: ArrayBuffer,
       mtime: number,
-      ctime: number
+      ctime: number,
+      expectedEtag?: string
     ): Promise<Entity> {
       files.set(key, content);
-      writeCalls.push({ key, content, mtime, ctime });
+      writeCalls.push({ key, content, mtime, ctime, expectedEtag });
       return {
         key,
         keyRaw: key,
