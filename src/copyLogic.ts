@@ -12,7 +12,12 @@ export async function copyFolder(key: string, left: FakeFs, right: FakeFs) {
   };
 }
 
-export async function copyFile(key: string, left: FakeFs, right: FakeFs) {
+export async function copyFile(
+  key: string,
+  left: FakeFs,
+  right: FakeFs,
+  expectedEtag?: string
+) {
   // console.debug(`copyFile: key=${key}, left=${left.kind}, right=${right.kind}`);
   if (key.endsWith("/")) {
     throw Error(`should not call ${key} in copyFile`);
@@ -46,7 +51,8 @@ export async function copyFile(key: string, left: FakeFs, right: FakeFs) {
       key,
       content,
       statsLeft.mtimeCli,
-      statsLeft.ctimeCli ?? statsLeft.mtimeCli
+      statsLeft.ctimeCli ?? statsLeft.mtimeCli,
+      expectedEtag
     ),
     content: content,
   };
@@ -55,11 +61,12 @@ export async function copyFile(key: string, left: FakeFs, right: FakeFs) {
 export async function copyFileOrFolder(
   key: string,
   left: FakeFs,
-  right: FakeFs
+  right: FakeFs,
+  expectedEtag?: string
 ) {
   if (key.endsWith("/")) {
     return await copyFolder(key, left, right);
   } else {
-    return await copyFile(key, left, right);
+    return await copyFile(key, left, right, expectedEtag);
   }
 }

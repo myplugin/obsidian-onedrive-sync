@@ -42,7 +42,8 @@ export abstract class FakeFs {
     key: string,
     content: ArrayBuffer,
     mtime: number,
-    ctime: number
+    ctime: number,
+    expectedEtag?: string
   ): Promise<Entity>;
   abstract readFile(key: string): Promise<ArrayBuffer>;
   /**

@@ -172,7 +172,8 @@ export class FakeFsLocal extends FakeFs {
     key: string,
     content: ArrayBuffer,
     mtime: number,
-    ctime: number
+    ctime: number,
+    expectedEtag?: string
   ): Promise<Entity> {
     await this.vault.adapter.writeBinary(key, content, {
       mtime: mtime,

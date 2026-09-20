@@ -298,7 +298,8 @@ export class FakeFsEncrypt extends FakeFs {
     key: string,
     content: ArrayBuffer,
     mtime: number,
-    ctime: number
+    ctime: number,
+    expectedEtag?: string
   ): Promise<Entity> {
     if (!this.hasCacheMap) {
       throw new Error("You have to build the cacheMap firstly for readFile");
@@ -318,7 +319,8 @@ export class FakeFsEncrypt extends FakeFs {
         keyEnc,
         content,
         mtime,
-        ctime
+        ctime,
+        expectedEtag
       );
       return copyEntityAndCopyKeyEncSizeEnc(innerEntity);
     } else {
@@ -327,7 +329,8 @@ export class FakeFsEncrypt extends FakeFs {
         keyEnc,
         contentEnc,
         mtime,
-        ctime
+        ctime,
+        expectedEtag
       );
       return {
         key: key,

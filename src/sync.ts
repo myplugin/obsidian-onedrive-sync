@@ -1571,7 +1571,8 @@ const dispatchOperationToActualV3 = async (
     const { entity, content } = await copyFileOrFolder(
       r.key,
       fsLocal,
-      fsEncrypt
+      fsEncrypt,
+      r.remote?.etag
     );
     // TODO: abstract away the dirty hack
     fullfillMTimeOfRemoteEntityInplace(entity, mtimeCli);

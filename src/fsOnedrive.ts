@@ -1007,7 +1007,8 @@ export class FakeFsOnedrive extends FakeFs {
     key: string,
     content: ArrayBuffer,
     mtime: number,
-    ctime: number
+    ctime: number,
+    expectedEtag?: string
   ): Promise<Entity> {
     if (key.endsWith("/")) {
       throw Error(`you should not call writeFile on ${key}`);
@@ -1021,7 +1022,8 @@ export class FakeFsOnedrive extends FakeFs {
       mtime,
       ctime,
       key,
-      this.onedriveConfig.emptyFile
+      this.onedriveConfig.emptyFile,
+      expectedEtag
     );
     // Track non-synthesized uploads so main.ts can merge them into
     // prevRemoteEntities 鈥?prevents the next sync from seeing
@@ -1039,7 +1041,10 @@ export class FakeFsOnedrive extends FakeFs {
     mtime: number,
     ctime: number,
     origKey: string,
-    emptyFile: "skip" | "error"
+    emptyFile: "skip" | "error",
+    // Received but intentionally dormant: Task 4 will send it as the
+    // If-Match header on the write requests below.
+    expectedEtag?: string
   ): Promise<Entity> {
     if (content.byteLength === 0) {
       if (emptyFile === "error") {
