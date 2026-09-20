@@ -312,5 +312,6 @@
   "settings_cleardupfiles_button": "开始扫描",
   "conflict_with_remotely_save": "与原版 \"remotely-save\" 插件冲突，请禁用原版。",
   "settings_synctoggle_on": "跨设备同步中，点击改为仅本地",
-  "settings_synctoggle_off": "仅本地，点击改为跨设备同步"
+  "settings_synctoggle_off": "仅本地，点击改为跨设备同步",
+  "conflict_resolved_notice": "并发冲突已合并/存副本，请查看: {{names}}"
 }

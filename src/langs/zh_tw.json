@@ -311,5 +311,6 @@
   "settings_cleardupfiles_button": "開始掃描",
   "conflict_with_remotely_save": "與原版 \"remotely-save\" 插件衝突，請停用原版。",
   "settings_synctoggle_on": "跨裝置同步中，點擊改為僅本地",
-  "settings_synctoggle_off": "僅本地，點擊改為跨裝置同步"
+  "settings_synctoggle_off": "僅本地，點擊改為跨裝置同步",
+  "conflict_resolved_notice": "並發衝突已合併/存副本，請查看: {{names}}"
 }

@@ -575,7 +575,7 @@ export default class RemotelySavePlugin extends Plugin {
             .map((entry) => entry.key)
             .slice(0, 5)
             .join(", ");
-          new Notice(`并发冲突已合并/存副本,请查看: ${names}`, 10 * 1000);
+          new Notice(t("conflict_resolved_notice", { names }), 10 * 1000);
           const adapter = this.app.vault.adapter;
           for (const entry of conflicts) {
             await appendConflictLog(adapter, formatConflictLogLine(entry));

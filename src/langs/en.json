@@ -311,5 +311,6 @@
   "settings_cleardupfiles_button": "Start Scanning",
   "conflict_with_remotely_save": "Conflict: the original \"remotely-save\" plugin is enabled. Disable it to use this plugin.",
   "settings_synctoggle_on": "Syncing across devices — click to keep local",
-  "settings_synctoggle_off": "Local only — click to sync across devices"
+  "settings_synctoggle_off": "Local only — click to sync across devices",
+  "conflict_resolved_notice": "Concurrent conflict merged/duplicated, please review: {{names}}"
 }

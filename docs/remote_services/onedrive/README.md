@@ -28,6 +28,7 @@ Onedrive's API does not allow uploading empty files. You can choose to skip them
 
 ## Related
 
+- [OneDrive Concurrency Mechanisms](./concurrency.md) — etag/cTag, If-Match, conflictBehavior, delta, versions
 - [Browser Environment: OAuth PKCE](../../browser_env/oauth2_pkce.md) — why the OAuth flow requires PKCE
 - [Browser Environment: CORS](../../browser_env/cors.md) — cross-origin request limitations
 - [Encryption](../../encryption/README.md) — password-based end-to-end encryption
