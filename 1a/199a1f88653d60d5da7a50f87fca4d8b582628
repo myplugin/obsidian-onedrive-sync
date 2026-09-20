@@ -1,0 +1,31 @@
+docs/remote_services/onedrive/concurrency.md
+  s_ed741c418eb3a5::t_f654469ee91959 105-111
+src/syncOptimize.ts
+  s_ed741c418eb3a5::t_d0ddea971472e5 7-12,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "1a199a1f88653d60d5da7a50f87fca4d8b582628",
+  "prompts": {},
+  "sessions": {
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 7
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 6
+    }
+  }
+}
