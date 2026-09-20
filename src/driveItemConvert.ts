@@ -352,6 +352,10 @@ ${constructFromDriveItemToEntityError(x)}`
     size: isFolder ? 0 : x.size!,
     sizeRaw: isFolder ? 0 : x.size!,
     synthesizedFile: false,
+    // Graph types eTag as NullableOption<string> (string | null); Entity.etag
+    // is `string | undefined`, so coerce null -> undefined. (Plan Step 3 wrote
+    // a bare `x.eTag`, which does not typecheck under strict null checks.)
+    etag: x.eTag ?? undefined,
     // hash: ?? // TODO
   };
 };

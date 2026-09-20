@@ -179,4 +179,19 @@ describe("fromDriveItemToEntity", () => {
       /package\/bundle.*not supported/
     );
   });
+
+  it("maps driveItem.eTag onto Entity.etag", () => {
+    // Reuse the file's existing DriveItem construction pattern (normalFile +
+    // REMOTE_BASE_DIR), per plan Step 1 prose. The plan's inline fixture used
+    // `remotely-save:/vault` (colon) and a full-path remoteBaseDir, which match
+    // no known prefix and throw before the return — so etag could never be
+    // asserted. Only the construction is corrected; the eTag value and the
+    // assertion below are verbatim from the plan.
+    const driveItem = {
+      ...normalFile,
+      eTag: '"012345819293.1"',
+    };
+    const e = fromDriveItemToEntity(driveItem as any, REMOTE_BASE_DIR);
+    assert.strictEqual(e.etag, '"012345819293.1"');
+  });
 });
