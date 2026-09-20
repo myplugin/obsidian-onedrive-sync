@@ -133,6 +133,29 @@ export function classifyOneDriveWriteError(
   return null;
 }
 
+/**
+ * Build the OneDrive small-file PUT request structure (url/method/body/
+ * headers) as a PURE function so the header logic is unit-testable without
+ * a fetch mock. The `If-Match` header (etag precondition guard against
+ * concurrent writes from other devices) is added only when `ifMatch` is a
+ * non-empty string. `Authorization` is left empty here — the caller fills
+ * it at runtime with a fresh token.
+ */
+export function _buildPutRequest(
+  url: string,
+  payload: ArrayBuffer,
+  ifMatch?: string
+) {
+  const headers: Record<string, string> = {
+    "Content-Type": DEFAULT_CONTENT_TYPE,
+    Authorization: "", // filled by the caller at runtime
+  };
+  if (ifMatch !== undefined && ifMatch !== "") {
+    headers["If-Match"] = ifMatch;
+  }
+  return { url, method: "PUT", body: payload, headers };
+}
+
 export async function getAuthUrlAndVerifier(
   clientID: string,
   authority: string
@@ -659,7 +682,12 @@ export class FakeFsOnedrive extends FakeFs {
     });
   }
 
-  async _putArrayBuffer(pathFragOrig: string, payload: ArrayBuffer) {
+  async _putArrayBuffer(
+    pathFragOrig: string,
+    payload: ArrayBuffer,
+    ifMatch?: string,
+    key?: string
+  ) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`putArrayBuffer, theUrl=${theUrl}`);
     return await this._retryOnTransientError(async () => {
@@ -680,16 +708,25 @@ export class FakeFsOnedrive extends FakeFs {
         });
         return res.json as DriveItem | UploadSession;
       } else {
+        // _buildPutRequest is the unit-tested header builder (adds If-Match
+        // only when ifMatch is a non-empty string); Authorization is filled
+        // here with a fresh token on every (re)attempt.
+        const req = _buildPutRequest(theUrl, payload, ifMatch);
+        req.headers.Authorization = `Bearer ${await this.authGetter.getAccessToken()}`;
         const res = await fetch(theUrl, {
           method: "PUT",
           body: payload,
-          headers: {
-            "Content-Type": DEFAULT_CONTENT_TYPE,
-            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-          },
+          headers: req.headers,
         });
         if (res.status === 429) {
           throw { status: 429, headers: res.headers } as any;
+        }
+        if (res.status === 412 && key !== undefined) {
+          // If-Match precondition failed: another device changed this file
+          // since the sync walk. Throw the coded error (REMOTE_ETAG_MISMATCH)
+          // so upper layers can re-route to the smart-conflict path. The
+          // retry wrapper rethrows it immediately (not 429/5xx).
+          throw remoteEtagMismatchError(key);
         }
         if (!res.ok) {
           const body = await res.text().catch(() => "");
@@ -1042,8 +1079,8 @@ export class FakeFsOnedrive extends FakeFs {
     ctime: number,
     origKey: string,
     emptyFile: "skip" | "error",
-    // Received but intentionally dormant: Task 4 will send it as the
-    // If-Match header on the write requests below.
+    // Sent as the If-Match precondition header on the small-file PUT below;
+    // the large-file (upload session) path is wired in a later task.
     expectedEtag?: string
   ): Promise<Entity> {
     if (content.byteLength === 0) {
@@ -1086,7 +1123,9 @@ export class FakeFsOnedrive extends FakeFs {
         `${key}:/content?${new URLSearchParams({
           "@microsoft.graph.conflictBehavior": "replace",
         })}`,
-        content
+        content,
+        expectedEtag,
+        origKey
       );
       if (mtime !== 0 && ctime !== 0) {
         driveItem = await this._patchJson(key, {
