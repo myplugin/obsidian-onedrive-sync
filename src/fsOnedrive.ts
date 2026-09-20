@@ -156,6 +156,30 @@ export function _buildPutRequest(
   return { url, method: "PUT", body: payload, headers };
 }
 
+/**
+ * Build the createUploadSession request body as a PURE function so it is
+ * unit-testable: `{ item: { conflictBehavior: "replace", fileSystemInfo? } }`.
+ * `fileSystemInfo` is only possible via uploadSession and is included when
+ * both timestamps are given. NOTE: the If-Match precondition is a HEADER
+ * (documented as supported by createUploadSession), sent by the `_postJson`
+ * caller — the body builder never sees it (`_expectedEtag` is accepted for
+ * call-site symmetry and intentionally unused here).
+ */
+export function _buildCreateUploadSessionBody(
+  mtimeStr?: string,
+  ctimeStr?: string,
+  _expectedEtag?: string
+) {
+  const item: any = { "@microsoft.graph.conflictBehavior": "replace" };
+  if (mtimeStr !== undefined && ctimeStr !== undefined) {
+    item.fileSystemInfo = {
+      lastModifiedDateTime: mtimeStr,
+      createdDateTime: ctimeStr,
+    };
+  }
+  return { item };
+}
+
 export async function getAuthUrlAndVerifier(
   clientID: string,
   authority: string
@@ -598,7 +622,11 @@ export class FakeFsOnedrive extends FakeFs {
     });
   }
 
-  async _postJson(pathFragOrig: string, payload: any) {
+  async _postJson(
+    pathFragOrig: string,
+    payload: any,
+    headers?: Record<string, string>
+  ) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`postJson, theUrl=${theUrl}`);
     return await this._retryOnTransientError(async () => {
@@ -609,6 +637,9 @@ export class FakeFsOnedrive extends FakeFs {
           contentType: "application/json",
           body: JSON.stringify(payload),
           headers: {
+            // Caller-supplied headers (e.g. If-Match precondition);
+            // Authorization is always set here with a fresh token.
+            ...headers,
             Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
           },
         })
@@ -752,7 +783,8 @@ export class FakeFsOnedrive extends FakeFs {
     payload: Uint8Array,
     rangeStart: number,
     rangeEnd: number,
-    size: number
+    size: number,
+    key?: string
   ) {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(
@@ -795,6 +827,14 @@ export class FakeFsOnedrive extends FakeFs {
         });
         if (res.status === 429) {
           throw { status: 429, headers: res.headers } as any;
+        }
+        if (res.status === 412 && key !== undefined) {
+          // Precondition failed on a fragment PUT: a concurrent write
+          // invalidated the upload. Throw the coded error
+          // (REMOTE_ETAG_MISMATCH) so upper layers can re-route to the
+          // smart-conflict path; the retry wrapper rethrows it immediately
+          // (not 429/5xx). Same pattern as _putArrayBuffer.
+          throw remoteEtagMismatchError(key);
         }
         if (!res.ok) {
           const body = await res.text().catch(() => "");
@@ -1079,8 +1119,8 @@ export class FakeFsOnedrive extends FakeFs {
     ctime: number,
     origKey: string,
     emptyFile: "skip" | "error",
-    // Sent as the If-Match precondition header on the small-file PUT below;
-    // the large-file (upload session) path is wired in a later task.
+    // Sent as the If-Match precondition on both write paths: the small-file
+    // PUT and the large-file createUploadSession (412 -> REMOTE_ETAG_MISMATCH).
     expectedEtag?: string
   ): Promise<Entity> {
     if (content.byteLength === 0) {
@@ -1128,12 +1168,29 @@ export class FakeFsOnedrive extends FakeFs {
         origKey
       );
       if (mtime !== 0 && ctime !== 0) {
-        driveItem = await this._patchJson(key, {
-          fileSystemInfo: {
-            lastModifiedDateTime: mtimeStr,
-            createdDateTime: ctimeStr,
-          } as FileSystemInfo,
-        });
+        try {
+          driveItem = await this._patchJson(key, {
+            fileSystemInfo: {
+              lastModifiedDateTime: mtimeStr,
+              createdDateTime: ctimeStr,
+            } as FileSystemInfo,
+          });
+        } catch (e) {
+          // MVP conservative strategy (plan Task 5 / spec §6.4 note): this
+          // PATCH carries no If-Match, but Obsidian's request() surfaces a
+          // 412 as Error("Request failed, status 412"). Treat a 412-class
+          // failure here as a concurrent-write conflict rather than risk
+          // missing one. If Task 10's manual verification shows false
+          // positives, revisit by sending the PUT response's fresh etag as
+          // the PATCH's If-Match instead.
+          if (
+            classifyOneDriveWriteError(e) === "REMOTE_ETAG_MISMATCH" &&
+            origKey
+          ) {
+            throw remoteEtagMismatchError(origKey);
+          }
+          throw e;
+        }
       }
       try {
         return fromDriveItemToEntity(
@@ -1150,27 +1207,21 @@ export class FakeFsOnedrive extends FakeFs {
 
       // 1. create uploadSession
       // uploadFile already starts with /drive/special/approot:/${remoteBaseDir}
-      let playload: any = {
-        item: {
-          "@microsoft.graph.conflictBehavior": "replace",
-        },
-      };
-      if (mtime !== 0 && ctime !== 0) {
-        playload = {
-          item: {
-            "@microsoft.graph.conflictBehavior": "replace",
-
-            // this is only possible using uploadSession
-            fileSystemInfo: {
-              lastModifiedDateTime: mtimeStr,
-              createdDateTime: ctimeStr,
-            } as FileSystemInfo,
-          },
-        };
-      }
+      // Body via the unit-tested builder (fileSystemInfo is only possible
+      // via uploadSession); If-Match is a HEADER, documented as supported by
+      // createUploadSession — sent only when the walk gave us an etag.
+      const hasTimes = mtime !== 0 && ctime !== 0;
+      const playload: any = _buildCreateUploadSessionBody(
+        hasTimes ? mtimeStr : undefined,
+        hasTimes ? ctimeStr : undefined,
+        expectedEtag
+      );
       const s: UploadSession = await this._postJson(
         `${key}:/createUploadSession`,
-        playload
+        playload,
+        expectedEtag !== undefined && expectedEtag !== ""
+          ? { "If-Match": expectedEtag }
+          : undefined
       );
       const uploadUrl = s.uploadUrl!;
       console.debug("uploadSession = ");
@@ -1190,7 +1241,8 @@ export class FakeFsOnedrive extends FakeFs {
           uint8,
           rangeStart,
           Math.min(rangeStart + RANGE_SIZE, uint8.byteLength),
-          uint8.byteLength
+          uint8.byteLength,
+          origKey
         );
         rangeStart += RANGE_SIZE;
       }
