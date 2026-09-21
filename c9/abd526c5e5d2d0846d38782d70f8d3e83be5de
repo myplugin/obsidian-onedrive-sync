@@ -1,0 +1,37 @@
+docs/superpowers/plans/2026-09-20-onedrive-if-match-concurrency-guard.md
+  s_c3a5dd2fc4646e::t_ab1bfa4f7684af 1-857
+docs/superpowers/specs/2026-09-20-onedrive-if-match-concurrency-guard-design.md
+  s_c3a5dd2fc4646e::t_aa8a45a5553c13 180-184
+  s_c3a5dd2fc4646e::t_05bb0e463eb7d2 1-179,185-294,296
+  s_c3a5dd2fc4646e::t_a8365a00563c5a 295,297-300
+docs/superpowers/specs/2026-09-21-onedrive-delta-id-fallback-design.md
+  s_c3a5dd2fc4646e::t_4cf33e15d62ea9 1-113
+docs/superpowers/plans/2026-09-21-onedrive-delta-id-fallback.md
+  s_c3a5dd2fc4646e::t_a981fc54cee916 1-810
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "c9abd526c5e5d2d0846d38782d70f8d3e83be5de",
+  "prompts": {},
+  "sessions": {
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 2
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    }
+  }
+}
