@@ -18,8 +18,15 @@ import {
   type OnedriveConfig,
 } from "./baseTypes";
 import { VALID_REQURL } from "./baseTypes";
-import { classifyDeltaItems, mergeDeltaWithPrevState } from "./deltaMerge";
-import { fromDriveItemToEntity } from "./driveItemConvert";
+import {
+  buildIdToKeyMap,
+  classifyDeltaItems,
+  mergeDeltaWithPrevState,
+} from "./deltaMerge";
+import {
+  fromDriveItemToEntity,
+  fromDriveItemToEntityWithIdFallback,
+} from "./driveItemConvert";
 import { FakeFs } from "./fsAll";
 import { bufferToArrayBuffer } from "./misc";
 import { buildDeltaStartUrl } from "./syncOptimize";
@@ -910,11 +917,23 @@ export class FakeFsOnedrive extends FakeFs {
       // Merge incremental delta results with the previous full state.
       // classifyDeltaItems handles BOTH @removed and the `deleted` facet 鈥?      // Graph uses either marker to signal deletions depending on tenant.
       // Checking only @removed leaks stale entries 鈫?404 AggregateErrors.
+      // Build id→key map from prev sync so path-missing modify items can be
+      // recovered via id-lookup (the documented delta shape — Graph omits
+      // parentReference.path). Items without remoteId (old/walkPartial origin)
+      // are gracefully excluded; those self-heal as before.
+      const idToKeyMap = buildIdToKeyMap(this.prevRemoteEntities);
       const { deltaEntities, deletedKeys, skippedAddedOrModified } =
         classifyDeltaItems(
           driveItems,
           this.remoteBaseDir,
-          fromDriveItemToEntity
+          (item, dir, requireMtime) =>
+            fromDriveItemToEntityWithIdFallback(
+              item,
+              dir,
+              idToKeyMap,
+              requireMtime
+            ),
+          idToKeyMap
         );
 
       // Self-heal for silently-skipped added/modified items: unlike the 404
