@@ -1,0 +1,30 @@
+src/fsOnedrive.ts
+  s_ed741c418eb3a5::t_2720b4e69a57f5 21-29
+  s_ed741c418eb3a5::t_a12253108f6ffe 920-924,929-936
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "bd01d025b7ee6795c20a3c64e3fe41133f16354d",
+  "prompts": {},
+  "sessions": {
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 1
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    }
+  }
+}
