@@ -59,49 +59,57 @@ const constructFromDriveItemToEntityError = (x: DriveItem) => {
 };
 
 /**
- * Convert a Graph `DriveItem` into the plugin's internal `Entity`.
- *
- * This is a PURE function (no I/O, no side effects, no `obsidian`/`msal`
- * runtime imports) so it can be unit-tested directly against realistic delta
- * response shapes — which is how the `parentReference.path`-omission bug was
- * caught (the converter assumed the field was always present, but Microsoft
- * has documented its omission in delta responses since 2015).
- *
- * Throws on shapes it cannot reliably parse:
- *  - `remoteItem` (shared items) — facets are nested inside `remoteItem`,
- *    not at top level; mis-parsing would yield a garbage key + undefined size.
- *  - `package`/`bundle` — neither file nor folder; the `"folder" in x` check
- *    would otherwise misclassify them as files.
- *  - missing `parentReference.path` (unless the item is the approot root,
- *    mapped to `key: "/"`).
- *  - missing `fileSystemInfo.lastModifiedDateTime` when `requireMtime=true`
- *    (the correct defensive posture — do NOT silently fall back to `now()`,
- *    that would corrupt sync mtime determinism).
- *
- * Callers (`classifyDeltaItems`, the full-enumeration walk) wrap this in
- * try/catch so a throw degrades to a skip-with-warn rather than crashing the
- * sync.
+ * Extract path-independent metadata from a Graph DriveItem. PURE.
+ * Throws ONLY on missing lastModifiedDateTime when requireMtime=true.
+ * Does NOT throw on missing parentReference.path (that's deriveKeyFromPath's
+ * job) and does NOT check remoteItem/package (the caller does, to preserve
+ * the historical throw order).
  */
-export const fromDriveItemToEntity = (
-  x: DriveItem,
-  remoteBaseDir: string,
-  requireMtime = true
-): Entity => {
-  // Shared items (remoteItem) belong to a different drive; their file/folder
-  // facets are nested INSIDE remoteItem, not at top level. The approot-scoped
-  // sync should never see them, but reject explicitly instead of misparsing
-  // (which would yield size! = undefined and a garbage key).
-  if ("remoteItem" in x) {
-    throw Error(
-      "driveItem carries remoteItem (shared item) — not supported in approot sync"
-    );
+export const extractDriveItemMetadata = (x: DriveItem, requireMtime = true) => {
+  const isFolder = "folder" in x;
+  const mtimeTry = x?.fileSystemInfo?.lastModifiedDateTime;
+  if (requireMtime && (mtimeTry === undefined || mtimeTry === null)) {
+    throw Error(`onedrive cannot parse mtime: ${JSON.stringify(x, null, 2)}`);
   }
-  // package/bundle items are neither files nor folders. The `"folder" in x`
-  // check below would misclassify them as files. Reject explicitly.
-  if ("package" in x || "bundle" in x) {
-    throw Error(
-      "driveItem is a package/bundle — neither file nor folder, not supported in approot sync"
-    );
+  let ctimeTry = x?.fileSystemInfo?.createdDateTime;
+  if (ctimeTry === undefined || ctimeTry === null) {
+    ctimeTry = mtimeTry;
+  }
+  const mtimeSvr = mtimeTry ? Date.parse(mtimeTry) : undefined;
+  return {
+    mtimeSvr,
+    mtimeCli: mtimeSvr,
+    ctimeCli: ctimeTry ? Date.parse(ctimeTry) : mtimeSvr,
+    size: isFolder ? 0 : x.size!,
+    sizeRaw: isFolder ? 0 : x.size!,
+    // Graph types eTag as NullableOption<string> (string | null); Entity.etag
+    // is `string | undefined`, so coerce null -> undefined.
+    etag: x.eTag ?? undefined,
+    remoteId: (x as any).id,
+    isFolder,
+  };
+};
+
+/**
+ * Derive the vault-relative key from parentReference.path + name. PURE.
+ * Throws on missing parentReference.path (the approot root folder is
+ * handled by the caller via isApprootRootDriveItem, NOT here). Returns the
+ * key WITH a trailing slash when the item is a folder.
+ *
+ * The regex/prefix logic below is moved VERBATIM from the previous
+ * fromDriveItemToEntity body; do not alter the matching branches.
+ */
+export const deriveKeyFromPath = (
+  x: DriveItem,
+  remoteBaseDir: string
+): string => {
+  if (
+    x.parentReference === undefined ||
+    x.parentReference === null ||
+    x.parentReference.path === undefined ||
+    x.parentReference.path === null
+  ) {
+    throw Error("x.parentReference.path is undefinded or null");
   }
 
   let key = "";
@@ -133,34 +141,6 @@ export const fromDriveItemToEntity = (
   // when to use decode?
   const remoteBaseDirEncoded = encodeURIComponent(remoteBaseDir);
 
-  if (
-    x.parentReference === undefined ||
-    x.parentReference === null ||
-    x.parentReference.path === undefined ||
-    x.parentReference.path === null
-  ) {
-    // parentReference.path is OFFICIALLY OMITTED in Graph delta responses
-    // (esp. when the parent is a special folder like approot, which never
-    // carries a navigable /drive/root:/... path). The only approot-parented
-    // item in the approot-rooted delta is the remoteBaseDir folder itself —
-    // the vault root. Map it to key "/" so the caller's
-    // `entity.key !== "/"` filter drops it cleanly instead of throwing and
-    // logging a "skipping added/modified item (parse failed)" warning on
-    // every sync that touches a root-level entry.
-    if (isApprootRootDriveItem(x, remoteBaseDir)) {
-      return {
-        key: "/",
-        keyRaw: "/",
-        mtimeSvr: undefined,
-        mtimeCli: undefined,
-        ctimeCli: undefined,
-        size: 0,
-        sizeRaw: 0,
-        synthesizedFile: false,
-      };
-    }
-    throw Error("x.parentReference.path is undefinded or null");
-  }
   const fullPathOriginal = `${x.parentReference.path}/${x.name}`;
   const matchFirstPrefixRes = fullPathOriginal.match(FIRST_COMMON_PREFIX_REGEX);
   const matchFifthPrefixRes = fullPathOriginal.match(FIFTH_COMMON_PREFIX_REGEX);
@@ -327,35 +307,75 @@ ${constructFromDriveItemToEntityError(x)}`
   if (isFolder) {
     key = `${key}/`;
   }
+  return key;
+};
 
-  const mtimeTry = x?.fileSystemInfo?.lastModifiedDateTime;
-  if (requireMtime && (mtimeTry === undefined || mtimeTry === null)) {
-    throw Error(`onedrive cannot parse mtime: ${JSON.stringify(x, null, 2)}`);
+/**
+ * Convert a Graph DriveItem into the plugin's Entity. Behavior-preserving
+ * refactor: now delegates to extractDriveItemMetadata + deriveKeyFromPath.
+ * Throws on the same shapes as before, in the same order:
+ *   1. approot root → early-return minimal entity (key "/")
+ *   2. remoteItem / package / bundle → throw
+ *   3. missing parentReference.path (non-root) → throw
+ *   4. missing mtime (requireMtime=true) → throw
+ * NEW: always sets remoteId from driveItem.id.
+ *
+ * This is a PURE function (no I/O, no side effects, no `obsidian`/`msal`
+ * runtime imports) so it can be unit-tested directly against realistic delta
+ * response shapes. Callers (`classifyDeltaItems`, the full-enumeration walk)
+ * wrap this in try/catch so a throw degrades to a skip-with-warn rather than
+ * crashing the sync.
+ */
+export const fromDriveItemToEntity = (
+  x: DriveItem,
+  remoteBaseDir: string,
+  requireMtime = true
+): Entity => {
+  // 1. approot root → minimal entity (before metadata; root may lack mtime)
+  if (isApprootRootDriveItem(x, remoteBaseDir)) {
+    return {
+      key: "/",
+      keyRaw: "/",
+      mtimeSvr: undefined,
+      mtimeCli: undefined,
+      ctimeCli: undefined,
+      size: 0,
+      sizeRaw: 0,
+      synthesizedFile: false,
+      remoteId: (x as any).id,
+    };
   }
-
-  let ctimeTry = x?.fileSystemInfo?.createdDateTime;
-  if (ctimeTry === undefined || ctimeTry === null) {
-    // throw Error(`onedrive cannot parse ctime: ${JSON.stringify(x, null, 2)}`);
-    // it doesn't hurt, we just use mtimeTry to fullfill
-    ctimeTry = mtimeTry;
+  // 2. remoteItem / package / bundle (before path, preserving order)
+  // Shared items (remoteItem) belong to a different drive; their file/folder
+  // facets are nested INSIDE remoteItem, not at top level. The approot-scoped
+  // sync should never see them, but reject explicitly instead of misparsing
+  // (which would yield size! = undefined and a garbage key).
+  if ("remoteItem" in x) {
+    throw Error(
+      "driveItem carries remoteItem (shared item) — not supported in approot sync"
+    );
   }
-
-  const mtimeSvr = mtimeTry ? Date.parse(mtimeTry) : undefined;
-  const mtimeCli = mtimeSvr;
-  const ctimeCli = ctimeTry ? Date.parse(ctimeTry) : mtimeSvr;
+  // package/bundle items are neither files nor folders. The `"folder" in x`
+  // check would misclassify them as files. Reject explicitly.
+  if ("package" in x || "bundle" in x) {
+    throw Error(
+      "driveItem is a package/bundle — neither file nor folder, not supported in approot sync"
+    );
+  }
+  // 3. path derivation (throws on path-missing, BEFORE mtime)
+  const key = deriveKeyFromPath(x, remoteBaseDir);
+  // 4. metadata (throws on missing mtime, AFTER path)
+  const meta = extractDriveItemMetadata(x, requireMtime);
   return {
-    key: key,
+    key,
     keyRaw: key,
-    mtimeSvr: mtimeSvr,
-    mtimeCli: mtimeCli,
-    ctimeCli: ctimeCli,
-    size: isFolder ? 0 : x.size!,
-    sizeRaw: isFolder ? 0 : x.size!,
+    mtimeSvr: meta.mtimeSvr,
+    mtimeCli: meta.mtimeCli,
+    ctimeCli: meta.ctimeCli,
+    size: meta.size,
+    sizeRaw: meta.sizeRaw,
     synthesizedFile: false,
-    // Graph types eTag as NullableOption<string> (string | null); Entity.etag
-    // is `string | undefined`, so coerce null -> undefined. (Plan Step 3 wrote
-    // a bare `x.eTag`, which does not typecheck under strict null checks.)
-    etag: x.eTag ?? undefined,
-    // hash: ?? // TODO
+    etag: meta.etag,
+    remoteId: meta.remoteId,
   };
 };

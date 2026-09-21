@@ -97,6 +97,7 @@ describe("fromDriveItemToEntity", () => {
     assert.strictEqual(e.size, 10);
     assert.strictEqual(e.sizeRaw, 10);
     assert.strictEqual(e.mtimeSvr, MTIME_MS);
+    assert.strictEqual(e.remoteId, "d!123");
   });
 
   it("converts a normal folder (key gets a trailing slash)", () => {
@@ -193,5 +194,23 @@ describe("fromDriveItemToEntity", () => {
     };
     const e = fromDriveItemToEntity(driveItem as any, REMOTE_BASE_DIR);
     assert.strictEqual(e.etag, '"012345819293.1"');
+  });
+
+  it("populates remoteId from driveItem.id", () => {
+    const e = fromDriveItemToEntity(normalFile as any, REMOTE_BASE_DIR);
+    assert.strictEqual(e.remoteId, "d!123");
+  });
+
+  it("populates remoteId on the approot root entity too", () => {
+    const rootItem = {
+      id: "d!s1",
+      name: REMOTE_BASE_DIR,
+      size: 0,
+      folder: {},
+      parentReference: { driveId: "d", id: "d!sroot" }, // no path
+    };
+    const e = fromDriveItemToEntity(rootItem as any, REMOTE_BASE_DIR);
+    assert.strictEqual(e.key, "/");
+    assert.strictEqual(e.remoteId, "d!s1");
   });
 });

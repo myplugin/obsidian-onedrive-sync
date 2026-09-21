@@ -198,6 +198,10 @@ export interface Entity {
   sizeRaw: number;
   hash?: string;
   etag?: string;
+  /** Graph driveItem.id — stable opaque id used by the delta id-fallback
+   *  (see docs/superpowers/specs/2026-09-21-onedrive-delta-id-fallback-design.md).
+   *  Undefined for entities that predate the field or came from walkPartial. */
+  remoteId?: string;
   synthesizedFolder?: boolean;
   synthesizedFile?: boolean;
 }
