@@ -140,6 +140,32 @@ describe("fromDriveItemToEntity", () => {
     );
   });
 
+  it("path-missing throw carries .code = ONEDRIVE_PATH_MISSING (stable id for the fallback catch)", () => {
+    // Hardening: the id-fallback catch (fromDriveItemToEntityWithIdFallback)
+    // matches on .code, NOT a fragile message-string include — so correcting
+    // the historical "undefinded" typo in the message cannot silently break
+    // the fallback (re-throw instead of recovering).
+    const item = {
+      name: "sibling",
+      size: 0,
+      folder: {},
+      parentReference: { driveId: "d", id: "d!s1" }, // no path, wrong name
+    };
+    let caught: any;
+    try {
+      fromDriveItemToEntity(item as any, REMOTE_BASE_DIR);
+    } catch (e) {
+      caught = e;
+    }
+    assert.ok(caught, "expected a throw");
+    assert.strictEqual(caught.code, "ONEDRIVE_PATH_MISSING");
+    assert.match(
+      caught.message,
+      /parentReference\.path is undefinded or null/,
+      "message kept verbatim so existing assert.throws regex tests stay green"
+    );
+  });
+
   it("throws on a missing lastModifiedDateTime when requireMtime=true (default)", () => {
     const item = { ...normalFile, fileSystemInfo: {} }; // no lastModifiedDateTime
     assert.throws(

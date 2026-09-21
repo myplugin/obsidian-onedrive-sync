@@ -91,6 +91,26 @@ export const extractDriveItemMetadata = (x: DriveItem, requireMtime = true) => {
 };
 
 /**
+ * Build a recognizable error for "delta item is missing
+ * parentReference.path" — the documented Graph delta shape ("track items
+ * by id"). Carries a stable `.code = "ONEDRIVE_PATH_MISSING"` so the
+ * id-fallback catch (fromDriveItemToEntityWithIdFallback) matches on
+ * `.code` instead of a fragile message-string include — correcting the
+ * historical "undefinded" typo in the message can no longer silently break
+ * the fallback (re-throw instead of recovering). Mirrors
+ * remoteEtagMismatchError / remoteNotFoundError in fsOnedrive.ts
+ * (plain Error + `.code`).
+ *
+ * The message text is preserved verbatim so existing assert.throws regex
+ * tests (/parentReference\.path is undefinded or null/) stay green.
+ */
+function pathMissingError(): Error {
+  const err = new Error("x.parentReference.path is undefinded or null");
+  (err as any).code = "ONEDRIVE_PATH_MISSING";
+  return err;
+}
+
+/**
  * Derive the vault-relative key from parentReference.path + name. PURE.
  * Throws on missing parentReference.path (the approot root folder is
  * handled by the caller via isApprootRootDriveItem, NOT here). Returns the
@@ -109,7 +129,7 @@ export const deriveKeyFromPath = (
     x.parentReference.path === undefined ||
     x.parentReference.path === null
   ) {
-    throw Error("x.parentReference.path is undefinded or null");
+    throw pathMissingError();
   }
 
   let key = "";
@@ -429,7 +449,7 @@ export const fromDriveItemToEntityWithIdFallback = (
     // path missing — try the id→key fallback (modify case)
     if (
       e instanceof Error &&
-      e.message.includes("parentReference.path is undefinded or null") &&
+      (e as any).code === "ONEDRIVE_PATH_MISSING" &&
       idToKeyMap &&
       (x as any).id !== undefined &&
       idToKeyMap.has((x as any).id)
