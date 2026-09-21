@@ -3,6 +3,7 @@
 import { strict as assert } from "assert";
 import {
   fromDriveItemToEntity,
+  fromDriveItemToEntityWithIdFallback,
   isApprootRootDriveItem,
 } from "../src/driveItemConvert";
 
@@ -212,5 +213,106 @@ describe("fromDriveItemToEntity", () => {
     const e = fromDriveItemToEntity(rootItem as any, REMOTE_BASE_DIR);
     assert.strictEqual(e.key, "/");
     assert.strictEqual(e.remoteId, "d!s1");
+  });
+});
+
+describe("fromDriveItemToEntityWithIdFallback", () => {
+  // A non-root item with NO parentReference.path (the documented delta shape).
+  const pathlessItem = {
+    id: "d!999",
+    name: "notes/a.md", // name alone can't reconstruct the vault path
+    size: 20,
+    file: {},
+    fileSystemInfo: {
+      lastModifiedDateTime: MTIME,
+      createdDateTime: MTIME,
+    },
+    parentReference: { driveId: "d", id: "d!root" }, // no path
+  };
+
+  it("reuses the known keyRaw from idToKeyMap when path is missing (modify case)", () => {
+    const idToKeyMap = new Map<string, string>([["d!999", "notes/a.md"]]);
+    const e = fromDriveItemToEntityWithIdFallback(
+      pathlessItem as any,
+      REMOTE_BASE_DIR,
+      idToKeyMap
+    );
+    assert.strictEqual(e.key, "notes/a.md");
+    assert.strictEqual(e.keyRaw, "notes/a.md");
+    assert.strictEqual(e.size, 20);
+    assert.strictEqual(e.remoteId, "d!999");
+    assert.strictEqual(e.mtimeSvr, MTIME_MS);
+  });
+
+  it("re-throws when path is missing AND id is NOT in the map (new item)", () => {
+    const idToKeyMap = new Map<string, string>(); // empty — id not found
+    assert.throws(
+      () =>
+        fromDriveItemToEntityWithIdFallback(
+          pathlessItem as any,
+          REMOTE_BASE_DIR,
+          idToKeyMap
+        ),
+      /parentReference\.path is undefinded or null/
+    );
+  });
+
+  it("re-throws when no idToKeyMap is passed at all", () => {
+    assert.throws(
+      () =>
+        fromDriveItemToEntityWithIdFallback(
+          pathlessItem as any,
+          REMOTE_BASE_DIR
+        ),
+      /parentReference\.path is undefinded or null/
+    );
+  });
+
+  it("falls through to normal path-derivation when path IS present (no fallback needed)", () => {
+    const withPath = { ...normalFile, id: "d!555", eTag: '"e1"' };
+    const idToKeyMap = new Map<string, string>();
+    const e = fromDriveItemToEntityWithIdFallback(
+      withPath as any,
+      REMOTE_BASE_DIR,
+      idToKeyMap
+    );
+    assert.strictEqual(e.key, "a.md");
+    assert.strictEqual(e.etag, '"e1"');
+  });
+
+  it("preserves the folder suffix from the reused keyRaw", () => {
+    const pathlessFolder = {
+      id: "d!folder1",
+      name: "x", // irrelevant — key comes from the map
+      size: 0,
+      folder: {},
+      fileSystemInfo: { lastModifiedDateTime: MTIME, createdDateTime: MTIME },
+      parentReference: { driveId: "d", id: "d!root" }, // no path
+    };
+    // The map's keyRaw already carries the trailing slash from the prior sync.
+    const idToKeyMap = new Map<string, string>([["d!folder1", "sub/x/"]]);
+    const e = fromDriveItemToEntityWithIdFallback(
+      pathlessFolder as any,
+      REMOTE_BASE_DIR,
+      idToKeyMap
+    );
+    assert.strictEqual(e.key, "sub/x/");
+    assert.strictEqual(e.size, 0); // folder → 0
+  });
+
+  it("still maps the approot root to key '/' (bypasses fallback)", () => {
+    const rootItem = {
+      id: "d!s1",
+      name: REMOTE_BASE_DIR,
+      size: 0,
+      folder: {},
+      parentReference: { driveId: "d", id: "d!sroot" }, // no path
+    };
+    const e = fromDriveItemToEntityWithIdFallback(
+      rootItem as any,
+      REMOTE_BASE_DIR,
+      new Map()
+    );
+    assert.strictEqual(e.key, "/");
   });
 });

@@ -379,3 +379,77 @@ export const fromDriveItemToEntity = (
     remoteId: meta.remoteId,
   };
 };
+
+/**
+ * Variant of fromDriveItemToEntity that falls back to an id→key lookup when
+ * parentReference.path is missing (the documented delta shape —
+ * https://learn.microsoft.com/en-us/graph/api/driveitem-delta: "track items
+ * by id"). Covers the MODIFY case (item existed in the prev sync → its id is
+ * in idToKeyMap → reuse the known keyRaw). New path-missing items (id not in
+ * the map) re-throw → caller warns + skips + invalidates the deltaLink
+ * (self-heal). The approot root folder bypasses the fallback (mapped to
+ * key "/" as in fromDriveItemToEntity).
+ */
+export const fromDriveItemToEntityWithIdFallback = (
+  x: DriveItem,
+  remoteBaseDir: string,
+  idToKeyMap?: Map<string, string>,
+  requireMtime = true
+): Entity => {
+  // approot root → minimal entity (same as fromDriveItemToEntity)
+  if (isApprootRootDriveItem(x, remoteBaseDir)) {
+    return {
+      key: "/",
+      keyRaw: "/",
+      mtimeSvr: undefined,
+      mtimeCli: undefined,
+      ctimeCli: undefined,
+      size: 0,
+      sizeRaw: 0,
+      synthesizedFile: false,
+      remoteId: (x as any).id,
+    };
+  }
+  // remoteItem / package / bundle (same guards, same order)
+  if ("remoteItem" in x) {
+    throw Error(
+      "driveItem carries remoteItem (shared item) — not supported in approot sync"
+    );
+  }
+  if ("package" in x || "bundle" in x) {
+    throw Error(
+      "driveItem is a package/bundle — neither file nor folder, not supported in approot sync"
+    );
+  }
+  // path derivation, with id-fallback on path-missing
+  let key: string;
+  try {
+    key = deriveKeyFromPath(x, remoteBaseDir);
+  } catch (e) {
+    // path missing — try the id→key fallback (modify case)
+    if (
+      e instanceof Error &&
+      e.message.includes("parentReference.path is undefinded or null") &&
+      idToKeyMap &&
+      (x as any).id !== undefined &&
+      idToKeyMap.has((x as any).id)
+    ) {
+      key = idToKeyMap.get((x as any).id)!;
+    } else {
+      throw e; // not a path-missing error, or id not in map → re-throw → self-heal
+    }
+  }
+  const meta = extractDriveItemMetadata(x, requireMtime);
+  return {
+    key,
+    keyRaw: key,
+    mtimeSvr: meta.mtimeSvr,
+    mtimeCli: meta.mtimeCli,
+    ctimeCli: meta.ctimeCli,
+    size: meta.size,
+    sizeRaw: meta.sizeRaw,
+    synthesizedFile: false,
+    etag: meta.etag,
+    remoteId: meta.remoteId,
+  };
+};
