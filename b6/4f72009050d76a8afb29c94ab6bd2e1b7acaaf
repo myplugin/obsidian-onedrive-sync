@@ -1,0 +1,34 @@
+src/driveItemConvert.ts
+  s_c3a5dd2fc4646e::t_ad3ce9f6df9575 132
+  s_c3a5dd2fc4646e::t_9ed70d84ca81f7 452
+  s_c3a5dd2fc4646e::t_a8609c5a5b0581 94-112
+  s_c3a5dd2fc4646e::t_ca99f813dc8f0a 93
+tests/driveItemConvert.test.ts
+  s_c3a5dd2fc4646e::t_565777367e5850 143-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "b64f72009050d76a8afb29c94ab6bd2e1b7acaaf",
+  "prompts": {},
+  "sessions": {
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 2
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    }
+  }
+}
