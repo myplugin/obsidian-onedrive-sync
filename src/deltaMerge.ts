@@ -66,6 +66,28 @@ export function mergeDeltaWithPrevState(
 }
 
 /**
+ * Build an `id → keyRaw` lookup map from prev-sync entities, for the delta
+ * id-fallback (reconstructing a vault-relative key when parentReference.path
+ * is missing — the documented delta shape). Only entities that carry a
+ * `remoteId` (Graph driveItem.id) participate; older entities without it
+ * are silently excluded (graceful degradation — those items self-heal).
+ */
+export function buildIdToKeyMap(prevEntities: Entity[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const e of prevEntities) {
+    if (
+      e.remoteId !== undefined &&
+      e.remoteId !== "" &&
+      e.keyRaw !== undefined &&
+      e.keyRaw !== ""
+    ) {
+      map.set(e.remoteId, e.keyRaw);
+    }
+  }
+  return map;
+}
+
+/**
  * Callback shape for converting a Graph DriveItem into an Entity.
  * Injected so this pure function can be unit-tested without importing
  * the heavy fsOnedrive module (which pulls in @azure/msal-node etc.).
@@ -118,12 +140,26 @@ export interface ClassifiedDelta {
  *                              (already flattened across @odata.nextLink pages).
  * @param remoteBaseDir         The vault's remote base directory.
  * @param fromDriveItemToEntity Converter (injected from fsOnedrive to keep
- *                              this function pure and testable).
+ *                              this function pure and testable). When the
+ *                              caller runs in id-fallback mode it passes
+ *                              fromDriveItemToEntityWithIdFallback bound
+ *                              with the map via closure, so a path-missing
+ *                              item (added/modified OR deleted) still yields
+ *                              its key via id-lookup instead of being
+ *                              skipped/phantom-surviving.
+ * @param idToKeyMap            Optional prev-state `remoteId -> keyRaw` map
+ *                              (see buildIdToKeyMap). Intentionally NOT
+ *                              consumed in this body: the fallback is
+ *                              performed by the CONVERTER (closure-bound by
+ *                              the caller — see walk() in fsOnedrive.ts).
+ *                              The param documents the caller's intent and
+ *                              reserves the seam for future direct use.
  */
 export function classifyDeltaItems(
   driveItems: any[],
   remoteBaseDir: string,
-  fromDriveItemToEntity: DriveItemToEntity
+  fromDriveItemToEntity: DriveItemToEntity,
+  idToKeyMap?: Map<string, string>
 ): ClassifiedDelta {
   const deltaEntities: Entity[] = [];
   const deletedKeys = new Set<string>();

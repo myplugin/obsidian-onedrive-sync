@@ -2,8 +2,17 @@
 
 import { strict as assert } from "assert";
 import type { Entity } from "../src/baseTypes";
-import { classifyDeltaItems, mergeDeltaWithPrevState } from "../src/deltaMerge";
-import { isApprootRootDriveItem } from "../src/driveItemConvert";
+import {
+  type ClassifiedDelta,
+  type DriveItemToEntity,
+  buildIdToKeyMap,
+  classifyDeltaItems,
+  mergeDeltaWithPrevState,
+} from "../src/deltaMerge";
+import {
+  fromDriveItemToEntityWithIdFallback,
+  isApprootRootDriveItem,
+} from "../src/driveItemConvert";
 
 function makeEntity(key: string, mtime?: number, size?: number): Entity {
   return {
@@ -623,5 +632,120 @@ describe("classifyDeltaItems: skippedAddedOrModified self-heal signal", () => {
     assert.strictEqual(skippedAddedOrModified, 0);
     assert.strictEqual(deltaEntities.length, 1);
     assert.strictEqual(deletedKeys.size, 0);
+  });
+});
+
+describe("buildIdToKeyMap", () => {
+  it("maps remoteId → keyRaw for entities that have remoteId", () => {
+    const prev = [
+      { keyRaw: "a.md", remoteId: "d!1" },
+      { keyRaw: "sub/b.md", remoteId: "d!2" },
+      { keyRaw: "no-id.md" }, // remoteId undefined → excluded
+    ] as any;
+    const map = buildIdToKeyMap(prev);
+    assert.strictEqual(map.size, 2);
+    assert.strictEqual(map.get("d!1"), "a.md");
+    assert.strictEqual(map.get("d!2"), "sub/b.md");
+    assert.ok(!map.has(undefined as any));
+  });
+
+  it("returns an empty map for prev with no remoteIds", () => {
+    const map = buildIdToKeyMap([{ keyRaw: "a.md" }] as any);
+    assert.strictEqual(map.size, 0);
+  });
+});
+
+describe("classifyDeltaItems with idToKeyMap (real converter)", () => {
+  const MTIME = "2024-01-01T00:00:00Z";
+  // A non-root delta item with NO parentReference.path — the documented
+  // delta shape. Its id IS in the map (modify case).
+  const pathlessModified = {
+    id: "d!999",
+    name: "x", // irrelevant — key comes from the map
+    size: 20,
+    file: {},
+    eTag: '"e2"',
+    fileSystemInfo: { lastModifiedDateTime: MTIME, createdDateTime: MTIME },
+    parentReference: { driveId: "d", id: "d!root" }, // NO path
+  };
+
+  // The id-fallback converter with the map BOUND via closure — the design
+  // from plan Task 3 Step 3's note: classifyDeltaItems' 4th param stays
+  // unused (documentation of intent); the fallback is performed by the
+  // converter the caller passes, exactly like walk()'s lambda in Task 4.
+  // (Passing the raw 4-param fallback directly would also violate
+  // strictFunctionTypes against the 3-param DriveItemToEntity type.)
+  const bindMap =
+    (idToKeyMap?: Map<string, string>): DriveItemToEntity =>
+    (item, dir, requireMtime) =>
+      fromDriveItemToEntityWithIdFallback(item, dir, idToKeyMap, requireMtime);
+
+  it("recovers a path-missing modify item via id-lookup (no warn, no skip)", () => {
+    const idToKeyMap = new Map<string, string>([["d!999", "notes/a.md"]]);
+    let warned = false;
+    const origWarn = console.warn;
+    console.warn = () => {
+      warned = true;
+    };
+    let result: ClassifiedDelta | undefined;
+    try {
+      result = classifyDeltaItems(
+        [pathlessModified],
+        "MyVault",
+        bindMap(idToKeyMap),
+        idToKeyMap
+      );
+    } finally {
+      console.warn = origWarn;
+    }
+    assert.ok(!warned, "must NOT warn — item recovered via id-lookup");
+    assert.strictEqual(result!.deltaEntities.length, 1);
+    assert.strictEqual(result!.deltaEntities[0].keyRaw, "notes/a.md");
+    assert.strictEqual(result!.deltaEntities[0].etag, '"e2"');
+    assert.strictEqual(result!.skippedAddedOrModified, 0);
+  });
+
+  it("still skips + self-heals when id is NOT in the map (new path-missing item)", () => {
+    const idToKeyMap = new Map<string, string>(); // empty
+    const { deltaEntities, skippedAddedOrModified } = classifyDeltaItems(
+      [pathlessModified],
+      "MyVault",
+      bindMap(idToKeyMap),
+      idToKeyMap
+    );
+    assert.strictEqual(deltaEntities.length, 0);
+    assert.strictEqual(skippedAddedOrModified, 1);
+  });
+
+  it("deleted path-missing item with id in map → goes to deletedKeys (no phantom)", () => {
+    const pathlessDeleted = {
+      id: "d!777",
+      name: "x",
+      deleted: {},
+      parentReference: { driveId: "d", id: "d!root" }, // no path
+    };
+    const idToKeyMap = new Map<string, string>([["d!777", "gone.md"]]);
+    const { deltaEntities, deletedKeys, skippedAddedOrModified } =
+      classifyDeltaItems(
+        [pathlessDeleted],
+        "MyVault",
+        bindMap(idToKeyMap),
+        idToKeyMap
+      );
+    assert.strictEqual(deltaEntities.length, 0);
+    assert.ok(deletedKeys.has("gone.md"));
+    assert.strictEqual(skippedAddedOrModified, 0);
+  });
+
+  it("works without idToKeyMap (backward-compatible — current behavior)", () => {
+    // No 4th arg + unbound converter → behaves exactly like today:
+    // path-missing → throw → skip.
+    const { deltaEntities, skippedAddedOrModified } = classifyDeltaItems(
+      [pathlessModified],
+      "MyVault",
+      bindMap()
+    );
+    assert.strictEqual(deltaEntities.length, 0);
+    assert.strictEqual(skippedAddedOrModified, 1);
   });
 });
