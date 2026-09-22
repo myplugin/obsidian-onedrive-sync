@@ -1,0 +1,29 @@
+docs/superpowers/plans/2026-09-22-onedrive-delta-parent-id-chain.md
+  s_6c33a6da580b5e::t_1e9ef72338b72f 1-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "a035b1a35be54d20866120cb4d813242450e528c",
+  "prompts": {},
+  "sessions": {
+    "s_6c33a6da580b5e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3908f426ffeM12wlOZA5AXn9v",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 0
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    }
+  }
+}
