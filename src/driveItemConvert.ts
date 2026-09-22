@@ -473,3 +473,186 @@ export const fromDriveItemToEntityWithIdFallback = (
     remoteId: meta.remoteId,
   };
 };
+
+/**
+ * Derive the vault-relative key of a path-less delta item by resolving its
+ * `parentReference.id` against an injected lookup map - the fallback the
+ * Graph delta contract asks for ("parentReference won't include a value for
+ * path ... track items by id"; see docs/notes/microsoft-graph-delta-api.md
+ * and https://github.com/microsoft/vscode-onedrive-browser).
+ *
+ * Resolution order:
+ *   1. baseline - parentId === approotRootId: the item is a direct child of
+ *      the vault root -> key = name.
+ *   2. chain - parentId found in lookupMap (prev-sync ids, the root anchor
+ *      "/", or ids resolved earlier in the same delta batch) -> key =
+ *      parentKey + name. A parentKey of "/" degrades to the baseline form
+ *      (never yields "//"); a parentKey with a trailing "/" (folder keyRaw
+ *      convention) is concatenated directly; otherwise "/" is inserted.
+ *   3. otherwise -> throw pathMissingError() (.code = ONEDRIVE_PATH_MISSING)
+ *      so the caller's catch matches and degrades to skip + self-heal (the
+ *      parent chain is contractually unreachable).
+ *
+ * Keys built here are NEW (not reused from prev), so folders always get the
+ * trailing "/" appended per the `"folder" in x` facet.
+ *
+ * This is a PURE function: the lookup map and the approot root id are
+ * injected via parameters; no I/O, no `obsidian`/`msal` imports (see
+ * docs/CONVENTIONS.md "Converter purity").
+ *
+ * @param remoteBaseDir Accepted for API symmetry with the converter family
+ *                      and documentation of intent; the derivation itself
+ *                      only walks the parent chain (the approot root item is
+ *                      recognized earlier by isApprootRootDriveItem in the
+ *                      callers and never reaches this function).
+ */
+export const deriveKeyFromParentChain = (
+  x: DriveItem,
+  lookupMap: Map<string, string>,
+  approotRootId: string | undefined,
+  remoteBaseDir: string
+): string => {
+  const parentId = (x.parentReference as any)?.id;
+  const name = x.name as any;
+  if (
+    parentId === undefined ||
+    parentId === null ||
+    name === undefined ||
+    name === null
+  ) {
+    // No parent id to walk, or no name to build a key from: contractually
+    // unresolvable - same coded error so the caller's catch matches.
+    throw pathMissingError();
+  }
+  let parentKey: string | undefined;
+  if (
+    approotRootId !== undefined &&
+    approotRootId !== "" &&
+    parentId === approotRootId
+  ) {
+    // baseline: direct child of the vault root folder
+    parentKey = "/";
+  } else {
+    parentKey = lookupMap.get(parentId);
+  }
+  if (parentKey === undefined) {
+    // parent unknown (neither the root, nor in prev, nor resolved in-batch)
+    throw pathMissingError();
+  }
+  let key: string;
+  if (parentKey === "/") {
+    // direct child of the vault root - never produce a leading "//"
+    key = `${name}`;
+  } else if (parentKey.endsWith("/")) {
+    // folder keyRaw convention: trailing slash already present
+    key = `${parentKey}${name}`;
+  } else {
+    key = `${parentKey}/${name}`;
+  }
+  if ("folder" in x) {
+    key = `${key}/`;
+  }
+  return key;
+};
+
+/**
+ * Variant of fromDriveItemToEntity with the FULL fallback chain for
+ * path-missing delta items (Graph OFFICIALLY OMITS parentReference.path in
+ * delta responses - "track items by id"):
+ *
+ *   1. own-id - x.id found in lookupMap -> reuse the known keyRaw verbatim
+ *      (MODIFY case; step-for-step equivalent to
+ *      fromDriveItemToEntityWithIdFallback, which is KEPT for its existing
+ *      call sites/tests).
+ *   2. parent-id chain - deriveKeyFromParentChain against the approot root
+ *      anchor / lookupMap (NEW items: direct children of the vault root, or
+ *      children of folders known from prev or resolved earlier in the same
+ *      delta batch - classifyDeltaItems feeds resolutions back into the
+ *      shared map across its rescan passes).
+ *   3. otherwise re-throw ONEDRIVE_PATH_MISSING -> the caller skips +
+ *      self-heals (invalidated deltaLink -> full re-enumeration next sync).
+ *
+ * Throw order is IDENTICAL to fromDriveItemToEntity (pinned by tests):
+ * approot root -> remoteItem/package/bundle -> path-missing -> missing mtime.
+ *
+ * PURE: lookupMap and approotRootId are injected via parameters; no I/O, no
+ * `obsidian`/`msal` imports (see docs/CONVENTIONS.md "Converter purity").
+ */
+export const fromDriveItemToEntityWithChainFallback = (
+  x: DriveItem,
+  remoteBaseDir: string,
+  lookupMap?: Map<string, string>,
+  approotRootId?: string,
+  requireMtime = true
+): Entity => {
+  // approot root → minimal entity (same as fromDriveItemToEntity)
+  if (isApprootRootDriveItem(x, remoteBaseDir)) {
+    return {
+      key: "/",
+      keyRaw: "/",
+      mtimeSvr: undefined,
+      mtimeCli: undefined,
+      ctimeCli: undefined,
+      size: 0,
+      sizeRaw: 0,
+      synthesizedFile: false,
+      remoteId: (x as any).id,
+    };
+  }
+  // remoteItem / package / bundle (same guards, same order)
+  if ("remoteItem" in x) {
+    throw Error(
+      "driveItem carries remoteItem (shared item) — not supported in approot sync"
+    );
+  }
+  if ("package" in x || "bundle" in x) {
+    throw Error(
+      "driveItem is a package/bundle — neither file nor folder, not supported in approot sync"
+    );
+  }
+  // path derivation, with own-id -> parent-chain fallback on path-missing
+  let key: string;
+  try {
+    key = deriveKeyFromPath(x, remoteBaseDir);
+  } catch (e) {
+    // Match on .code, NOT the message string (the message carries a
+    // historical typo on purpose - see pathMissingError).
+    if (!(e instanceof Error) || (e as any).code !== "ONEDRIVE_PATH_MISSING") {
+      throw e; // unknown-prefix / no-name errors are NOT path-missing
+    }
+    const ownId = (x as any).id;
+    if (
+      lookupMap !== undefined &&
+      ownId !== undefined &&
+      ownId !== null &&
+      lookupMap.has(ownId)
+    ) {
+      // 1. own-id hit -> MODIFY case: reuse the prev keyRaw verbatim (it
+      //    already carries the folder trailing slash when applicable).
+      key = lookupMap.get(ownId)!;
+    } else {
+      // 2. parent-id chain -> NEW item (throws ONEDRIVE_PATH_MISSING when
+      //    the parent chain is unreachable -> caller skips + self-heals).
+      key = deriveKeyFromParentChain(
+        x,
+        lookupMap ?? new Map<string, string>(),
+        approotRootId,
+        remoteBaseDir
+      );
+    }
+  }
+  // metadata (throws on missing mtime, AFTER path - order pinned)
+  const meta = extractDriveItemMetadata(x, requireMtime);
+  return {
+    key,
+    keyRaw: key,
+    mtimeSvr: meta.mtimeSvr,
+    mtimeCli: meta.mtimeCli,
+    ctimeCli: meta.ctimeCli,
+    size: meta.size,
+    sizeRaw: meta.sizeRaw,
+    synthesizedFile: false,
+    etag: meta.etag,
+    remoteId: meta.remoteId,
+  };
+};

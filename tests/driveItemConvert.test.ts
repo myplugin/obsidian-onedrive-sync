@@ -2,7 +2,9 @@
 
 import { strict as assert } from "assert";
 import {
+  deriveKeyFromParentChain,
   fromDriveItemToEntity,
+  fromDriveItemToEntityWithChainFallback,
   fromDriveItemToEntityWithIdFallback,
   isApprootRootDriveItem,
 } from "../src/driveItemConvert";
@@ -340,5 +342,459 @@ describe("fromDriveItemToEntityWithIdFallback", () => {
       new Map()
     );
     assert.strictEqual(e.key, "/");
+  });
+});
+
+// ----------------------------------------------------------------
+// deriveKeyFromParentChain - parent-id-chain key derivation for
+// path-missing delta items (the documented Graph delta shape:
+// "track items by id"). Baseline: parentId === approotRootId (direct
+// child of the vault root). Chain: parentId resolved via the injected
+// lookup map (prev ids / root anchor / in-batch resolutions).
+// PURE: map + root id are parameters; no I/O.
+// ----------------------------------------------------------------
+
+// The exact ids from the reported warning data (personal OneDrive,
+// new non-root folders with no parentReference.path).
+const CHAIN_ROOT_ID = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
+const CHAIN_PARENT_ID = "473340CC2449AD6B!se6cfd1caee354d3397d371a784f58eb9";
+
+describe("deriveKeyFromParentChain", () => {
+  it("baseline: parent is the approot root + folder -> name + '/'", () => {
+    const item = {
+      name: "A",
+      folder: {},
+      parentReference: { driveType: "personal", id: CHAIN_ROOT_ID },
+    };
+    const key = deriveKeyFromParentChain(
+      item as any,
+      new Map<string, string>(),
+      CHAIN_ROOT_ID,
+      REMOTE_BASE_DIR
+    );
+    assert.strictEqual(key, "A/");
+  });
+
+  it("baseline: parent is the approot root + file -> name", () => {
+    const item = {
+      name: "a.md",
+      file: {},
+      parentReference: { driveType: "personal", id: CHAIN_ROOT_ID },
+    };
+    const key = deriveKeyFromParentChain(
+      item as any,
+      new Map<string, string>(),
+      CHAIN_ROOT_ID,
+      REMOTE_BASE_DIR
+    );
+    assert.strictEqual(key, "a.md");
+  });
+
+  it("chain: parent in map (keyRaw 'sub/') + file -> 'sub/name'", () => {
+    const lookupMap = new Map<string, string>([[CHAIN_PARENT_ID, "sub/"]]);
+    const item = {
+      name: "a.md",
+      file: {},
+      parentReference: { driveType: "personal", id: CHAIN_PARENT_ID },
+    };
+    const key = deriveKeyFromParentChain(
+      item as any,
+      lookupMap,
+      undefined,
+      REMOTE_BASE_DIR
+    );
+    assert.strictEqual(key, "sub/a.md");
+  });
+
+  it("chain: parent in map (keyRaw 'sub/') + folder -> 'sub/name/'", () => {
+    const lookupMap = new Map<string, string>([[CHAIN_PARENT_ID, "sub/"]]);
+    const item = {
+      name: "B",
+      folder: {},
+      parentReference: { driveType: "personal", id: CHAIN_PARENT_ID },
+    };
+    const key = deriveKeyFromParentChain(
+      item as any,
+      lookupMap,
+      undefined,
+      REMOTE_BASE_DIR
+    );
+    assert.strictEqual(key, "sub/B/");
+  });
+
+  it("chain: parent keyRaw '/' via map + file -> name (never '//')", () => {
+    const lookupMap = new Map<string, string>([[CHAIN_PARENT_ID, "/"]]);
+    const item = {
+      name: "a.md",
+      file: {},
+      parentReference: { driveType: "personal", id: CHAIN_PARENT_ID },
+    };
+    const key = deriveKeyFromParentChain(
+      item as any,
+      lookupMap,
+      undefined,
+      REMOTE_BASE_DIR
+    );
+    assert.strictEqual(key, "a.md");
+  });
+
+  it("chain: parent keyRaw without trailing slash -> joined with '/'", () => {
+    const lookupMap = new Map<string, string>([[CHAIN_PARENT_ID, "sub"]]);
+    const item = {
+      name: "a.md",
+      file: {},
+      parentReference: { driveType: "personal", id: CHAIN_PARENT_ID },
+    };
+    const key = deriveKeyFromParentChain(
+      item as any,
+      lookupMap,
+      undefined,
+      REMOTE_BASE_DIR
+    );
+    assert.strictEqual(key, "sub/a.md");
+  });
+
+  it("throws ONEDRIVE_PATH_MISSING when parent is neither root nor in map", () => {
+    const item = {
+      name: "orphan.md",
+      file: {},
+      parentReference: { driveType: "personal", id: "UNKNOWN!deadbeef" },
+    };
+    let caught: any;
+    try {
+      deriveKeyFromParentChain(
+        item as any,
+        new Map<string, string>(),
+        CHAIN_ROOT_ID,
+        REMOTE_BASE_DIR
+      );
+    } catch (e) {
+      caught = e;
+    }
+    assert.ok(caught, "expected a throw");
+    assert.strictEqual(caught.code, "ONEDRIVE_PATH_MISSING");
+  });
+
+  it("throws ONEDRIVE_PATH_MISSING when parentReference/id/name is missing", () => {
+    const noParent = { name: "a.md", file: {} };
+    const noParentId = {
+      name: "a.md",
+      file: {},
+      parentReference: { driveId: "d" },
+    };
+    const noName = {
+      folder: {},
+      parentReference: { driveId: "d", id: CHAIN_ROOT_ID },
+    };
+    for (const item of [noParent, noParentId, noName]) {
+      let caught: any;
+      try {
+        deriveKeyFromParentChain(
+          item as any,
+          new Map<string, string>(),
+          CHAIN_ROOT_ID,
+          REMOTE_BASE_DIR
+        );
+      } catch (e) {
+        caught = e;
+      }
+      assert.ok(caught, "expected a throw");
+      assert.strictEqual(caught.code, "ONEDRIVE_PATH_MISSING");
+    }
+  });
+});
+
+// ----------------------------------------------------------------
+// fromDriveItemToEntityWithChainFallback - the delta converter with
+// the FULL fallback chain for path-missing items:
+//   1. own-id lookup (MODIFY case; step-for-step equivalent to
+//      fromDriveItemToEntityWithIdFallback)
+//   2. parentReference.id chain (NEW items: baseline via the approot
+//      root anchor, or via parents known from prev / resolved earlier
+//      in the same delta batch)
+//   3. otherwise re-throw ONEDRIVE_PATH_MISSING -> skip + self-heal
+// Throw order identical to fromDriveItemToEntity (pinned below):
+// approot root -> remoteItem/package/bundle -> path-missing -> mtime.
+// ----------------------------------------------------------------
+describe("fromDriveItemToEntityWithChainFallback", () => {
+  it("path present -> main path derivation (same as fromDriveItemToEntity)", () => {
+    const withPath = { ...normalFile, id: "d!555", eTag: '"e1"' };
+    const e = fromDriveItemToEntityWithChainFallback(
+      withPath as any,
+      REMOTE_BASE_DIR,
+      new Map<string, string>(),
+      CHAIN_ROOT_ID
+    );
+    assert.strictEqual(e.key, "a.md");
+    assert.strictEqual(e.keyRaw, "a.md");
+    assert.strictEqual(e.etag, '"e1"');
+    assert.strictEqual(e.remoteId, "d!555");
+    assert.strictEqual(e.mtimeSvr, MTIME_MS);
+  });
+
+  it("path missing + own-id hit -> reuses keyRaw (modify case)", () => {
+    const pathlessModified = {
+      id: "d!999",
+      name: "x", // irrelevant - key comes from the map
+      size: 20,
+      file: {},
+      fileSystemInfo: {
+        lastModifiedDateTime: MTIME,
+        createdDateTime: MTIME,
+      },
+      parentReference: { driveId: "d", id: "d!root" }, // no path
+    };
+    const lookupMap = new Map<string, string>([["d!999", "notes/a.md"]]);
+    const e = fromDriveItemToEntityWithChainFallback(
+      pathlessModified as any,
+      REMOTE_BASE_DIR,
+      lookupMap,
+      CHAIN_ROOT_ID
+    );
+    assert.strictEqual(e.key, "notes/a.md");
+    assert.strictEqual(e.keyRaw, "notes/a.md");
+    assert.strictEqual(e.size, 20);
+    assert.strictEqual(e.remoteId, "d!999");
+    assert.strictEqual(e.mtimeSvr, MTIME_MS);
+  });
+
+  it("own-id reuse keeps the folder trailing slash from prev keyRaw", () => {
+    const pathlessFolder = {
+      id: "d!folder1",
+      name: "x",
+      size: 0,
+      folder: {},
+      fileSystemInfo: {
+        lastModifiedDateTime: MTIME,
+        createdDateTime: MTIME,
+      },
+      parentReference: { driveId: "d", id: "d!root" }, // no path
+    };
+    // The map's keyRaw already carries the trailing slash from prev sync.
+    const lookupMap = new Map<string, string>([["d!folder1", "sub/x/"]]);
+    const e = fromDriveItemToEntityWithChainFallback(
+      pathlessFolder as any,
+      REMOTE_BASE_DIR,
+      lookupMap,
+      CHAIN_ROOT_ID
+    );
+    assert.strictEqual(e.key, "sub/x/");
+    assert.strictEqual(e.size, 0); // folder -> 0
+  });
+
+  it("path missing + own-id miss + parent is approot root -> name + '/'", () => {
+    // Warning-data case 1: new non-root folder directly under the vault
+    // root, no parentReference.path.
+    const folderA = {
+      id: CHAIN_PARENT_ID,
+      name: "A",
+      size: 0,
+      folder: {},
+      fileSystemInfo: {
+        lastModifiedDateTime: MTIME,
+        createdDateTime: MTIME,
+      },
+      parentReference: {
+        driveType: "personal",
+        driveId: "473340CC2449AD6B",
+        id: CHAIN_ROOT_ID,
+      }, // no path
+    };
+    const e = fromDriveItemToEntityWithChainFallback(
+      folderA as any,
+      REMOTE_BASE_DIR,
+      new Map<string, string>(),
+      CHAIN_ROOT_ID
+    );
+    assert.strictEqual(e.key, "A/");
+    assert.strictEqual(e.keyRaw, "A/");
+    assert.strictEqual(e.size, 0);
+    assert.strictEqual(e.remoteId, CHAIN_PARENT_ID);
+  });
+
+  it("path missing + own-id miss + parent in map -> chained key", () => {
+    // Warning-data case 2: new folder whose parent (folder A) was
+    // resolved earlier in the same delta batch.
+    const folderB = {
+      id: "473340CC2449AD6B!sc8816884e3404b5b8f812fbd896415e8",
+      name: "B",
+      size: 0,
+      folder: {},
+      fileSystemInfo: {
+        lastModifiedDateTime: MTIME,
+        createdDateTime: MTIME,
+      },
+      parentReference: {
+        driveType: "personal",
+        driveId: "473340CC2449AD6B",
+        id: CHAIN_PARENT_ID, // parent = folder A
+      }, // no path
+    };
+    const lookupMap = new Map<string, string>([[CHAIN_PARENT_ID, "A/"]]);
+    const e = fromDriveItemToEntityWithChainFallback(
+      folderB as any,
+      REMOTE_BASE_DIR,
+      lookupMap,
+      CHAIN_ROOT_ID
+    );
+    assert.strictEqual(e.key, "A/B/");
+    assert.strictEqual(e.keyRaw, "A/B/");
+  });
+
+  it("path missing + all fallbacks miss -> throws ONEDRIVE_PATH_MISSING", () => {
+    const orphan = {
+      id: "d!X",
+      name: "X",
+      size: 0,
+      folder: {},
+      fileSystemInfo: {
+        lastModifiedDateTime: MTIME,
+        createdDateTime: MTIME,
+      },
+      parentReference: { driveId: "d", id: "UNKNOWN!deadbeef" },
+    };
+    let caught: any;
+    try {
+      fromDriveItemToEntityWithChainFallback(
+        orphan as any,
+        REMOTE_BASE_DIR,
+        new Map<string, string>(),
+        CHAIN_ROOT_ID
+      );
+    } catch (e) {
+      caught = e;
+    }
+    assert.ok(caught, "expected a throw");
+    assert.strictEqual(caught.code, "ONEDRIVE_PATH_MISSING");
+  });
+
+  it("works without lookupMap/approotRootId (plain path derivation)", () => {
+    const e = fromDriveItemToEntityWithChainFallback(
+      normalFile as any,
+      REMOTE_BASE_DIR
+    );
+    assert.strictEqual(e.key, "a.md");
+    const pathless = {
+      id: "d!999",
+      name: "x",
+      size: 1,
+      file: {},
+      fileSystemInfo: { lastModifiedDateTime: MTIME },
+      parentReference: { driveId: "d", id: "d!root" },
+    };
+    assert.throws(
+      () =>
+        fromDriveItemToEntityWithChainFallback(
+          pathless as any,
+          REMOTE_BASE_DIR
+        ),
+      /parentReference\.path is undefinded or null/
+    );
+  });
+
+  // throw order pinned: approot root -> remoteItem/package/bundle ->
+  // path-missing -> missing-mtime (same as fromDriveItemToEntity).
+
+  it("maps the approot root to key '/' before any fallback (no mtime needed)", () => {
+    const rootItem = {
+      id: "d!s1",
+      name: REMOTE_BASE_DIR,
+      size: 0,
+      folder: {},
+      parentReference: { driveId: "d", id: "d!sroot" }, // no path
+    };
+    const e = fromDriveItemToEntityWithChainFallback(
+      rootItem as any,
+      REMOTE_BASE_DIR,
+      new Map<string, string>(),
+      CHAIN_ROOT_ID
+    );
+    assert.strictEqual(e.key, "/");
+    assert.strictEqual(e.keyRaw, "/");
+    assert.strictEqual(e.remoteId, "d!s1");
+  });
+
+  it("throws the remoteItem guard BEFORE path-missing", () => {
+    const item = {
+      id: "d!r",
+      name: "a.md",
+      remoteItem: { id: "otherDrive!1", name: "a.md" },
+      parentReference: { driveId: "d", id: "UNKNOWN!deadbeef" }, // no path
+    };
+    assert.throws(
+      () =>
+        fromDriveItemToEntityWithChainFallback(
+          item as any,
+          REMOTE_BASE_DIR,
+          new Map<string, string>(),
+          CHAIN_ROOT_ID
+        ),
+      /remoteItem.*not supported/
+    );
+  });
+
+  it("throws the package/bundle guard BEFORE path-missing", () => {
+    for (const facet of [{ package: {} }, { bundle: {} }]) {
+      const item = {
+        id: "d!p",
+        name: "pkg",
+        ...facet,
+        parentReference: { driveId: "d", id: "UNKNOWN!deadbeef" }, // no path
+      };
+      assert.throws(
+        () =>
+          fromDriveItemToEntityWithChainFallback(
+            item as any,
+            REMOTE_BASE_DIR,
+            new Map<string, string>(),
+            CHAIN_ROOT_ID
+          ),
+        /package\/bundle.*not supported/
+      );
+    }
+  });
+
+  it("throws path-missing BEFORE missing-mtime when fallbacks miss", () => {
+    const item = {
+      id: "d!X",
+      name: "X",
+      size: 0,
+      folder: {},
+      fileSystemInfo: {}, // no mtime either
+      parentReference: { driveId: "d", id: "UNKNOWN!deadbeef" }, // no path
+    };
+    let caught: any;
+    try {
+      fromDriveItemToEntityWithChainFallback(
+        item as any,
+        REMOTE_BASE_DIR,
+        new Map<string, string>(),
+        CHAIN_ROOT_ID
+      );
+    } catch (e) {
+      caught = e;
+    }
+    assert.strictEqual(caught.code, "ONEDRIVE_PATH_MISSING");
+  });
+
+  it("throws missing-mtime AFTER a successful chain resolution", () => {
+    const item = {
+      id: "d!A",
+      name: "A",
+      size: 0,
+      folder: {},
+      fileSystemInfo: {}, // no mtime
+      parentReference: { driveId: "d", id: CHAIN_ROOT_ID }, // no path
+    };
+    assert.throws(
+      () =>
+        fromDriveItemToEntityWithChainFallback(
+          item as any,
+          REMOTE_BASE_DIR,
+          new Map<string, string>(),
+          CHAIN_ROOT_ID
+        ),
+      /onedrive cannot parse mtime/
+    );
   });
 });

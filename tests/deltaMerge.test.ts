@@ -10,6 +10,7 @@ import {
   mergeDeltaWithPrevState,
 } from "../src/deltaMerge";
 import {
+  fromDriveItemToEntityWithChainFallback,
   fromDriveItemToEntityWithIdFallback,
   isApprootRootDriveItem,
 } from "../src/driveItemConvert";
@@ -747,5 +748,228 @@ describe("classifyDeltaItems with idToKeyMap (real converter)", () => {
     );
     assert.strictEqual(deltaEntities.length, 0);
     assert.strictEqual(skippedAddedOrModified, 1);
+  });
+});
+
+// ----------------------------------------------------------------
+// parent-id-chain fallback (plan 2026-09-22): NEW path-missing delta
+// items (e.g. folders created on another device) resolve via the
+// parentReference.id chain instead of warn + skip + deltaLink
+// invalidation churn. Fixture = the EXACT shape from the reported
+// warning data (non-root folders A/B, personal drive, no path).
+// ----------------------------------------------------------------
+describe("classifyDeltaItems: parent-id-chain fallback", () => {
+  const MTIME = "2024-01-01T00:00:00Z";
+  const ROOT_ID = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
+  const DRIVE_ID = "473340CC2449AD6B";
+  // Non-root folder A: direct child of the vault root, NO path.
+  const folderA = {
+    id: "473340CC2449AD6B!se6cfd1caee354d3397d371a784f58eb9",
+    name: "A",
+    size: 0,
+    folder: {},
+    fileSystemInfo: { lastModifiedDateTime: MTIME, createdDateTime: MTIME },
+    parentReference: {
+      driveType: "personal",
+      driveId: DRIVE_ID,
+      id: ROOT_ID,
+    },
+  };
+  // Non-root folder B: child of A (parent id = A's id), NO path.
+  const folderB = {
+    id: "473340CC2449AD6B!sc8816884e3404b5b8f812fbd896415e8",
+    name: "B",
+    size: 0,
+    folder: {},
+    fileSystemInfo: { lastModifiedDateTime: MTIME, createdDateTime: MTIME },
+    parentReference: {
+      driveType: "personal",
+      driveId: DRIVE_ID,
+      id: folderA.id,
+    },
+  };
+
+  // Same closure-binding pattern as bindMap above: ONE lookup-map instance
+  // shared between the converter and classifyDeltaItems (which seeds the
+  // root anchor from its 5th param and extends the map with each in-batch
+  // resolution, feeding the two-pass rescan).
+  const bindChain =
+    (
+      lookupMap: Map<string, string>,
+      approotRootId?: string
+    ): DriveItemToEntity =>
+    (item, dir, requireMtime) =>
+      fromDriveItemToEntityWithChainFallback(
+        item,
+        dir,
+        lookupMap,
+        approotRootId,
+        requireMtime
+      );
+
+  const classifyWithChain = (
+    items: any[],
+    lookupMap: Map<string, string>,
+    approotRootId?: string
+  ): ClassifiedDelta =>
+    classifyDeltaItems(
+      items,
+      "MyVault",
+      bindChain(lookupMap, approotRootId),
+      lookupMap,
+      approotRootId
+    );
+
+  it("resolves new path-missing folders A (root child) + B (child of A)", () => {
+    const lookupMap = new Map<string, string>(); // empty prev
+    let warned = false;
+    const origWarn = console.warn;
+    console.warn = () => {
+      warned = true;
+    };
+    let result: ClassifiedDelta;
+    try {
+      result = classifyWithChain([folderA, folderB], lookupMap, ROOT_ID);
+    } finally {
+      console.warn = origWarn;
+    }
+    assert.ok(!warned, "must NOT warn - both folders resolve via the chain");
+    assert.strictEqual(result.skippedAddedOrModified, 0);
+    assert.strictEqual(result.deltaEntities.length, 2);
+    const keys = result.deltaEntities.map((e) => e.keyRaw).sort();
+    assert.deepStrictEqual(keys, ["A/", "A/B/"]);
+    const a = result.deltaEntities.find((e) => e.keyRaw === "A/")!;
+    assert.strictEqual(a.remoteId, folderA.id);
+    const b = result.deltaEntities.find((e) => e.keyRaw === "A/B/")!;
+    assert.strictEqual(b.remoteId, folderB.id);
+  });
+
+  it("resolves the same batch in REVERSE order (order-independent rescan)", () => {
+    const lookupMap = new Map<string, string>();
+    const result = classifyWithChain([folderB, folderA], lookupMap, ROOT_ID);
+    assert.strictEqual(result.skippedAddedOrModified, 0);
+    const keys = result.deltaEntities.map((e) => e.keyRaw).sort();
+    assert.deepStrictEqual(keys, ["A/", "A/B/"]);
+  });
+
+  it("resolves a 3-level batch in worst order (deepest child first)", () => {
+    // c.md (child of B) cannot resolve until B and A have resolved on the
+    // rescan passes - proves the rescan repeats until no progress.
+    const fileC = {
+      id: "473340CC2449AD6B!sc000000000000000000000000000c",
+      name: "c.md",
+      size: 5,
+      file: {},
+      fileSystemInfo: { lastModifiedDateTime: MTIME, createdDateTime: MTIME },
+      parentReference: {
+        driveType: "personal",
+        driveId: DRIVE_ID,
+        id: folderB.id,
+      },
+    };
+    const lookupMap = new Map<string, string>();
+    const result = classifyWithChain(
+      [fileC, folderB, folderA],
+      lookupMap,
+      ROOT_ID
+    );
+    assert.strictEqual(result.skippedAddedOrModified, 0);
+    const keys = result.deltaEntities.map((e) => e.keyRaw).sort();
+    assert.deepStrictEqual(keys, ["A/", "A/B/", "A/B/c.md"]);
+  });
+
+  it("unreachable parent chain -> both items skip + self-heal signal", () => {
+    const orphanA = {
+      ...folderA,
+      parentReference: {
+        driveType: "personal",
+        driveId: DRIVE_ID,
+        id: "UNKNOWN!deadbeef", // neither the root nor in the map
+      },
+    };
+    // folderB's parent is orphanA.id - A itself is unresolvable, so B is
+    // too (contractually correct degradation).
+    const lookupMap = new Map<string, string>();
+    let warnCount = 0;
+    const origWarn = console.warn;
+    console.warn = () => {
+      warnCount += 1;
+    };
+    let result: ClassifiedDelta;
+    try {
+      result = classifyWithChain([orphanA, folderB], lookupMap, ROOT_ID);
+    } finally {
+      console.warn = origWarn;
+    }
+    assert.strictEqual(result.deltaEntities.length, 0);
+    assert.strictEqual(result.skippedAddedOrModified, 2);
+    assert.strictEqual(warnCount, 2);
+  });
+
+  it("deleted path-missing item with root parent -> deletedKeys (no phantom)", () => {
+    const deletedFolder = {
+      id: "473340CC2449AD6B!sdel00000000000000000000000000",
+      name: "Old",
+      size: 0,
+      folder: {},
+      deleted: {},
+      parentReference: {
+        driveType: "personal",
+        driveId: DRIVE_ID,
+        id: ROOT_ID,
+      }, // no path
+    };
+    const prev = [
+      makeEntity("Old/"),
+      makeEntity("Old/note.md"),
+      makeEntity("keep.md"),
+    ];
+    const lookupMap = new Map<string, string>();
+    const { deltaEntities, deletedKeys, skippedAddedOrModified } =
+      classifyWithChain([deletedFolder], lookupMap, ROOT_ID);
+    assert.strictEqual(deltaEntities.length, 0);
+    assert.ok(deletedKeys.has("Old/"));
+    assert.strictEqual(skippedAddedOrModified, 0);
+    const merged = mergeDeltaWithPrevState(prev, deltaEntities, deletedKeys);
+    assert.ok(
+      !merged.some((e) => e.keyRaw === "Old/"),
+      "deleted folder must not survive as a phantom"
+    );
+  });
+
+  it("behavior preserved: path-bearing items still use the main path", () => {
+    const withPath = {
+      id: "d!555",
+      name: "a.md",
+      size: 10,
+      file: {},
+      eTag: '"e9"',
+      fileSystemInfo: { lastModifiedDateTime: MTIME, createdDateTime: MTIME },
+      parentReference: { path: "/drive/root:/Apps/remotely-save/MyVault" },
+    };
+    const lookupMap = new Map<string, string>();
+    const result = classifyWithChain([withPath], lookupMap, ROOT_ID);
+    assert.strictEqual(result.deltaEntities.length, 1);
+    assert.strictEqual(result.deltaEntities[0].keyRaw, "a.md");
+    assert.strictEqual(result.deltaEntities[0].etag, '"e9"');
+    assert.strictEqual(result.skippedAddedOrModified, 0);
+  });
+
+  it("modify case still recovers via own-id lookup (id-fallback equivalence)", () => {
+    const pathlessModified = {
+      id: "d!999",
+      name: "x",
+      size: 20,
+      file: {},
+      eTag: '"e2"',
+      fileSystemInfo: { lastModifiedDateTime: MTIME, createdDateTime: MTIME },
+      parentReference: { driveId: "d", id: "d!root" }, // no path
+    };
+    const lookupMap = new Map<string, string>([["d!999", "notes/a.md"]]);
+    const result = classifyWithChain([pathlessModified], lookupMap, ROOT_ID);
+    assert.strictEqual(result.deltaEntities.length, 1);
+    assert.strictEqual(result.deltaEntities[0].keyRaw, "notes/a.md");
+    assert.strictEqual(result.deltaEntities[0].etag, '"e2"');
+    assert.strictEqual(result.skippedAddedOrModified, 0);
   });
 });

@@ -141,70 +141,146 @@ export interface ClassifiedDelta {
  * @param remoteBaseDir         The vault's remote base directory.
  * @param fromDriveItemToEntity Converter (injected from fsOnedrive to keep
  *                              this function pure and testable). When the
- *                              caller runs in id-fallback mode it passes
- *                              fromDriveItemToEntityWithIdFallback bound
- *                              with the map via closure, so a path-missing
- *                              item (added/modified OR deleted) still yields
- *                              its key via id-lookup instead of being
+ *                              caller runs in chain-fallback mode it passes
+ *                              fromDriveItemToEntityWithChainFallback bound
+ *                              with the SHARED lookup map via closure, so a
+ *                              path-missing item (added/modified OR deleted)
+ *                              still yields its key via own-id lookup or the
+ *                              parentReference.id chain instead of being
  *                              skipped/phantom-surviving.
- * @param idToKeyMap            Optional prev-state `remoteId -> keyRaw` map
- *                              (see buildIdToKeyMap). Intentionally NOT
- *                              consumed in this body: the fallback is
- *                              performed by the CONVERTER (closure-bound by
- *                              the caller — see walk() in fsOnedrive.ts).
- *                              The param documents the caller's intent and
- *                              reserves the seam for future direct use.
+ * @param idToKeyMap            Optional lookup map (seed: prev-state
+ *                              `remoteId -> keyRaw`, see buildIdToKeyMap).
+ *                              MUST be the SAME instance the injected
+ *                              converter is closure-bound to: this body
+ *                              mutates it (root anchor + each resolved
+ *                              item's id -> keyRaw) so in-batch parent ->
+ *                              child chains resolve on the rescan passes.
+ *                              Callers pass a fresh copy (strings only), so
+ *                              mutations never leak into prevRemoteEntities.
+ * @param approotRootId         Optional Graph driveItem.id of the vault's
+ *                              remote root folder (captured by _init() in
+ *                              fsOnedrive.ts). Seeded into idToKeyMap as
+ *                              the "/" anchor and consumed by the closure-
+ *                              bound chain converter (baseline: direct
+ *                              children of the vault root). Documents the
+ *                              caller's intent, same pattern as idToKeyMap.
  */
 export function classifyDeltaItems(
   driveItems: any[],
   remoteBaseDir: string,
   fromDriveItemToEntity: DriveItemToEntity,
-  idToKeyMap?: Map<string, string>
+  idToKeyMap?: Map<string, string>,
+  approotRootId?: string
 ): ClassifiedDelta {
   const deltaEntities: Entity[] = [];
   const deletedKeys = new Set<string>();
   let skippedAddedOrModified = 0;
 
-  for (const item of driveItems) {
-    // Graph uses both markers 鈥?see function doc. Checking only @removed
-    // leaks stale entries 鈫?404 AggregateErrors during sync operations.
-    const isDeleted = "@removed" in item || "deleted" in item;
+  // Seed the approot-root anchor into the SHARED lookup map so the closure-
+  // bound chain converter can resolve direct children of the vault root even
+  // when the caller did not pre-seed it. Idempotent (the plan's call sites
+  // pre-seed the same entry); a no-op when no map was passed.
+  if (
+    idToKeyMap !== undefined &&
+    approotRootId !== undefined &&
+    approotRootId !== ""
+  ) {
+    idToKeyMap.set(approotRootId, "/");
+  }
+
+  // Items whose conversion threw on the latest pass. A failure can be
+  // TRANSIENT within the batch: the item's parent folder may appear LATER
+  // in the same delta page (in-batch parent -> child chain), so a rescan
+  // after the parent resolved (its id -> keyRaw landed in idToKeyMap, the
+  // very instance the closure-bound converter reads) can still succeed -
+  // regardless of the order Graph returned the items in.
+  const pending: { item: any; isDeleted: boolean; error: unknown }[] = [];
+
+  const consumeResolved = (item: any, entity: Entity, isDeleted: boolean) => {
     if (isDeleted) {
-      // Deleted item 鈥?extract just the key (no mtime required)
-      try {
-        const entity = fromDriveItemToEntity(item, remoteBaseDir, false);
-        if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
-          deletedKeys.add(entity.keyRaw);
-        }
-      } catch (e) {
-        // If we can't parse the key, the deletion is lost and the file
-        // survives as a phantom in prevRemoteEntities 鈫?404 on next
-        // sync 鈫?self-heal recovers. Log so it's diagnosable.
-        console.warn(
-          "classifyDeltaItems: skipping deleted item (parse failed)",
-          e instanceof Error ? e.message : e,
-          JSON.stringify(item).slice(0, 200)
-        );
+      if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
+        deletedKeys.add(entity.keyRaw);
       }
     } else {
-      // Added or modified item
-      try {
-        const entity = fromDriveItemToEntity(item, remoteBaseDir);
-        if (entity.key !== "/") {
-          deltaEntities.push(entity);
-        }
-      } catch (e) {
-        // If we can't parse the key, the addition would be lost 鈥?the file
-        // wouldn't appear in the merged list and sync would never pull it.
-        // Count it so walk() can self-heal by invalidating the deltaLink
-        // (next sync does a full re-enumeration that re-fetches it cleanly).
-        skippedAddedOrModified += 1;
-        console.warn(
-          "classifyDeltaItems: skipping added/modified item (parse failed)",
-          e instanceof Error ? e.message : e,
-          JSON.stringify(item).slice(0, 200)
-        );
+      if (entity.key !== "/") {
+        deltaEntities.push(entity);
       }
+    }
+    // Publish this item's id -> keyRaw into the shared lookup map so later
+    // items (and rescan passes) can resolve parent-id chains against it.
+    if (
+      idToKeyMap !== undefined &&
+      item.id !== undefined &&
+      item.id !== null &&
+      entity.keyRaw !== ""
+    ) {
+      idToKeyMap.set(item.id, entity.keyRaw);
+    }
+  };
+
+  // Pass 1: sequential, in delta order. Deleted items are converted with
+  // requireMtime=false (they often lack fileSystemInfo); added/modified
+  // items keep the converter default (undefined -> true).
+  for (const item of driveItems) {
+    // Graph uses both markers - see function doc. Checking only @removed
+    // leaks stale entries -> 404 AggregateErrors during sync operations.
+    const isDeleted = "@removed" in item || "deleted" in item;
+    try {
+      const entity = fromDriveItemToEntity(
+        item,
+        remoteBaseDir,
+        isDeleted ? false : undefined
+      );
+      consumeResolved(item, entity, isDeleted);
+    } catch (e) {
+      pending.push({ item, isDeleted, error: e });
+    }
+  }
+
+  // Rescan passes: retry the pending items until a pass resolves none.
+  // Each resolution can unlock further items down the parent chain; every
+  // pass with progress shrinks `pending`, so the loop terminates.
+  let progressed = true;
+  while (pending.length > 0 && progressed) {
+    progressed = false;
+    for (let i = pending.length - 1; i >= 0; i--) {
+      const { item, isDeleted } = pending[i];
+      try {
+        const entity = fromDriveItemToEntity(
+          item,
+          remoteBaseDir,
+          isDeleted ? false : undefined
+        );
+        consumeResolved(item, entity, isDeleted);
+        pending.splice(i, 1);
+        progressed = true;
+      } catch (e) {
+        pending[i].error = e; // keep the LAST error for the terminal warn
+      }
+    }
+  }
+
+  // Terminal failures: contractually unresolvable (e.g. the parent chain
+  // leads nowhere - the parent is neither the root, nor in prev, nor in
+  // this batch). Deleted items are warn-skipped only: they self-heal via
+  // the 404 path in main.ts and are NOT counted (historical behavior).
+  // Added/modified items ARE counted so walk() can self-heal by
+  // invalidating the deltaLink (next sync does a full re-enumeration that
+  // re-fetches them cleanly).
+  for (const { item, isDeleted, error } of pending) {
+    if (isDeleted) {
+      console.warn(
+        "classifyDeltaItems: skipping deleted item (parse failed)",
+        error instanceof Error ? error.message : error,
+        JSON.stringify(item).slice(0, 200)
+      );
+    } else {
+      skippedAddedOrModified += 1;
+      console.warn(
+        "classifyDeltaItems: skipping added/modified item (parse failed)",
+        error instanceof Error ? error.message : error,
+        JSON.stringify(item).slice(0, 200)
+      );
     }
   }
 

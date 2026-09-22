@@ -25,7 +25,7 @@ import {
 } from "./deltaMerge";
 import {
   fromDriveItemToEntity,
-  fromDriveItemToEntityWithIdFallback,
+  fromDriveItemToEntityWithChainFallback,
 } from "./driveItemConvert";
 import { FakeFs } from "./fsAll";
 import { bufferToArrayBuffer } from "./misc";
@@ -479,6 +479,19 @@ export class FakeFsOnedrive extends FakeFs {
    */
   prevRemoteEntities?: Entity[];
   /**
+   * The Graph driveItem.id of the vault's remote root folder (the
+   * remoteBaseDir folder directly under the approot special folder),
+   * captured by _init() from /drive/special/approot/children. walk()'s
+   * incremental branch uses it as the anchor of the parentReference.id-chain
+   * fallback: delta items with parentReference.path omitted (the documented
+   * Graph delta shape) resolve as direct children of the vault root when
+   * their parentReference.id equals this id. Stays undefined on the
+   * POST-create path (folder did not exist yet) - that sync is a full
+   * enumeration which needs no anchor, and the next sync's fresh instance
+   * captures it in _init().
+   */
+  approotRootId?: string;
+  /**
    * The result of the most recent walk() call. main.ts saves this to the
    * DB after sync so the next sync can use it for incremental enumeration.
    */
@@ -517,9 +530,18 @@ export class FakeFsOnedrive extends FakeFs {
     } else {
       const k = await this._getJson("/drive/special/approot/children");
       // console.debug(k);
-      this.vaultFolderExists =
-        (k.value as DriveItem[]).filter((x) => x.name === this.remoteBaseDir)
-          .length > 0;
+      const rootMatches = (k.value as DriveItem[]).filter(
+        (x) => x.name === this.remoteBaseDir
+      );
+      this.vaultFolderExists = rootMatches.length > 0;
+      if (this.vaultFolderExists) {
+        // Capture the vault root folder's id: the anchor for walk()'s
+        // parentReference.id-chain fallback (see the approotRootId field).
+        // (When vaultFolderExists was already true this whole branch is
+        // skipped; the field was filled by the earlier _init() of this
+        // same instance.)
+        this.approotRootId = rootMatches[0].id;
+      }
       if (!this.vaultFolderExists) {
         console.info(`remote does not have folder /${this.remoteBaseDir}`);
         await this._postJson("/drive/special/approot/children", {
@@ -917,23 +939,37 @@ export class FakeFsOnedrive extends FakeFs {
       // Merge incremental delta results with the previous full state.
       // classifyDeltaItems handles BOTH @removed and the `deleted` facet 鈥?      // Graph uses either marker to signal deletions depending on tenant.
       // Checking only @removed leaks stale entries 鈫?404 AggregateErrors.
-      // Build id→key map from prev sync so path-missing modify items can be
-      // recovered via id-lookup (the documented delta shape — Graph omits
-      // parentReference.path). Items without remoteId (old/walkPartial origin)
-      // are gracefully excluded; those self-heal as before.
+      // Build the id->key lookup for path-missing delta items (the
+      // documented delta shape - Graph omits parentReference.path): own-id
+      // lookup covers MODIFY items; the parentReference.id chain (anchored
+      // at approotRootId, extended with in-batch resolutions) covers NEW
+      // items, e.g. folders created on another device. Items without
+      // remoteId (old/walkPartial origin) are gracefully excluded; items
+      // whose parent chain is unreachable still skip + self-heal as before.
       const idToKeyMap = buildIdToKeyMap(this.prevRemoteEntities);
+      // lookupMap is the SHARED working map: the closure-bound converter
+      // reads it while classifyDeltaItems mutates it (root anchor + every
+      // resolved item's id->keyRaw), so batch-internal parent->child chains
+      // resolve regardless of delta order (two-pass rescan). A fresh copy -
+      // mutations never leak into prevRemoteEntities.
+      const lookupMap = new Map(idToKeyMap);
+      if (this.approotRootId !== undefined) {
+        lookupMap.set(this.approotRootId, "/");
+      }
       const { deltaEntities, deletedKeys, skippedAddedOrModified } =
         classifyDeltaItems(
           driveItems,
           this.remoteBaseDir,
           (item, dir, requireMtime) =>
-            fromDriveItemToEntityWithIdFallback(
+            fromDriveItemToEntityWithChainFallback(
               item,
               dir,
-              idToKeyMap,
+              lookupMap,
+              this.approotRootId,
               requireMtime
             ),
-          idToKeyMap
+          lookupMap,
+          this.approotRootId
         );
 
       // Self-heal for silently-skipped added/modified items: unlike the 404
