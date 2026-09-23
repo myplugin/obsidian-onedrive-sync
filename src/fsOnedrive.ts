@@ -1269,6 +1269,16 @@ export class FakeFsOnedrive extends FakeFs {
       await this._patchJson(key, playload);
     }
     const res = await this._statFromRoot(key);
+    // Track created folders so main.ts merges them into prevRemoteEntities
+    // (mirrors writeFile's uploadedEntities.push). Without this, a folder
+    // created during sync is absent from the next sync's prev -> the
+    // incremental delta's id/parent-chain fallback can't resolve it when it
+    // reappears without parentReference.path. _statFromRoot returns
+    // synthesizedFile:false + remoteId:x.id (fromDriveItemToEntity), so the
+    // entity is prev-eligible.
+    if (!res.synthesizedFile) {
+      this.uploadedEntities.push(res);
+    }
     return res;
   }
 
