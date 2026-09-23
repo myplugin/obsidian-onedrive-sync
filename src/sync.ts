@@ -1424,7 +1424,8 @@ export const matchFolderMoves = (
           oldFolder &&
           newFolder &&
           oldFolder.local === undefined &&
-          (oldFolder.remote !== undefined || oldFolder.prevSync !== undefined) &&
+          (oldFolder.remote !== undefined ||
+            oldFolder.prevSync !== undefined) &&
           newFolder.local !== undefined &&
           newFolder.remote === undefined &&
           newFolder.prevSync === undefined

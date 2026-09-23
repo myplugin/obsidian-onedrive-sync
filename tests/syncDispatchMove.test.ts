@@ -232,7 +232,10 @@ describe("splitFourStepsOnEntityMappings: folder move decisions", () => {
     const folderMove = allMoveOps.find(
       (o: any) => o.decision === "folder_moved_then_rename_remote"
     );
-    assert.ok(folderMove, "folder_moved_then_rename_remote should be in moveOps");
+    assert.ok(
+      folderMove,
+      "folder_moved_then_rename_remote should be in moveOps"
+    );
   });
 
   it("routes folder_moved_away and moved_with_parent to onlyMarkSyncedOps", () => {

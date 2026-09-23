@@ -12,7 +12,7 @@ import "./_obsidianStub";
 import { strict as assert } from "assert";
 import { describe, it } from "mocha";
 import type { MixedEntity } from "../src/baseTypes";
-import { matchMoves, matchFolderMoves } from "../src/sync";
+import { matchFolderMoves, matchMoves } from "../src/sync";
 
 function makeEntity(opts: {
   key: string;
@@ -235,7 +235,11 @@ describe("matchFolderMoves", () => {
       },
       "old_dir/file.md": {
         key: "old_dir/file.md",
-        prevSync: makeEntity({ key: "old_dir/file.md", hash: "abc=", size: 10 }),
+        prevSync: makeEntity({
+          key: "old_dir/file.md",
+          hash: "abc=",
+          size: 10,
+        }),
         decision: "moved_away",
         decisionBranch: 201,
         change: false,
@@ -280,7 +284,11 @@ describe("matchFolderMoves", () => {
     // Add an unmatched old-path file (decision undefined = not moved)
     mappings["old_dir/unmatched.md"] = {
       key: "old_dir/unmatched.md",
-      prevSync: makeEntity({ key: "old_dir/unmatched.md", hash: "zzz=", size: 99 }),
+      prevSync: makeEntity({
+        key: "old_dir/unmatched.md",
+        hash: "zzz=",
+        size: 99,
+      }),
       // decision is undefined → not matched as a move
     };
 
@@ -289,10 +297,7 @@ describe("matchFolderMoves", () => {
     // Folder move should NOT have happened — decisions unchanged
     assert.strictEqual(mappings["old_dir/"].decision, undefined);
     assert.strictEqual(mappings["new_dir/"].decision, undefined);
-    assert.strictEqual(
-      mappings["old_dir/file.md"].decision,
-      "moved_away"
-    );
+    assert.strictEqual(mappings["old_dir/file.md"].decision, "moved_away");
     assert.strictEqual(
       mappings["new_dir/file.md"].decision,
       "local_moved_then_rename_remote"
@@ -322,7 +327,11 @@ describe("matchFolderMoves", () => {
     const mappings: Record<string, MixedEntity> = {
       "old_dir/file.md": {
         key: "old_dir/file.md",
-        prevSync: makeEntity({ key: "old_dir/file.md", hash: "abc=", size: 10 }),
+        prevSync: makeEntity({
+          key: "old_dir/file.md",
+          hash: "abc=",
+          size: 10,
+        }),
         decision: "moved_away",
         decisionBranch: 201,
         change: false,
@@ -341,10 +350,7 @@ describe("matchFolderMoves", () => {
     matchFolderMoves(mappings);
 
     // Folders not in map → no folder pair → no changes
-    assert.strictEqual(
-      mappings["old_dir/file.md"].decision,
-      "moved_away"
-    );
+    assert.strictEqual(mappings["old_dir/file.md"].decision, "moved_away");
     assert.strictEqual(
       mappings["new_dir/file.md"].decision,
       "local_moved_then_rename_remote"
@@ -363,7 +369,11 @@ describe("matchFolderMoves", () => {
       },
       "old_dir/sub/file.md": {
         key: "old_dir/sub/file.md",
-        prevSync: makeEntity({ key: "old_dir/sub/file.md", hash: "abc=", size: 10 }),
+        prevSync: makeEntity({
+          key: "old_dir/sub/file.md",
+          hash: "abc=",
+          size: 10,
+        }),
         decision: "moved_away",
         decisionBranch: 201,
         change: false,
@@ -378,7 +388,11 @@ describe("matchFolderMoves", () => {
       },
       "new_dir/sub/file.md": {
         key: "new_dir/sub/file.md",
-        local: makeEntity({ key: "new_dir/sub/file.md", hash: "abc=", size: 10 }),
+        local: makeEntity({
+          key: "new_dir/sub/file.md",
+          hash: "abc=",
+          size: 10,
+        }),
         decision: "local_moved_then_rename_remote",
         decisionBranch: 200,
         change: true,
@@ -394,10 +408,7 @@ describe("matchFolderMoves", () => {
     matchFolderMoves(mappings);
 
     // The root folder pair is old_dir/sub/ → new_dir/sub/ (from file moves)
-    assert.strictEqual(
-      mappings["old_dir/sub/"].decision,
-      "folder_moved_away"
-    );
+    assert.strictEqual(mappings["old_dir/sub/"].decision, "folder_moved_away");
     assert.strictEqual(
       mappings["new_dir/sub/"].decision,
       "folder_moved_then_rename_remote"
