@@ -1,0 +1,33 @@
+tests/detectMoves.test.ts
+  s_ddd35ba0bb0d98::t_84c84e76e0207c 15,238-242,287-291,300,330-334,353,372-376,391-395,411
+src/sync.ts
+  s_ddd35ba0bb0d98::t_84c84e76e0207c 1427-1428
+tests/syncDispatchMove.test.ts
+  s_ddd35ba0bb0d98::t_84c84e76e0207c 235-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "a5db79e612b7c9ee59a241783577e85794fb071e",
+  "prompts": {},
+  "sessions": {
+    "s_ddd35ba0bb0d98": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f365e2bcdffe5Z5OJJiN6URl07",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 20
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    }
+  }
+}
