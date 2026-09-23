@@ -130,3 +130,24 @@ if (DELTA_LINK_KEY in res) { this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY]
 - spec：`docs/superpowers/specs/2026-09-21-onedrive-delta-id-fallback-design.md`
 - plan：`docs/superpowers/plans/2026-09-21-onedrive-delta-id-fallback.md`
 - commits：`9338c99`→`a99553e`→`9c5ff76`→`bd01d02`→`b64f720`（.code 硬化）
+
+---
+
+## 后续（2026-09-23）：全量分支 fallback + 越界丢弃（第三次复发修复）
+
+前两次修复（`134aac9` 根文件夹特例、2026-09-21 id+parent-chain fallback）**只补了增量分支**。本次复盘里"全量 delta 必带 path"的论断是经验性概括——**被自动定期同步的复现证伪**：同一个稳定父文件夹 `!sc4ea15a...` 的子项在每次增量 delta 都不带 path，deltaLink 作废后全量重枚举**仍然** warn-skip 它们（全量 `/delta` 不带 token 也是 delta 调用，path 省略对"涉文件夹操作的条目"同样发生）→ 永不进 prevRemoteEntities → 增量 fallback 依赖 prev → 循环依赖，死循环。
+
+### 根因（三层）
+1. **全量分支用裸 `fromDriveItemToEntity`（无 fallback）**：path-missing 条目 warn-skip 后永不入 prevRemoteEntities，增量 fallback（依赖 prev）无法自愈。
+2. **`mkdir` 创建的文件夹不进 `uploadedEntities`**（只有 `writeFile` 进）：同步创建的文件夹不在下一次 prev → 同类洞。
+3. **stat 重试 `requireMtime=true` + 无法区分越界**：mkdir 建的空目录可能缺 mtime → stat 重试卡 mtime；越界条目（vault 外兄弟）的 stat path 不匹配前缀 → "no idea" throw → 误判 unresolved → 作废 deltaLink 抖动。
+
+### 修复（spec：`docs/superpowers/specs/2026-09-23-onedrive-fullenum-fallback-design.md`）
+- 全量分支复用增量的 `classifyDeltaItems` + chain-fallback + stat-by-id（提取为共享 `_classifyAndStatRetry`），空 lookupMap 仅锚 `approotRootId`；unresolved 仅 warn 不作废。
+- `deriveKeyFromPath` 三处"no idea"throw 加 `.code=ONEDRIVE_PATH_OUT_OF_SCOPE`，stat 重试 catch 到它 → **静默丢弃**（越界条目不是 vault 内容），不计 unresolved、不作废 deltaLink。stat 重试 `requireMtime=false`。
+- `_mkdirFromRoot` 成功后 push `uploadedEntities`（对齐 `writeFile:1252`）。
+
+### 新教训
+- **"经验上成立"≠"文档保证"**：lesson 里写"全量 delta 必带 path"时，应同时标注这是经验观察、非文档保证。微软文档 "When using delta you should always track items by id" 未区分带不带 token——凡 `/delta` 调用都适用。经验论断必须配 fallback，否则一旦遇到反例就是死循环。
+- **fallback 不能跨分支循环依赖**：增量分支的 fallback 依赖全量分支捕获的 prev；若全量分支本身用裸转换器跳过同类条目，增量 fallback 永远解不出。**两条分支必须对称地具备 fallback**，或全量分支必须有独立的 stat-retry 兜底。
+- **越界条目要显式区分**：不能把"vault 外的条目"和"vault 内但解析失败的条目"混为一谈——前者应静默丢弃，后者才该自愈。用 `.code` 区分（`ONEDRIVE_PATH_OUT_OF_SCOPE` vs `ONEDRIVE_PATH_MISSING`）。
