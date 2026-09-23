@@ -1012,6 +1012,13 @@ export class FakeFsOnedrive extends FakeFs {
               "walk: stat-retry dropped out-of-scope item",
               (statResp as any).id
             );
+            // Decrement so the drop is truly "not counted as unresolved":
+            // otherwise it stays in unresolvedCount and the check below
+            // still invalidates the deltaLink (incremental) / warns
+            // (full-enum), defeating the thrash-stopper. Safe: each skipped
+            // item is stat'd once and decrements at most once (success XOR
+            // out-of-scope), so unresolvedCount can't go below 0.
+            unresolvedCount--;
           }
           // else: genuinely unresolvable (stat 404 caught above as null, or
           // stat also lacks path) — leave counted as unresolved.
