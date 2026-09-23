@@ -1,0 +1,214 @@
+src/fsAll.ts
+  s_2d8720350674f7::t_a1746df2bd538b 3-8
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 67,71
+  s_2d8720350674f7::t_cbfa0f10d0ec91 68-70,72-85
+docs/lessons/onedrive-delta-parentreference-path.md
+  s_c3a5dd2fc4646e::t_2329ad3d315324 95-132
+tests/driveItemConvert.test.ts
+  s_082e756d7b8900::t_aa6ca3e137d632 106-120
+src/fsLocal.ts
+  s_2d8720350674f7::t_8c9e3db311b0df 193
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 1-5
+src/main.ts
+  s_082e756d7b8900::t_e4fc898101957d 1112-1115
+  s_082e756d7b8900::t_9afbfd03352b22 118
+src/sync.ts
+  s_082e756d7b8900::t_bb8760aae9ec85 1564,1568,1574-1579
+  s_082e756d7b8900::t_4b658f5b9b9276 1802
+  s_082e756d7b8900::t_f6b54e0c5adc46 2212-2213,2215-2221,2225-2231,2236-2243
+  s_082e756d7b8900::t_66e7ffdef2a9a7 2208-2211,2214,2232-2235,2244-2265
+  s_082e756d7b8900::t_c6c3815a74ba74 2222-2224
+  s_082e756d7b8900::t_997b5d0df876c6 2757-2764
+  s_082e756d7b8900::t_4762d207f9b068 2765-2768
+  s_2d8720350674f7::t_f3549287f6c0f8 8
+  s_2d8720350674f7::t_a66e8d37b57a0c 2469,2471
+  s_082e756d7b8900::t_b40fe0d5621c9b 1776-1777,1779-1781,1783,1785
+  s_082e756d7b8900::t_4d5132e05a7b80 2352,2359-2361
+  s_2d8720350674f7::t_a4e42c4189db04 2463-2468,2470,2472-2483
+  s_082e756d7b8900::t_8b5fc6543a675b 624-631
+  s_2d8720350674f7::t_4db4b6e3a6674e 2459-2462,2486-2505,2508-2534,2536
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 50,1383-1384,1537,2484-2485,2506-2507
+  s_082e756d7b8900::t_127e76fa335ac2 1530,1545
+  s_082e756d7b8900::t_ff2ba1a5bdb430 1310-1334,1341-1378,1386-1393,1514-1529,1531-1536,1538-1544,1546-1563,1565-1567,1580-1584,1632
+  s_082e756d7b8900::t_00a32fa95f4caf 1379-1382,1385
+  s_082e756d7b8900::t_9f9ede77be1333 1394-1513
+  s_082e756d7b8900::t_56f67bcb3004ea 2294
+  s_082e756d7b8900::t_95b8a9bc78a2b1 2397,2399
+  s_082e756d7b8900::t_19d26e7fd473bd 1585-1631
+  s_082e756d7b8900::t_819c9858c89036 1569-1573
+  s_082e756d7b8900::t_ca27ddc7f48111 1754-1760,1771-1774
+  s_082e756d7b8900::t_187045dc438dfb 1761-1770,1775,1778,1782,1784,1786-1788
+  s_082e756d7b8900::t_af58fe047eb7a1 1335-1340
+  s_082e756d7b8900::t_ff6cc79f144303 1638
+docs/notes/esbuild-bundler.md
+  s_5184619653c832::t_07628333183936 1-39
+docs/notes/microsoft-graph-delta-api.md
+  s_c3a5dd2fc4646e::t_57e242a006c01c 1-73
+docs/superpowers/specs/2026-09-23-onedrive-fullenum-fallback-design.md
+  s_ddd35ba0bb0d98::t_6419b02df58b08 1-77,79-108,114-119,128-136,139-221
+  s_ddd35ba0bb0d98::t_e46c40bdd3a7d4 109-113,120-122
+  s_ddd35ba0bb0d98::t_4c59cf734e6e5f 78
+  s_ddd35ba0bb0d98::t_e8b2caebf8effe 137-138
+  s_ddd35ba0bb0d98::t_6a72c988a80e99 123-127
+src/quickXorHash.ts
+  s_81f9e62a09f960::t_5d66186182e5c5 32-35
+  s_81f9e62a09f960::t_3a504351ecb56a 1-31,36-147
+tests/detectMoves.test.ts
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 39-43,68-72,90-94,112-116,206-210
+  s_082e756d7b8900::t_7f482fe43d7139 1-14,16-38,44-67,73-89,95-111,117-205,211-224
+  s_082e756d7b8900::t_b1075f0e2f885d 15
+  s_082e756d7b8900::t_9633dfc4e84fed 225-408
+tests/onedriveRenameRequest.test.ts
+  s_8ec9f58513b0c9::t_b29bc5363cc950 1-11,13,16,18,21,23-27,31-37,40-41
+  s_082e756d7b8900::t_f4f70da8f5bbd0 12,14-15,17,19-20,22,28-30,38-39
+docs/notes/obsidian-cli-plugin-dev-cycle.md
+  s_5184619653c832::t_98b9623fbe92c7 1-32
+src/fsOnedrive.ts
+  s_2d8720350674f7::t_79a9d6730962b4 1060
+  s_2d8720350674f7::t_1db7655ceb3561 1070-1072
+  s_2d8720350674f7::t_d046cc6b3f8621 1009-1037,1061,1603,1699,1766
+  s_2d8720350674f7::t_e4280619e3d19f 12-13,21,169-209,1003-1008,1038-1053,1056-1059,1062-1068,1073-1077,1173,1550-1564,1569-1602,1604-1698,1700-1765,1767-1793
+src/langs/zh_cn.json
+  s_082e756d7b8900::t_c83d7eae0a1010 229-230
+src/fsEncrypt.ts
+  s_2d8720350674f7::t_6014fa7ae5c242 428
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 453,455
+  s_2d8720350674f7::t_12964dd8d6873c 1-7
+  s_2d8720350674f7::t_d5b8f526a2ca14 450
+  s_2d8720350674f7::t_9499691e5c96fb 454,456-484
+  s_2d8720350674f7::t_8028f22b5620c7 451-452
+docs/CONVENTIONS.md
+  s_c3a5dd2fc4646e::t_d5c6fed8c62a94 1-19
+  s_6c33a6da580b5e::t_5304e2e1e5151f 20,29-36
+  s_5184619653c832::t_0c508b24445ee1 21-28
+docs/notes/obsidian-cli-plugin-reload.md
+  s_6c33a6da580b5e::t_a91391b0ed90b2 1-39
+src/driveItemConvert.ts
+  s_082e756d7b8900::t_5dc2edf89309ab 89-94
+  s_082e756d7b8900::t_c29b6ff189e6a4 406,481,665
+docs/superpowers/plans/2026-09-23-onedrive-fullenum-fallback.md
+  s_ddd35ba0bb0d98::t_1ae7f042bbb2d2 1-663
+tests/quickXorHash.test.ts
+  s_81f9e62a09f960::t_0f6567edef8fa3 1-68,75-115
+  s_81f9e62a09f960::t_ae74728e646e0e 69-74
+src/langs/zh_tw.json
+  s_082e756d7b8900::t_2680963d16d480 228-229
+src/baseTypes.ts
+  s_082e756d7b8900::t_795d599fcdcbe3 243-248
+  s_2d8720350674f7::t_a7715c4c6522d1 251-260
+  s_082e756d7b8900::t_a676b90e1efc10 239-242
+  s_2d8720350674f7::t_9241e1a1ac0db1 249,261-275
+  s_082e756d7b8900::t_e91d00a9f6f128 184-187
+  s_082e756d7b8900::t_6c8f4d0b75fab8 182-183
+  s_2d8720350674f7::t_680d42ce0bbcf8 250
+docs/notes/api-call-mode-contract-audit.md
+  s_c3a5dd2fc4646e::t_51880e567775d2 1-36
+tests/syncDispatchMove.test.ts
+  s_082e756d7b8900::t_014e22b927f033 1-14,16-25,32-37,44-51,56,58-61,63-156
+  s_082e756d7b8900::t_b0ee6236c25338 15
+  s_082e756d7b8900::t_eb499450b65697 55,62
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 26-31,38-43
+  s_082e756d7b8900::t_8b814c86908a22 52-54,57
+  s_082e756d7b8900::t_f3ebb20092cf1f 157-361
+docs/aar/onedrive-delta-parent-id-chain.md
+  s_6c33a6da580b5e::t_d6aa477eea0467 1-66
+src/deltaMerge.ts
+  s_2d8720350674f7::t_9b53b4464757d2 276,286,295-300
+  s_2d8720350674f7::t_e2299c2401bbd8 116-121
+src/settings.ts
+  s_082e756d7b8900::t_a8405a5ab3699a 1524-1544
+  s_082e756d7b8900::t_507022d49299b9 1545
+docs/aar/deploy-and-auto-reload.md
+  s_5184619653c832::t_e467fc04ac7fa7 1-37
+src/langs/en.json
+  s_082e756d7b8900::t_c7b9f0cc9de4b9 228-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "e1f2184d73e4cc3d7069372fb08f5e7168b3ba41",
+  "prompts": {},
+  "sessions": {
+    "s_082e756d7b8900": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f390c405effeBCcg010qMeYhU8",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 79
+    },
+    "s_2d8720350674f7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3785439fffeP0Iiwm4snWrRWh",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 151
+    },
+    "s_5184619653c832": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dc1031fffea3e1IORrDpfNGZ",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 0
+    },
+    "s_6c33a6da580b5e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3908f426ffeM12wlOZA5AXn9v",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 0
+    },
+    "s_81f9e62a09f960": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f387c533cffeN0FipfPQxTRBFY",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 5
+    },
+    "s_8ec9f58513b0c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f387ccc39ffe0N3WwfiZig7R3M",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 15
+    },
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 0
+    },
+    "s_ddd35ba0bb0d98": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f365e2bcdffe5Z5OJJiN6URl07",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 7
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    }
+  }
+}
