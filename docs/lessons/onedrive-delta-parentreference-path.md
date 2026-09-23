@@ -92,3 +92,41 @@ if (DELTA_LINK_KEY in res) { this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY]
 - 触发提交：`1ade31d` feat: sync performance optimization
 - 基线：`fd38bca` scaffold from v0.5.25
 - 修复：`src/deltaMerge.ts` `isApprootRootDriveItem`、`src/fsOnedrive.ts` 转换函数、`tests/deltaMerge.test.ts`
+
+---
+
+## 后续（2026-09-21）：非根项 id 回查 fallback
+
+本复盘的"防范 checklist"第 2 条要求"若某字段无文档保证…标记为脆弱并配 fallback"。134aac9 只补了根文件夹一个实例；非根项的 path 缺失仍走 throw→跳过→自愈。这次按 checklist 把 fallback 补全。
+
+### 修复（增量式，path 在时行为不变）
+
+- `Entity` 加 `remoteId?: string`（Graph `driveItem.id`，稳定）。
+- 转换器拆分（行为保持）：`extractDriveItemMetadata`（纯，path 缺失不 throw）+ `deriveKeyFromPath`（path 缺失 throw）+ `fromDriveItemToEntityWithIdFallback`（path 缺失时用 `item.id` 去 prev 的 `id→key` 映射查已知 key 复用——覆盖修改场景）。
+- `classifyDeltaItems` 加可选 `idToKeyMap`；`buildIdToKeyMap` 从 `prevRemoteEntities` 建 `remoteId→keyRaw` 映射。
+- `walk()` 增量分支建映射 + 传 fallback 转换器 lambda。全量/walkPartial 不变（经验上有 path，且无 prev 可建映射）。
+- 新文件 path 缺失（无 prev 条目）仍自愈（无 path 无法定位，罕见）。
+
+### 新教训
+
+1. **行为保持的 throw 顺序**：转换器拆分必须保持 `approot根 → remoteItem/package → path缺失 → mtime` 的 throw 顺序。一个"无 path 且无 fileSystemInfo"的项必须 throw "path undefinded" 而非 "cannot parse mtime"——`tests/driveItemConvert.test.ts` 的 `assert.throws` 测试钉死了这一点。拆分时 `deriveKeyFromPath`（path throw）必须在 `extractDriveItemMetadata`（mtime throw）之前调用。
+
+2. **测试绑定的闭包陷阱**：把 4 参数函数当 3 参数 converter 类型传入不工作（多出的参数落错位；删除分支传 `false` 会落到 `requireMtime`）。正确做法是用闭包 lambda 捕获映射：`(item, dir, req) => fromDriveItemToEntityWithIdFallback(item, dir, idToKeyMap, req)`——与运行时接线一致 + 类型安全。
+
+3. **错误耦合用 `.code` 不用 message 字符串**：catch 匹配 throw 时用稳定的 `.code`（如 `ONEDRIVE_PATH_MISSING`），不用 `e.message.includes("...")`。message 里可能有历史拼写错误（"undefinded"），若有人只修了 throw 里的拼写而忘了改 catch，fallback 会静默失效（退回 re-throw→自愈，不丢数据但修改场景的 id 回查就不工作了）。镜像 `remoteEtagMismatchError`/`remoteNotFoundError` 的 `Error + .code` 模式。
+
+4. **`prevRemoteEntities` 是 session 级的**：每次 plugin load 都清空（`main.ts:712`）→ 新增 Entity 字段无需长期迁移；session 首次全量即填充。
+
+5. **流程**：systematic-debugging（Phase 1 根因）→ brainstorming（方案）→ spec → writing-plans → subagent-driven（单次 fixer 跑完 + 末尾 oracle 审）→ 硬化。对小计划（4 task、多为行为保持重构）比逐 task SDD 轻。
+
+### 环境踩坑
+
+- **commit hash 重写异常**：本环境每次 commit 后 hash 被外部重写（内容逐字一致，`git diff` 空）。信任 HEAD，不信打印的 hash。review 范围用 `base..HEAD`。
+- **PowerShell temp-dir 权限**：`C:\Users\...\Temp\opencode` 写入被 PermissionDenied 拒。改用 repo 内 `.superpowers/sdd/` 放 review diff 包。
+- **`.gitignore` 忽略 `.*`**：`.superpowers/`（scratch）被忽略；`docs/superpowers/`（不以 `.` 开头）不被忽略→会被 commit。设计文档放 `docs/superpowers/`，scratch 放 `.superpowers/`。
+
+### 引用
+
+- spec：`docs/superpowers/specs/2026-09-21-onedrive-delta-id-fallback-design.md`
+- plan：`docs/superpowers/plans/2026-09-21-onedrive-delta-id-fallback.md`
+- commits：`9338c99`→`a99553e`→`9c5ff76`→`bd01d02`→`b64f720`（.code 硬化）

@@ -113,6 +113,12 @@ export interface ClassifiedDelta {
    * the NEXT sync does a full re-enumeration that re-fetches them cleanly.
    */
   skippedAddedOrModified: number;
+  /** Terminal-failure items (added/modified only, not deleted) whose
+   *  conversion threw after all fallback passes. Each carries the raw
+   *  delta DriveItem so the caller can stat-by-id to retry with full
+   *  metadata (the non-delta GET endpoint returns parentReference.path
+   *  reliably, unlike the delta endpoint which often omits it). */
+  skippedItems: any[];
 }
 
 /**
@@ -267,6 +273,7 @@ export function classifyDeltaItems(
   // Added/modified items ARE counted so walk() can self-heal by
   // invalidating the deltaLink (next sync does a full re-enumeration that
   // re-fetches them cleanly).
+  const skippedItems: any[] = [];
   for (const { item, isDeleted, error } of pending) {
     if (isDeleted) {
       console.warn(
@@ -276,6 +283,7 @@ export function classifyDeltaItems(
       );
     } else {
       skippedAddedOrModified += 1;
+      skippedItems.push(item);
       console.warn(
         "classifyDeltaItems: skipping added/modified item (parse failed)",
         error instanceof Error ? error.message : error,
@@ -284,5 +292,10 @@ export function classifyDeltaItems(
     }
   }
 
-  return { deltaEntities, deletedKeys, skippedAddedOrModified };
+  return {
+    deltaEntities,
+    deletedKeys,
+    skippedAddedOrModified,
+    skippedItems,
+  };
 }

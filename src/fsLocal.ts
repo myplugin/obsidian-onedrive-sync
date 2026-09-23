@@ -1,4 +1,8 @@
-import { DEFAULT_DEBUG_FOLDER, type Entity } from "./baseTypes";
+import {
+  DEFAULT_DEBUG_FOLDER,
+  type Entity,
+  type RenameOpts,
+} from "./baseTypes";
 import { FakeFs } from "./fsAll";
 
 import { TFile, TFolder, type Vault } from "obsidian";
@@ -186,7 +190,7 @@ export class FakeFsLocal extends FakeFs {
     return await this.vault.adapter.readBinary(key);
   }
 
-  async rename(key1: string, key2: string): Promise<void> {
+  async rename(key1: string, key2: string, _opts?: RenameOpts): Promise<void> {
     return await this.vault.adapter.rename(key1, key2);
   }
 

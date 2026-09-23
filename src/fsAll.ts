@@ -1,6 +1,11 @@
 import isEqual from "lodash/isEqual";
 import { nanoid } from "nanoid";
-import type { Entity } from "./baseTypes";
+import type {
+  BatchRenameOp,
+  BatchRenameResult,
+  Entity,
+  RenameOpts,
+} from "./baseTypes";
 
 export abstract class FakeFs {
   abstract kind: string;
@@ -59,7 +64,25 @@ export abstract class FakeFs {
     const content = await this.readFile(key);
     return { entity, content };
   }
-  abstract rename(key1: string, key2: string): Promise<void>;
+  abstract rename(key1: string, key2: string, opts?: RenameOpts): Promise<void>;
+  /** Batch rename/move multiple files in one call. Default implementation
+   *  calls rename() sequentially; backends that support batching (e.g.
+   *  OneDrive's $batch endpoint) should override for fewer HTTP round-trips. */
+  async batchRename(ops: BatchRenameOp[]): Promise<BatchRenameResult[]> {
+    const results: BatchRenameResult[] = [];
+    for (const op of ops) {
+      try {
+        await this.rename(op.key1, op.key2, {
+          sourceRemoteId: op.sourceRemoteId,
+          targetParentRemoteId: op.targetParentRemoteId,
+        });
+        results.push({ ok: true, status: 200 });
+      } catch (e: any) {
+        results.push({ ok: false, status: 0, error: e });
+      }
+    }
+    return results;
+  }
   abstract rm(key: string): Promise<void>;
   abstract checkConnect(callbackFunc?: any): Promise<boolean>;
   async checkConnectCommonOps(callbackFunc?: any) {

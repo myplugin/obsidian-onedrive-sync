@@ -9,6 +9,8 @@ import type {
 import cloneDeep from "lodash/cloneDeep";
 import { request, requestUrl } from "obsidian";
 import {
+  type BatchRenameOp,
+  type BatchRenameResult,
   COMMAND_CALLBACK_ONEDRIVE,
   DEFAULT_CONTENT_TYPE,
   type Entity,
@@ -16,6 +18,7 @@ import {
   ONEDRIVE_AUTHORITY,
   ONEDRIVE_CLIENT_ID,
   type OnedriveConfig,
+  type RenameOpts,
 } from "./baseTypes";
 import { VALID_REQURL } from "./baseTypes";
 import {
@@ -161,6 +164,47 @@ export function _buildPutRequest(
     headers["If-Match"] = ifMatch;
   }
   return { url, method: "PUT", body: payload, headers };
+}
+
+/**
+ * Build the OneDrive rename/move PATCH request components as a PURE
+ * function (no I/O) so it is unit-testable without a fetch mock. `url` is
+ * the Graph path of the OLD item (the PATCH target). `name` carries ONLY
+ * the new basename (the Graph API expects a filename, not a full path).
+ * `parentChanged` is true when the parent directory differs (a move);
+ * `newParentKey` is the vault-relative key of the new parent folder (ends
+ * with "/") — the caller must stat it on the remote to obtain the Graph
+ * `id` for `parentReference.id` (Graph does NOT accept `parentReference.path`
+ * in a PATCH body — only `id`). Folder keys end with "/"; the trailing
+ * slash is stripped before extracting the basename.
+ */
+export function _buildRenameRequest(
+  key1: string,
+  key2: string,
+  remoteBaseDir: string
+): {
+  url: string;
+  name: string;
+  parentChanged: boolean;
+  newParentKey: string;
+} {
+  const splitKey = (key: string) => {
+    const k = key.endsWith("/") ? key.slice(0, -1) : key;
+    const idx = k.lastIndexOf("/");
+    if (idx === -1) {
+      return { parentDir: "", basename: k };
+    }
+    return { parentDir: k.slice(0, idx), basename: k.slice(idx + 1) };
+  };
+
+  const url = getOnedrivePath(key1, remoteBaseDir);
+  const { parentDir: oldParentDir } = splitKey(key1);
+  const { parentDir: newParentDir, basename } = splitKey(key2);
+
+  const parentChanged = oldParentDir !== newParentDir;
+  const newParentKey = parentChanged ? `${newParentDir}/` : "";
+
+  return { url, name: basename, parentChanged, newParentKey };
 }
 
 /**
@@ -956,37 +1000,81 @@ export class FakeFsOnedrive extends FakeFs {
       if (this.approotRootId !== undefined) {
         lookupMap.set(this.approotRootId, "/");
       }
-      const { deltaEntities, deletedKeys, skippedAddedOrModified } =
-        classifyDeltaItems(
-          driveItems,
-          this.remoteBaseDir,
-          (item, dir, requireMtime) =>
-            fromDriveItemToEntityWithChainFallback(
-              item,
-              dir,
+      const {
+        deltaEntities,
+        deletedKeys,
+        skippedAddedOrModified,
+        skippedItems,
+      } = classifyDeltaItems(
+        driveItems,
+        this.remoteBaseDir,
+        (item, dir, requireMtime) =>
+          fromDriveItemToEntityWithChainFallback(
+            item,
+            dir,
+            lookupMap,
+            this.approotRootId,
+            requireMtime
+          ),
+        lookupMap,
+        this.approotRootId
+      );
+
+      // The delta endpoint sometimes omits parentReference.path, causing
+      // path derivation to fail for items whose parent chain is not in
+      // prevRemoteEntities. The non-delta GET /drive/items/{id} endpoint
+      // returns parentReference.path reliably. Stat each skipped item by
+      // id and retry the conversion before falling back to deltaLink
+      // invalidation (which forces a full re-enumeration on every sync
+      // until the items stop appearing in the delta).
+      if (skippedItems.length > 0) {
+        console.info(
+          `walk: ${skippedItems.length} delta item(s) had no parentReference.path — retrying via stat-by-id`
+        );
+        let stillUnresolved = skippedAddedOrModified;
+        const statResults = await Promise.all(
+          skippedItems
+            .filter((item: any) => item.id !== undefined && item.id !== null)
+            .map(async (item: any) => {
+              try {
+                return await this._getJson(
+                  `/drive/items/${item.id}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,eTag`
+                );
+              } catch {
+                return null;
+              }
+            })
+        );
+        for (const statResp of statResults) {
+          if (statResp === null) continue;
+          try {
+            const entity = fromDriveItemToEntityWithChainFallback(
+              statResp,
+              this.remoteBaseDir,
               lookupMap,
               this.approotRootId,
-              requireMtime
-            ),
-          lookupMap,
-          this.approotRootId
-        );
+              undefined
+            );
+            if (entity.key !== "/") {
+              deltaEntities.push(entity);
+              stillUnresolved--;
+              if (statResp.id !== undefined && entity.keyRaw !== "") {
+                lookupMap.set(statResp.id, entity.keyRaw);
+              }
+            }
+          } catch {
+            // Stat response also unresolvable — leave as skipped
+          }
+        }
 
-      // Self-heal for silently-skipped added/modified items: unlike the 404
-      // path (handled in main.ts), a parse failure here produces NO error
-      // signal, so the item would be permanently lost from the merged list
-      // until the deltaLink expires. Invalidate deltaLink so the NEXT sync
-      // does a full re-enumeration (which, with the full-walk tolerance
-      // above, re-fetches the item cleanly). The current sync proceeds with
-      // a minor gap (a possibly-stale entry → at most a redundant upload);
-      // next sync recovers fully.
-      if (skippedAddedOrModified > 0) {
-        console.warn(
-          `walk: ${skippedAddedOrModified} added/modified delta item(s) could not be parsed — ` +
-            "invalidating deltaLink; next sync will do a full re-enumeration."
-        );
-        this.onedriveConfig.deltaLink = "";
-        await this.saveUpdatedConfigFunc();
+        if (stillUnresolved > 0) {
+          console.warn(
+            `walk: ${stillUnresolved} added/modified delta item(s) could not be parsed even after stat retry — ` +
+              "invalidating deltaLink; next sync will do a full re-enumeration."
+          );
+          this.onedriveConfig.deltaLink = "";
+          await this.saveUpdatedConfigFunc();
+        }
       }
 
       const merged = mergeDeltaWithPrevState(
@@ -1082,7 +1170,7 @@ export class FakeFsOnedrive extends FakeFs {
   async _statFromRoot(key: string): Promise<Entity> {
     // console.info(`remotePath=${remotePath}`);
     const rsp = await this._getJson(
-      `${key}?$select=cTag,eTag,fileSystemInfo,folder,file,name,parentReference,size`
+      `${key}?$select=id,cTag,eTag,fileSystemInfo,folder,file,name,parentReference,size`
     );
     // console.info(rsp);
     const driveItem = rsp as DriveItem;
@@ -1459,21 +1547,250 @@ export class FakeFsOnedrive extends FakeFs {
     }
   }
 
-  // WARNING: This method is NOT called by the sync algorithm (sync.ts).
-  // The implementation is incorrect: it passes a full Graph API path as
-  // the `name` field, but the API expects just the new filename (e.g.
-  // "new.md", not "/drive/special/approot:/vault/folder/new.md").
-  // Fix before enabling remote rename in the sync flow.
-  async rename(key1: string, key2: string): Promise<void> {
+  /** Cache: OneDrive path of parent folder → Graph item id.
+   *  Deduplicates parent-dir stat calls when multiple files move into
+   *  the same directory. Safe without invalidation because OneDrive item
+   *  ids are stable; a renamed folder's old path is a natural cache miss. */
+  private _parentRemoteIdCache = new Map<string, string>();
+
+  // NOTE: This method is called by the sync algorithm's move dispatch
+  // (sync.ts dispatchOperationToActualV3, "local_moved_then_rename_remote").
+  // The PATCH request is built by the pure, unit-tested `_buildRenameRequest`.
+  // When the parent directory changed (a move), we stat the new parent folder
+  // to get its Graph `id` — the API rejects `parentReference.path` in PATCH,
+  // only `parentReference.id` is accepted. When `opts.sourceRemoteId` is
+  // provided (from delta/matchMoves), the old-item stat is skipped. The
+  // new-parent stat is deduplicated via `_parentRemoteIdCache`.
+  async rename(key1: string, key2: string, opts?: RenameOpts): Promise<void> {
     if (key1 === "" || key1 === "/" || key2 === "" || key2 === "/") {
       return;
     }
-    const remoteFileName1 = getOnedrivePath(key1, this.remoteBaseDir);
-    const remoteFileName2 = getOnedrivePath(key2, this.remoteBaseDir);
     await this._init();
-    await this._patchJson(remoteFileName1, {
-      name: remoteFileName2,
-    });
+    const { url, name, parentChanged, newParentKey } = _buildRenameRequest(
+      key1,
+      key2,
+      this.remoteBaseDir
+    );
+    if (parentChanged) {
+      // Move: PATCH by item-id (NOT by path). Path-based PATCH with
+      // parentReference conflicts — the URL encodes the old parent dir
+      // but the body says move to a new one → 400. Item-id addressing
+      // has no path conflict. rclone uses the same approach.
+      // Optimization: use sourceRemoteId from opts (delta/matchMoves)
+      // to skip the old-item stat, and cache parent-dir stats.
+      let oldRemoteId = opts?.sourceRemoteId;
+      if (oldRemoteId === undefined) {
+        const oldItem = await this._statFromRoot(
+          getOnedrivePath(key1, this.remoteBaseDir)
+        );
+        oldRemoteId = oldItem.remoteId;
+      }
+      const newParentPath = getOnedrivePath(newParentKey, this.remoteBaseDir);
+      const cachedParentId =
+        opts?.targetParentRemoteId ??
+        this._parentRemoteIdCache.get(newParentPath);
+      let newParentRemoteId: string;
+      if (cachedParentId !== undefined) {
+        newParentRemoteId = cachedParentId;
+      } else {
+        const newParent = await this._statFromRoot(newParentPath);
+        newParentRemoteId = newParent.remoteId!;
+        this._parentRemoteIdCache.set(newParentPath, newParentRemoteId);
+      }
+      const itemIdUrl = `/drive/items/${oldRemoteId}`;
+      console.debug(
+        `rename move: oldId=${oldRemoteId}, newParentId=${newParentRemoteId}, name=${name}`
+      );
+      await this._patchJson(itemIdUrl, {
+        name,
+        parentReference: { id: newParentRemoteId },
+      });
+    } else {
+      // Pure rename (same dir): path-based PATCH with just name is fine
+      console.debug(`rename in-place: name=${name}, url=${url}`);
+      await this._patchJson(url, { name });
+    }
+  }
+
+  /** Send up to 20 PATCH operations in a single $batch HTTP request.
+   *  Each op is { id, url, body }. Returns per-op results correlated by id.
+   *  Chunks automatically if >20 ops (Graph $batch hard limit).
+   *  Contract re-audit (AGENTS.md call-mode change rule): the $batch
+   *  sub-response wraps the SAME driveItem resource as the unbatched
+   *  PATCH — id, name, eTag, parentReference are all present. Rename
+   *  does not read the PATCH response body, so field-availability is
+   *  not a concern here; the only contract difference is the response
+   *  envelope shape ({ responses: [{ id, status, body }] }). */
+  private async _batchPatch(
+    ops: { id: string; url: string; body: any }[]
+  ): Promise<Map<string, { status: number; body: any }>> {
+    const results = new Map<string, { status: number; body: any }>();
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < ops.length; i += BATCH_SIZE) {
+      const chunk = ops.slice(i, i + BATCH_SIZE);
+      const batchUrl = this._buildUrl("/$batch");
+      console.debug(`batchPatch: sending ${chunk.length} ops in one request`);
+      const response = await this._retryOnTransientError(async () => {
+        return JSON.parse(
+          await request({
+            url: batchUrl,
+            method: "POST",
+            contentType: "application/json",
+            body: JSON.stringify({
+              requests: chunk.map((op) => ({
+                id: op.id,
+                method: "PATCH",
+                url: op.url,
+                headers: { "Content-Type": "application/json" },
+                body: op.body,
+              })),
+            }),
+            headers: {
+              Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+              "Content-Type": "application/json",
+            },
+          })
+        );
+      });
+      for (const resp of response.responses ?? []) {
+        results.set(resp.id, {
+          status: resp.status,
+          body: resp.body,
+        });
+      }
+    }
+    return results;
+  }
+
+  /** Batch rename/move: resolve all remoteIds, then send PATCH operations
+   *  in a single $batch request. Falls back to individual stat for ops
+   *  without sourceRemoteId. Results are returned per-op, correlated by
+   *  index (NOT by Graph id — caller must consume in order). */
+  async batchRename(ops: BatchRenameOp[]): Promise<BatchRenameResult[]> {
+    if (ops.length === 0) return [];
+    await this._init();
+
+    const results: BatchRenameResult[] = ops.map(() => ({
+      ok: false,
+      status: 0,
+    }));
+    const patchOps: {
+      id: string;
+      url: string;
+      body: any;
+      opIndex: number;
+    }[] = [];
+
+    for (let i = 0; i < ops.length; i++) {
+      const op = ops[i];
+      if (
+        op.key1 === "" ||
+        op.key1 === "/" ||
+        op.key2 === "" ||
+        op.key2 === "/"
+      ) {
+        results[i] = { ok: true, status: 200 };
+        continue;
+      }
+      const { name, parentChanged, newParentKey } = _buildRenameRequest(
+        op.key1,
+        op.key2,
+        this.remoteBaseDir
+      );
+
+      // Resolve sourceRemoteId (stat fallback if not provided)
+      let oldRemoteId = op.sourceRemoteId;
+      if (oldRemoteId === undefined) {
+        try {
+          const oldItem = await this._statFromRoot(
+            getOnedrivePath(op.key1, this.remoteBaseDir)
+          );
+          oldRemoteId = oldItem.remoteId ?? undefined;
+        } catch (e: any) {
+          results[i] = { ok: false, status: 0, error: e };
+          continue;
+        }
+      }
+      if (oldRemoteId === undefined) {
+        results[i] = {
+          ok: false,
+          status: 0,
+          error: new Error(`stat returned no remoteId for ${op.key1}`),
+        };
+        continue;
+      }
+
+      if (parentChanged) {
+        // Move: resolve target parent remoteId (cache or stat)
+        const newParentPath = getOnedrivePath(newParentKey, this.remoteBaseDir);
+        const cachedParentId =
+          op.targetParentRemoteId ??
+          this._parentRemoteIdCache.get(newParentPath);
+        let newParentRemoteId: string;
+        if (cachedParentId !== undefined) {
+          newParentRemoteId = cachedParentId;
+        } else {
+          try {
+            const newParent = await this._statFromRoot(newParentPath);
+            newParentRemoteId = newParent.remoteId!;
+            this._parentRemoteIdCache.set(newParentPath, newParentRemoteId);
+          } catch (e: any) {
+            results[i] = { ok: false, status: 0, error: e };
+            continue;
+          }
+        }
+        patchOps.push({
+          id: String(i),
+          url: `/drive/items/${oldRemoteId}`,
+          body: {
+            name,
+            parentReference: { id: newParentRemoteId },
+          },
+          opIndex: i,
+        });
+      } else {
+        // Pure rename: item-id PATCH with just name
+        patchOps.push({
+          id: String(i),
+          url: `/drive/items/${oldRemoteId}`,
+          body: { name },
+          opIndex: i,
+        });
+      }
+    }
+
+    // Batch the collected PATCH operations
+    if (patchOps.length > 0) {
+      const batchResults = await this._batchPatch(
+        patchOps.map(({ id, url, body }) => ({ id, url, body }))
+      );
+      for (const patchOp of patchOps) {
+        const result = batchResults.get(patchOp.id);
+        if (result === undefined) {
+          results[patchOp.opIndex] = {
+            ok: false,
+            status: 0,
+            error: new Error("batch response missing for this op"),
+          };
+        } else {
+          const ok = result.status >= 200 && result.status < 300;
+          results[patchOp.opIndex] = {
+            ok,
+            status: result.status,
+            error: ok
+              ? undefined
+              : new Error(
+                  `batch PATCH failed: ${result.status}` +
+                    (result.body?.error?.message
+                      ? ` — ${result.body.error.message}`
+                      : "")
+                ),
+          };
+        }
+      }
+    }
+
+    return results;
   }
 
   async rm(key: string): Promise<void> {

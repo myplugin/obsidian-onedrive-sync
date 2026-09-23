@@ -5,6 +5,7 @@ import AggregateError from "aggregate-error";
 import PQueue from "p-queue";
 import XRegExp from "xregexp";
 import type {
+  BatchRenameOp,
   ConflictActionType,
   EmptyFolderCleanType,
   Entity,
@@ -46,6 +47,7 @@ import {
   unixTimeToStr,
 } from "./misc";
 import type { Profiler } from "./profiler";
+import { quickXorHash } from "./quickXorHash";
 import { shouldSkipSync, splitUploadDownloadOps } from "./syncOptimize";
 
 const copyEntityAndFixTimeFormat = (
@@ -619,6 +621,14 @@ const getSyncPlanInplace = async (
     }
     const key = sortedKeys[i];
     const mixedEntry = mixedEntityMappings[key];
+
+    // Skip entries already decided by a prior pass (matchMoves/detectMoves).
+    // The decision tree below would overwrite move decisions with
+    // delete/create — defeating rename tracking.
+    if (mixedEntry.decision !== undefined) {
+      continue;
+    }
+
     const { local, prevSync, remote } = mixedEntry;
 
     // console.debug(`getSyncPlanInplace: key=${key}`)
@@ -1297,12 +1307,335 @@ const getSyncPlanInplace = async (
   return mixedEntityMappings;
 };
 
-const splitFourStepsOnEntityMappings = (
+/**
+ * Pure move-detection: match "locally-deleted" files against
+ * "locally-created" files by quickXorHash + size. Stamps move decisions
+ * on matched pairs so getSyncPlanInplace skips them (they're already
+ * decided). No I/O — local hashes must be pre-populated on Entity.hash
+ * (detectMoves does this; tests inject them directly).
+ *
+ * Source set: local gone, prevSync/remote still present (vanished locally).
+ * Target set: local present, prevSync/remote absent (appeared locally).
+ * Match key: quickXorHash === quickXorHash AND size === size.
+ */
+export const matchMoves = (
+  mappings: Record<string, MixedEntity>,
+  trackRenames: boolean
+): void => {
+  if (!trackRenames) return;
+
+  const sources: { key: string; hash: string; size: number }[] = [];
+  for (const [key, entry] of Object.entries(mappings)) {
+    if (key.endsWith("/")) continue;
+    if (entry.decision !== undefined) continue;
+    if (
+      entry.local === undefined &&
+      (entry.prevSync !== undefined || entry.remote !== undefined)
+    ) {
+      const hash = entry.remote?.hash ?? entry.prevSync?.hash;
+      const size =
+        entry.remote?.sizeEnc ??
+        entry.prevSync?.sizeEnc ??
+        entry.remote?.sizeRaw ??
+        entry.prevSync?.sizeRaw;
+      if (hash !== undefined && size !== undefined) {
+        sources.push({ key, hash, size });
+      }
+    }
+  }
+
+  const targets: { key: string; hash: string; size: number }[] = [];
+  for (const [key, entry] of Object.entries(mappings)) {
+    if (key.endsWith("/")) continue;
+    if (entry.decision !== undefined) continue;
+    if (
+      entry.local !== undefined &&
+      entry.prevSync === undefined &&
+      entry.remote === undefined
+    ) {
+      const entity = entry.local;
+      const hash = entity.hash;
+      const size = entity.sizeEnc ?? entity.sizeRaw;
+      if (hash !== undefined && size !== undefined) {
+        targets.push({ key, hash, size });
+      }
+    }
+  }
+
+  const usedSources = new Set<string>();
+  for (const target of targets) {
+    const match = sources.find(
+      (s) =>
+        !usedSources.has(s.key) &&
+        s.hash === target.hash &&
+        s.size === target.size
+    );
+    if (match) {
+      usedSources.add(match.key);
+      mappings[target.key].decision = "local_moved_then_rename_remote";
+      mappings[target.key].decisionBranch = 200;
+      mappings[target.key].change = true;
+      mappings[target.key].movedFromKey = match.key;
+      // Carry the Graph item id from the source's remote/prevSync entity.
+      // The move dispatch saves it to the new path's prevSync record so the
+      // NEXT sync can detect ghost remotes (old-path entries left by delta
+      // merge after a move) by matching remoteId.
+      const sourceEntity =
+        mappings[match.key].remote ?? mappings[match.key].prevSync;
+      mappings[target.key].movedFromRemoteId = sourceEntity?.remoteId;
+      mappings[match.key].decision = "moved_away";
+      mappings[match.key].decisionBranch = 201;
+      mappings[match.key].change = false;
+    }
+  }
+};
+
+/**
+ * Infer folder moves from file moves. After matchMoves stamps file move
+ * decisions, this function checks if the moved files' old/new parent folders
+ * form a folder pair (old folder exists on remote, new folder exists locally).
+ * If so, it marks the ROOT folder as a folder move (single PATCH moves the
+ * entire subtree) and converts individual file moves inside to "moved_with_parent"
+ * (no-op — the folder rename handles them).
+ *
+ * Only triggers if ALL old-path files are matched as moves (no unmatched
+ * files that would need individual delete). Falls back to individual file
+ * moves otherwise.
+ */
+export const matchFolderMoves = (
+  mappings: Record<string, MixedEntity>
+): void => {
+  // Step 1: Find folder pairs from file moves
+  const folderPairs: { oldKey: string; newKey: string }[] = [];
+  const seenOldParents = new Set<string>();
+
+  for (const [key, entry] of Object.entries(mappings)) {
+    if (
+      entry.decision === "local_moved_then_rename_remote" &&
+      entry.movedFromKey
+    ) {
+      const oldParent = getParentFolder(entry.movedFromKey);
+      const newParent = getParentFolder(key);
+      if (!seenOldParents.has(oldParent)) {
+        seenOldParents.add(oldParent);
+        const oldFolder = mappings[oldParent];
+        const newFolder = mappings[newParent];
+        if (
+          oldFolder &&
+          newFolder &&
+          oldFolder.local === undefined &&
+          (oldFolder.remote !== undefined || oldFolder.prevSync !== undefined) &&
+          newFolder.local !== undefined &&
+          newFolder.remote === undefined &&
+          newFolder.prevSync === undefined
+        ) {
+          folderPairs.push({ oldKey: oldParent, newKey: newParent });
+        }
+      }
+    }
+  }
+
+  if (folderPairs.length === 0) return;
+
+  // Step 2: Root pairs = not children of other pairs
+  const rootPairs = folderPairs.filter(
+    (pair) =>
+      !folderPairs.some(
+        (other) =>
+          other !== pair &&
+          pair.oldKey.startsWith(other.oldKey) &&
+          pair.oldKey !== other.oldKey
+      )
+  );
+
+  // Step 3: Verify ALL old-path files are matched (no unmatched deletes)
+  const validPairs = rootPairs.filter((pair) => {
+    for (const [k, entry] of Object.entries(mappings)) {
+      if (k.startsWith(pair.oldKey) && !k.endsWith("/")) {
+        if (entry.local === undefined && entry.decision !== "moved_away") {
+          return false;
+        }
+      }
+    }
+    return true;
+  });
+
+  if (validPairs.length === 0) return;
+
+  // Step 4: Mark folder moves and unmark contents
+  for (const pair of validPairs) {
+    mappings[pair.oldKey].decision = "folder_moved_away";
+    mappings[pair.oldKey].decisionBranch = 210;
+    mappings[pair.oldKey].change = false;
+
+    mappings[pair.newKey].decision = "folder_moved_then_rename_remote";
+    mappings[pair.newKey].decisionBranch = 211;
+    mappings[pair.newKey].change = true;
+    mappings[pair.newKey].movedFromKey = pair.oldKey;
+    const src = mappings[pair.oldKey].remote ?? mappings[pair.oldKey].prevSync;
+    mappings[pair.newKey].movedFromRemoteId = src?.remoteId;
+
+    for (const [k, entry] of Object.entries(mappings)) {
+      if (k === pair.oldKey || k === pair.newKey) continue;
+
+      // Old path: everything inside is moved with parent
+      if (k.startsWith(pair.oldKey)) {
+        entry.decision = "moved_with_parent";
+        entry.decisionBranch = 212;
+        entry.change = false;
+      }
+      // New path: only mark matched files and folders with old-path equivalent
+      if (k.startsWith(pair.newKey)) {
+        if (entry.decision === "local_moved_then_rename_remote") {
+          entry.decision = "moved_with_parent";
+          entry.decisionBranch = 212;
+          entry.change = false;
+        } else if (entry.decision === undefined && k.endsWith("/")) {
+          const oldEquiv = pair.oldKey + k.slice(pair.newKey.length);
+          if (mappings[oldEquiv] && mappings[oldEquiv].local === undefined) {
+            entry.decision = "moved_with_parent";
+            entry.decisionBranch = 212;
+            entry.change = false;
+          }
+        }
+      }
+    }
+  }
+
+  const fileMovesRemaining = Object.values(mappings).filter(
+    (e) => e.decision === "local_moved_then_rename_remote"
+  ).length;
+  console.debug(
+    `matchFolderMoves: ${validPairs.length} root folder move(s), ${fileMovesRemaining} individual file move(s) remaining`
+  );
+};
+
+/**
+ * Async wrapper: computes local quickXorHash for newly-created files
+ * (target candidates), then calls matchMoves. Gated by settings.trackRenames
+ * and disabled under encryption (ciphertext hash != plaintext hash —
+ * rclone-crypt uses a random nonce per upload).
+ */
+const detectMoves = async (
+  mixedEntityMappings: Record<string, MixedEntity>,
+  settings: RemotelySavePluginSettings,
+  fsEncrypt: FakeFsEncrypt,
+  fsLocal: FakeFs,
+  profiler: Profiler | undefined
+): Promise<void> => {
+  profiler?.addIndent();
+  profiler?.insert("detectMoves: enter");
+
+  if (!settings.trackRenames) {
+    console.debug("detectMoves: trackRenames disabled, skipping");
+    profiler?.insert("detectMoves: disabled, skipping");
+    profiler?.removeIndent();
+    return;
+  }
+
+  if (!fsEncrypt.isPasswordEmpty()) {
+    console.debug("detectMoves: encryption enabled, skipping (MVP limitation)");
+    profiler?.insert(
+      "detectMoves: encryption enabled, skipping (MVP limitation)"
+    );
+    profiler?.removeIndent();
+    return;
+  }
+
+  console.debug("detectMoves: computing local hashes for new files...");
+  let hashedCount = 0;
+  for (const [key, entry] of Object.entries(mixedEntityMappings)) {
+    if (key.endsWith("/")) continue;
+    if (
+      entry.local !== undefined &&
+      entry.prevSync === undefined &&
+      entry.remote === undefined &&
+      entry.local.hash === undefined
+    ) {
+      try {
+        const content = await fsLocal.readFile(entry.local.keyRaw);
+        entry.local.hash = quickXorHash(content);
+        hashedCount += 1;
+      } catch (e) {
+        console.warn(`detectMoves: could not hash ${key}: ${e}`);
+      }
+    }
+  }
+  console.debug(`detectMoves: hashed ${hashedCount} local files`);
+  profiler?.insert(`detectMoves: hashed ${hashedCount} local files`);
+
+  matchMoves(mixedEntityMappings, settings.trackRenames ?? false);
+
+  // Infer folder moves from file moves — rename root folder (1 PATCH)
+  // instead of individual files. Converts file moves inside to
+  // "moved_with_parent" (no-op).
+  matchFolderMoves(mixedEntityMappings);
+
+  const moveCount = Object.values(mixedEntityMappings).filter(
+    (e) => e.decision === "local_moved_then_rename_remote"
+  ).length;
+  console.debug(
+    `detectMoves: detected ${moveCount} move(s), skipping delete+reupload for those files`
+  );
+
+  profiler?.insert("detectMoves: exit");
+  profiler?.removeIndent();
+};
+
+/**
+ * Remove ghost remote entries left by delta merge after a move.
+ * When a file is moved (PATCH parentReference), the delta doesn't emit
+ * @removed for the old path — the file just "appears" at the new path.
+ * But mergeDeltaWithPrevState keeps the old-path entry from the previous
+ * state. These ghosts have remote≠undefined but local=undefined and
+ * prevSync=undefined (cleared by the move dispatch). They'd be misclassified
+ * as "created on remote" and crash getSyncPlanInplace via keptFolder.
+ *
+ * Detection: if a ghost's remote.remoteId matches a prevSync.remoteId at a
+ * DIFFERENT path, the file was moved — delete the ghost's remote.
+ * Always runs (not gated by trackRenames) — ghosts can persist across
+ * syncs after a move, even if trackRenames is later disabled.
+ */
+export const removeGhostRemotes = (
+  mappings: Record<string, MixedEntity>
+): void => {
+  const prevSyncRemoteIds = new Map<string, string>();
+  for (const [key, entry] of Object.entries(mappings)) {
+    if (entry.prevSync?.remoteId !== undefined) {
+      prevSyncRemoteIds.set(entry.prevSync.remoteId, key);
+    }
+  }
+
+  let ghostCount = 0;
+  for (const [key, entry] of Object.entries(mappings)) {
+    if (
+      entry.remote !== undefined &&
+      entry.local === undefined &&
+      entry.prevSync === undefined &&
+      entry.decision === undefined &&
+      entry.remote.remoteId !== undefined
+    ) {
+      const otherKey = prevSyncRemoteIds.get(entry.remote.remoteId);
+      if (otherKey !== undefined && otherKey !== key) {
+        delete entry.remote;
+        ghostCount += 1;
+      }
+    }
+  }
+  if (ghostCount > 0) {
+    console.debug(
+      `removeGhostRemotes: removed ${ghostCount} ghost remote(s) (stale old-path entries from delta merge after move)`
+    );
+  }
+};
+
+export const splitFourStepsOnEntityMappings = (
   mixedEntityMappings: Record<string, MixedEntity>
 ) => {
   type StepArrayType = MixedEntity[] | undefined | null;
   const onlyMarkSyncedOps: StepArrayType[] = [];
   const folderCreationOps: StepArrayType[] = [];
+  const moveOps: StepArrayType[] = [];
   const deletionOps: StepArrayType[] = [];
   const uploadDownloads: StepArrayType[] = [];
 
@@ -1418,6 +1751,41 @@ const splitFourStepsOnEntityMappings = (
       ) {
         realModifyDeleteCount += 1;
       }
+    } else if (
+      val.decision === "moved_away" ||
+      val.decision === "folder_moved_away" ||
+      val.decision === "moved_with_parent"
+    ) {
+      // Old-path half of a move, or contents moved with parent folder —
+      // just needs prevSync record cleanup (no-op)
+      if (
+        onlyMarkSyncedOps.length === 0 ||
+        onlyMarkSyncedOps[0] === undefined ||
+        onlyMarkSyncedOps[0] === null
+      ) {
+        onlyMarkSyncedOps[0] = [val];
+      } else {
+        onlyMarkSyncedOps[0].push(val);
+      }
+      // Don't increment realTotalCount — no actual transfer
+    } else if (
+      val.decision === "local_moved_then_rename_remote" ||
+      val.decision === "folder_moved_then_rename_remote"
+    ) {
+      // Move: rename on remote (metadata op, no content transfer)
+      // Routed to moveOps (executed BEFORE deletions) so files are moved
+      // out of old folders before those folders are deleted.
+      if (
+        moveOps.length === 0 ||
+        moveOps[0] === undefined ||
+        moveOps[0] === null
+      ) {
+        moveOps[0] = [val];
+      } else {
+        moveOps[0].push(val);
+      }
+      realTotalCount += 1;
+      // Do NOT increment realModifyDeleteCount — rename is content-preserving
     } else {
       throw Error(`unknown decision ${val.decision} for ${key}`);
     }
@@ -1431,6 +1799,7 @@ const splitFourStepsOnEntityMappings = (
   return {
     onlyMarkSyncedOps: onlyMarkSyncedOps,
     folderCreationOps: folderCreationOps,
+    moveOps: moveOps,
     deletionOps: deletionOps,
     uploadDownloads: uploadDownloads,
     allFilesCount: allFilesCount,
@@ -1836,6 +2205,64 @@ export const dispatchOperationToActualV3 = async (
       r.key
     );
     // no need to record file content for folder here
+  } else if (
+    r.decision === "local_moved_then_rename_remote" ||
+    r.decision === "folder_moved_then_rename_remote"
+  ) {
+    // Rename on remote: old key -> this key (the new path)
+    const oldKey = r.movedFromKey!;
+    await fsEncrypt.rename(oldKey, r.key);
+    await clearPrevSyncRecordByVaultAndProfile(
+      db,
+      vaultRandomID,
+      profileID,
+      oldKey
+    );
+    if (r.local !== undefined) {
+      if (r.movedFromRemoteId !== undefined) {
+        r.local.remoteId = r.movedFromRemoteId;
+      }
+      await upsertPrevSyncRecordByVaultAndProfile(
+        db,
+        vaultRandomID,
+        profileID,
+        r.local
+      );
+    }
+  } else if (
+    r.decision === "moved_away" ||
+    r.decision === "folder_moved_away"
+  ) {
+    // Old-path half of a move pair. The rename is executed on the target key.
+    // Just clear the stale prevSync record.
+    await clearPrevSyncRecordByVaultAndProfile(
+      db,
+      vaultRandomID,
+      profileID,
+      r.key
+    );
+  } else if (r.decision === "moved_with_parent") {
+    // Contents moved with parent folder — already on remote after folder rename.
+    if (r.local !== undefined) {
+      // New path: create prevSync record
+      if (r.movedFromRemoteId !== undefined) {
+        r.local.remoteId = r.movedFromRemoteId;
+      }
+      await upsertPrevSyncRecordByVaultAndProfile(
+        db,
+        vaultRandomID,
+        profileID,
+        r.local
+      );
+    } else {
+      // Old path: clear stale prevSync
+      await clearPrevSyncRecordByVaultAndProfile(
+        db,
+        vaultRandomID,
+        profileID,
+        r.key
+      );
+    }
   } else {
     throw Error(`don't know how to dispatch decision: ${JSON.stringify(r)}`);
   }
@@ -1864,6 +2291,7 @@ export const doActualSync = async (
   const {
     onlyMarkSyncedOps,
     folderCreationOps,
+    moveOps,
     deletionOps,
     uploadDownloads,
     allFilesCount,
@@ -1921,14 +2349,16 @@ export const doActualSync = async (
   const nested = [
     onlyMarkSyncedOps,
     folderCreationOps,
+    moveOps,
     deletionOps,
     uploadDownloads,
   ];
   const logTexts = [
     `1. record the items already being synced`,
     `2. create all folders from shadowest to deepest`,
-    `3. delete files and folders from deepest to shadowest`,
-    `4. upload or download files in parallel, with the desired concurrency=${concurrency}`,
+    `3. rename moved files on remote (before deleting old folders)`,
+    `4. delete files and folders from deepest to shadowest`,
+    `5. upload or download files in parallel, with the desired concurrency=${concurrency}`,
   ];
 
   let realCounter = 0;
@@ -1964,9 +2394,9 @@ export const doActualSync = async (
       const potentialErrors: Error[] = [];
       let tooManyErrors = false;
 
-      // D optimization: For upload/download step (i=3), split into
+      // D optimization: For upload/download step (i=4), split into
       // dual queues for parallel upload+download execution.
-      if (i === 3) {
+      if (i === 4) {
         const { uploads, downloads } = splitUploadDownloadOps(singleLevelOps);
         const uploadQueue = new PQueue({
           concurrency,
@@ -2026,8 +2456,84 @@ export const doActualSync = async (
         }
 
         await Promise.all([uploadQueue.onIdle(), downloadQueue.onIdle()]);
+      } else if (i === 2 && singleLevelOps.length > 0) {
+        // moveOps: batch all renames into one $batch request, then
+        // process results (clear old prevSync + upsert new prevSync).
+        // This replaces N individual rename HTTP calls with 1 batch call.
+        const batchOps: BatchRenameOp[] = singleLevelOps.map((val) => {
+          // Phase 3: look up parent folder remoteId from the entity
+          // map to skip the stat call in fsOnedrive.batchRename.
+          // Newly created folders won't have a remoteId here (mkdir
+          // response isn't captured into the map), so those fall
+          // back to stat via the _parentRemoteIdCache safety net.
+          const k = val.key.endsWith("/") ? val.key.slice(0, -1) : val.key;
+          const slashIdx = k.lastIndexOf("/");
+          const parentKey = slashIdx === -1 ? "" : `${k.slice(0, slashIdx)}/`;
+          const parentEntity = parentKey
+            ? mixedEntityMappings[parentKey]
+            : undefined;
+          return {
+            key1: val.movedFromKey!,
+            key2: val.key,
+            sourceRemoteId: val.movedFromRemoteId,
+            targetParentRemoteId:
+              parentEntity?.remote?.remoteId ??
+              parentEntity?.prevSync?.remoteId,
+          };
+        });
+
+        console.debug(`doActualSync: batchRename ${batchOps.length} move ops`);
+        const results = await fsEncrypt.batchRename(batchOps);
+
+        for (let k = 0; k < singleLevelOps.length; ++k) {
+          const val = singleLevelOps[k];
+          const result = results[k];
+
+          await callbackSyncProcess?.(
+            triggerSource,
+            realCounter,
+            realTotalCount,
+            val.key,
+            val.decision
+          );
+          if (val.change === undefined || val.change) {
+            realCounter += 1;
+          }
+
+          if (!result.ok) {
+            const err =
+              result.error ??
+              new Error(`batch rename failed: ${result.status}`);
+            const wrapped = new Error(`${val.key}: ${err.message}`);
+            (wrapped as any).code = (err as any)?.code;
+            (wrapped as any).key = val.key;
+            potentialErrors.push(wrapped);
+            if (potentialErrors.length >= 3) {
+              tooManyErrors = true;
+            }
+          } else {
+            const oldKey = val.movedFromKey!;
+            await clearPrevSyncRecordByVaultAndProfile(
+              db,
+              vaultRandomID,
+              profileID,
+              oldKey
+            );
+            if (val.local !== undefined) {
+              if (val.movedFromRemoteId !== undefined) {
+                val.local.remoteId = val.movedFromRemoteId;
+              }
+              await upsertPrevSyncRecordByVaultAndProfile(
+                db,
+                vaultRandomID,
+                profileID,
+                val.local
+              );
+            }
+          }
+        }
       } else {
-        // Single queue (steps 0-2: onlyMarkSyncedOps, folderCreation, deletion)
+        // Single queue (steps 0-1, 3: onlyMarkSyncedOps, folderCreation, deletion)
         const queue = new PQueue({
           concurrency,
           autoStart: true,
@@ -2247,6 +2753,18 @@ export async function syncer(
         profiler
       );
       profiler?.insert(`finish step${step} (build partial mixedEntity)`);
+
+      await detectMoves(
+        mixedEntityMappings,
+        settings,
+        fsEncrypt,
+        fsLocal,
+        profiler
+      );
+
+      // Remove ghost remotes: old-path entries left by delta merge after
+      // a move. Always runs — ghosts can persist across syncs.
+      removeGhostRemotes(mixedEntityMappings);
 
       mixedEntityMappings = await getSyncPlanInplace(
         mixedEntityMappings,

@@ -1521,6 +1521,28 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
     }
 
+    new Setting(containerEl)
+      .setName(t("settings_trackrenames"))
+      .setDesc(t("settings_trackrenames_desc"))
+      .addDropdown(async (dropdown) => {
+        dropdown
+          .addOption("enable", t("enable"))
+          .addOption("disable", t("disable"));
+
+        dropdown
+          .setValue(
+            `${this.plugin.settings.trackRenames ? "enable" : "disable"}`
+          )
+          .onChange(async (val) => {
+            if (val === "enable") {
+              this.plugin.settings.trackRenames = true;
+            } else {
+              this.plugin.settings.trackRenames = false;
+            }
+            await this.plugin.saveSettings();
+          });
+      });
+
     //////////////////////////////////////////////////
     // below for import and export functions
     //////////////////////////////////////////////////

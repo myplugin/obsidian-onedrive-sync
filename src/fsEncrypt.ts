@@ -1,4 +1,10 @@
-import type { CipherMethodType, Entity } from "./baseTypes";
+import type {
+  BatchRenameOp,
+  BatchRenameResult,
+  CipherMethodType,
+  Entity,
+  RenameOpts,
+} from "./baseTypes";
 import * as openssl from "./encryptOpenSSL";
 import * as rclone from "./encryptRClone";
 import { isSpecialFolderNameToSkip, isVaildText } from "./misc";
@@ -419,7 +425,7 @@ export class FakeFsEncrypt extends FakeFs {
     return { entity, content };
   }
 
-  async rename(key1: string, key2: string): Promise<void> {
+  async rename(key1: string, key2: string, opts?: RenameOpts): Promise<void> {
     if (!this.hasCacheMap) {
       throw new Error("You have to build the cacheMap firstly for readFile");
     }
@@ -441,7 +447,41 @@ export class FakeFsEncrypt extends FakeFs {
       }
       this.cacheMapOrigToEnc[key2] = key2Enc;
     }
-    return await this.innerFs.rename(key1Enc, key2Enc);
+    return await this.innerFs.rename(key1Enc, key2Enc, opts);
+  }
+
+  async batchRename(ops: BatchRenameOp[]): Promise<BatchRenameResult[]> {
+    if (!this.hasCacheMap) {
+      throw new Error("You have to build the cacheMap firstly for batchRename");
+    }
+    const encOps: BatchRenameOp[] = [];
+    for (const op of ops) {
+      let key1Enc = this.cacheMapOrigToEnc[op.key1];
+      if (key1Enc === undefined) {
+        if (this.isPasswordEmpty()) {
+          key1Enc = op.key1;
+        } else {
+          key1Enc = await this._encryptName(op.key1);
+        }
+        this.cacheMapOrigToEnc[op.key1] = key1Enc;
+      }
+      let key2Enc = this.cacheMapOrigToEnc[op.key2];
+      if (key2Enc === undefined) {
+        if (this.isPasswordEmpty()) {
+          key2Enc = op.key2;
+        } else {
+          key2Enc = await this._encryptName(op.key2);
+        }
+        this.cacheMapOrigToEnc[op.key2] = key2Enc;
+      }
+      encOps.push({
+        key1: key1Enc,
+        key2: key2Enc,
+        sourceRemoteId: op.sourceRemoteId,
+        targetParentRemoteId: op.targetParentRemoteId,
+      });
+    }
+    return await this.innerFs.batchRename(encOps);
   }
 
   async rm(key: string): Promise<void> {

@@ -115,6 +115,7 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   obfuscateSettingFile: true,
   syncedSettingFields: [...DEFAULT_SYNCED_FIELDS],
   enableMobileStatusBar: false,
+  trackRenames: false,
   encryptionMethod: "unknown",
   profiler: DEFAULT_PROFILER_CONFIG,
 };
@@ -1106,6 +1107,10 @@ export default class RemotelySavePlugin extends Plugin {
 
     if (this.settings.enableMobileStatusBar === undefined) {
       this.settings.enableMobileStatusBar = false;
+    }
+
+    if (this.settings.trackRenames === undefined) {
+      this.settings.trackRenames = false;
     }
 
     if (

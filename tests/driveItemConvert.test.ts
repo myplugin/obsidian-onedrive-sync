@@ -103,6 +103,21 @@ describe("fromDriveItemToEntity", () => {
     assert.strictEqual(e.remoteId, "d!123");
   });
 
+  it("captures quickXorHash from file.hashes", () => {
+    const item = {
+      ...normalFile,
+      file: { hashes: { quickXorHash: "AbCd123==" } },
+    };
+    const e = fromDriveItemToEntity(item as any, REMOTE_BASE_DIR);
+    assert.strictEqual(e.hash, "AbCd123==");
+  });
+
+  it("hash is undefined when file facet has no hashes", () => {
+    // normalFile has file: {} (no hashes key)
+    const e = fromDriveItemToEntity(normalFile as any, REMOTE_BASE_DIR);
+    assert.strictEqual(e.hash, undefined);
+  });
+
   it("converts a normal folder (key gets a trailing slash)", () => {
     const item = {
       ...normalFile,

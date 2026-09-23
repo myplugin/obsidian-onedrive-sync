@@ -103,6 +103,10 @@ export interface RemotelySavePluginSettings {
   syncedSettingFields?: string[];
 
   enableMobileStatusBar?: boolean;
+  /** Rename tracking: detect moved files by content hash and rename on
+   *  the remote instead of delete+re-upload. Default off. Disabled under
+   *  encryption (ciphertext hash ≠ plaintext hash). */
+  trackRenames?: boolean;
 
   encryptionMethod?: CipherMethodType;
 
@@ -175,7 +179,12 @@ export type DecisionTypeForMixedEntity =
   | "folder_to_skip"
   | "folder_to_be_deleted_on_both"
   | "folder_to_be_deleted_on_remote"
-  | "folder_to_be_deleted_on_local";
+  | "folder_to_be_deleted_on_local"
+  | "local_moved_then_rename_remote"
+  | "moved_away"
+  | "folder_moved_then_rename_remote"
+  | "folder_moved_away"
+  | "moved_with_parent";
 
 /**
  * uniform representation
@@ -227,6 +236,43 @@ export interface MixedEntity {
   change?: boolean;
 
   sideNotes?: any;
+  /** The old-path key that a "local_moved_then_rename_remote" decision
+   *  was matched against. Set by matchMoves; read by dispatch to call
+   *  fsEncrypt.rename(movedFromKey, key). */
+  movedFromKey?: string;
+  /** The Graph item id (remoteId) of the source file, carried from the
+   *  source's remote/prevSync entity through matchMoves to the move
+   *  dispatch. Saved to the new path's prevSync record so the NEXT sync
+   *  can detect ghost entries (old-path remotes left by delta merge
+   *  after a move) by matching remoteId. */
+  movedFromRemoteId?: string;
+}
+
+/** Optional metadata for rename operations to avoid redundant API calls.
+ *  `sourceRemoteId`: the Graph item id of the file being renamed/moved,
+ *    available from delta/matchMoves — skips a stat call.
+ *  `targetParentRemoteId`: the Graph item id of the destination parent
+ *    folder — skips a stat call. (Phase 3: plumbed from entity map.) */
+export interface RenameOpts {
+  sourceRemoteId?: string;
+  targetParentRemoteId?: string;
+}
+
+/** A single rename/move operation for batch processing.
+ *  `key1` is the old key, `key2` is the new key (both in the fs layer's
+ *  native path space — encrypted for FakeFsEncrypt, plain for FakeFsLocal). */
+export interface BatchRenameOp {
+  key1: string;
+  key2: string;
+  sourceRemoteId?: string;
+  targetParentRemoteId?: string;
+}
+
+/** Result of a single operation in a batch rename. */
+export interface BatchRenameResult {
+  ok: boolean;
+  status: number;
+  error?: Error;
 }
 
 /**

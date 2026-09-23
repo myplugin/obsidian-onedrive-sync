@@ -226,6 +226,8 @@
   "setting_syncdirection_incremental_pull_and_delete_only_desc": "增量拉取带删除",
   "settings_enablemobilestatusbar": "手机的状态栏（实验性质）",
   "settings_enablemobilestatusbar_desc": "Obsidian 手机版默认隐藏了状态栏。有些用户希望展示它。这里提供了设置选项。",
+  "settings_trackrenames": "重命名追踪（实验性）",
+  "settings_trackrenames_desc": "启用后，通过内容哈希检测重命名或移动的文件，在远程执行重命名而非删除后重新上传。启用加密时自动禁用。",
   "settings_importexport": "导入导出部分设置",
   "settings_export": "导出",
   "settings_export_desc": "用 QR 码或 URI 导出设置信息。",

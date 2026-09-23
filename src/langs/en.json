@@ -225,6 +225,8 @@
   "setting_syncdirection_incremental_pull_and_delete_only_desc": "Incremental Pull And Delete",
   "settings_enablemobilestatusbar": "Mobile Status Bar (experimental)",
   "settings_enablemobilestatusbar_desc": "By default Obsidian mobile hides status bar. But some users want to show it up. So here is a hack.",
+  "settings_trackrenames": "Rename Tracking (experimental)",
+  "settings_trackrenames_desc": "When enabled, renamed or moved files are detected by content hash and renamed on the remote instead of being deleted and re-uploaded. Disabled automatically when encryption is on.",
   "settings_importexport": "Import and Export Partial Settings",
   "settings_export": "Export",
   "settings_export_desc": "Export settings by generating a QR code or URI.",

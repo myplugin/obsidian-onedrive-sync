@@ -86,6 +86,12 @@ export const extractDriveItemMetadata = (x: DriveItem, requireMtime = true) => {
     // is `string | undefined`, so coerce null -> undefined.
     etag: x.eTag ?? undefined,
     remoteId: (x as any).id,
+    // OneDrive guarantees quickXorHash for files on both Personal and
+    // Business. Folders have no `file` facet → hash is undefined (correct:
+    // folders are out of scope for rename tracking). The `file` facet is
+    // already in $select (syncOptimize.ts DELTA_SELECT), so the hash is on
+    // the wire — this just parses it.
+    hash: (x as any).file?.hashes?.quickXorHash ?? undefined,
     isFolder,
   };
 };
@@ -397,6 +403,7 @@ export const fromDriveItemToEntity = (
     synthesizedFile: false,
     etag: meta.etag,
     remoteId: meta.remoteId,
+    hash: meta.hash,
   };
 };
 
@@ -471,6 +478,7 @@ export const fromDriveItemToEntityWithIdFallback = (
     synthesizedFile: false,
     etag: meta.etag,
     remoteId: meta.remoteId,
+    hash: meta.hash,
   };
 };
 
@@ -654,5 +662,6 @@ export const fromDriveItemToEntityWithChainFallback = (
     synthesizedFile: false,
     etag: meta.etag,
     remoteId: meta.remoteId,
+    hash: meta.hash,
   };
 };
