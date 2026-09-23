@@ -967,6 +967,7 @@ export class FakeFsOnedrive extends FakeFs {
       console.info(
         `walk: ${skippedItems.length} delta item(s) had no parentReference.path — retrying via stat-by-id`
       );
+      const stat404Items: any[] = [];
       const statResults = await Promise.all(
         skippedItems
           .filter((item: any) => item.id !== undefined && item.id !== null)
@@ -975,11 +976,32 @@ export class FakeFsOnedrive extends FakeFs {
               return await this._getJson(
                 `/drive/items/${item.id}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,eTag`
               );
-            } catch {
+            } catch (e) {
+              // L2: capture 404 items separately — OneDrive personal
+              // sometimes returns deleted items as "added/modified"
+              // (no @removed); stat-404 confirms they're gone → treat
+              // as deleted (add prev keyRaw to deletedKeys so the merge
+              // removes the stale entry instead of leaving it to crash
+              // the sync's folder logic).
+              if (isHttp404(e)) {
+                stat404Items.push(item);
+              }
               return null;
             }
           })
       );
+      // L2: stat-404 → treat as deleted
+      for (const item404 of stat404Items) {
+        const ownId404 = item404.id;
+        if (lookupMap.has(ownId404)) {
+          const keyRaw404 = lookupMap.get(ownId404)!;
+          if (keyRaw404 !== "/" && keyRaw404 !== "") {
+            deletedKeys.add(keyRaw404);
+          }
+          unresolvedCount--;
+        }
+        // if id not in lookupMap → new item already gone → just drop
+      }
       for (const statResp of statResults) {
         if (statResp === null) continue;
         try {
@@ -1019,26 +1041,57 @@ export class FakeFsOnedrive extends FakeFs {
             // item is stat'd once and decrements at most once (success XOR
             // out-of-scope), so unresolvedCount can't go below 0.
             unresolvedCount--;
+          } else {
+            // [DIAG] stat-retry failed for a non-out-of-scope reason: stat
+            // returned 200-without-parentReference.path (PATH_MISSING after
+            // the chain fallback also missed) or another error. Log the
+            // cause + what stat returned, to identify the recurring
+            // !sc4ea15a... family (is its parent the vault root? approot?
+            // does the non-delta GET actually return a path?).
+            console.warn(
+              "[DIAG] stat-retry conversion failed for",
+              (statResp as any)?.id,
+              "code=", (e as any)?.code,
+              "statHasPath=", (statResp as any)?.parentReference?.path != null,
+              "statName=", (statResp as any)?.name,
+              "msg=", e instanceof Error ? e.message : e
+            );
           }
-          // else: genuinely unresolvable (stat 404 caught above as null, or
-          // stat also lacks path) — leave counted as unresolved.
         }
       }
 
       if (unresolvedCount > 0) {
-        if (invalidateOnUnresolved) {
-          console.warn(
-            `walk: ${unresolvedCount} added/modified delta item(s) could not be parsed even after stat retry — ` +
-              "invalidating deltaLink; next sync will do a full re-enumeration."
-          );
-          this.onedriveConfig.deltaLink = "";
-          await this.saveUpdatedConfigFunc();
-        } else {
-          // Full-enum: no deltaLink worth invalidating (it was just saved).
-          console.warn(
-            `walk: ${unresolvedCount} added/modified item(s) could not be parsed in full enumeration — dropped (no deltaLink invalidation).`
-          );
-        }
+        // Do NOT invalidate the deltaLink. The unresolved items already failed
+        // the stat-retry (the non-delta GET /drive/items/{id} — the richest
+        // metadata source). The incremental lookupMap is a STRICT SUPERSET of
+        // the full-enum lookupMap (prev ids + approotRootId anchor vs anchor
+        // only), so if incremental's stat-retry can't resolve an item, a full
+        // re-enumeration (fewer lookup entries) cannot either — invalidation
+        // cannot self-heal these items, it only thrashes (invalidate ->
+        // full-enum -> same failure -> invalidate -> ...). Drop with a warn.
+        // The next session's full-enum (on plugin reload) re-attempts with a
+        // fresh prev.
+        // [DIAG] log approotRootId + the skipped delta items' fields, to
+        // identify whether the parent !sc4ea15a... is the vault root, approot,
+        // or a subfolder — and whether isApprootRootDriveItem should have
+        // caught the item (name === remoteBaseDir + folder).
+        console.warn(
+          `walk: ${unresolvedCount} added/modified delta item(s) could not be parsed even after stat retry — dropped (no deltaLink invalidation; a full re-enum has fewer lookup entries and would fail identically, so invalidating only thrashes).`,
+          "approotRootId=", this.approotRootId,
+          "remoteBaseDir=", this.remoteBaseDir,
+          "skipped=",
+          JSON.stringify(
+            skippedItems.map((it: any) => ({
+              id: it?.id,
+              name: it?.name,
+              isFolder: it != null && "folder" in it,
+              parentId: it?.parentReference?.id,
+              hasPath: it?.parentReference?.path != null,
+              removed: it != null && "@removed" in it,
+              isRootName: it?.name === this.remoteBaseDir,
+            }))
+          ).slice(0, 800)
+        );
       }
     }
 
@@ -1845,6 +1898,26 @@ export class FakeFsOnedrive extends FakeFs {
                       : "")
                 ),
           };
+          // L1: update prevRemoteEntities — old key → deletedRemotelyKeys,
+          // stat new path → uploadedEntities. Without this, batchRename
+          // (PATCH) leaves stale old-key entries in prevRemoteEntities →
+          // the next sync's merged state is inconsistent → "keptFolder no
+          // decisions" crash. rm() already adds to deletedRemotelyKeys;
+          // batchRename must do the same for moved items.
+          if (ok) {
+            const op = ops[patchOp.opIndex];
+            this.deletedRemotelyKeys.add(op.key1);
+            try {
+              const newEntity = await this._statFromRoot(
+                getOnedrivePath(op.key2, this.remoteBaseDir)
+              );
+              if (!newEntity.synthesizedFile) {
+                this.uploadedEntities.push(newEntity);
+              }
+            } catch {
+              // best-effort — next sync's delta will add the new entry
+            }
+          }
         }
       }
     }

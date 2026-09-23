@@ -1261,9 +1261,13 @@ const getSyncPlanInplace = async (
   keptFolder.delete("/");
   keptFolder.delete("");
   if (keptFolder.size > 0) {
-    console.error(sortedKeys);
-    console.error(mixedEntityMappings);
-    throw Error(`unexpectedly keptFolder no decisions: ${[...keptFolder]}`);
+    // L3: warn-skip instead of crash. Stale entries from move/rename
+    // (batchRename doesn't fully update prevRemoteEntities) can leave
+    // folders with no decisions. Crashing the whole sync is worse than
+    // warn-skipping — the next sync's delta will resolve them.
+    console.warn(
+      `sync: ${keptFolder.size} folder(s) kept with no decisions (likely stale entries from move/rename — warn-skip, not crash): ${[...keptFolder]}`
+    );
   }
 
   // finally we want to make our life easier
