@@ -973,3 +973,128 @@ describe("classifyDeltaItems: parent-id-chain fallback", () => {
     assert.strictEqual(result.skippedAddedOrModified, 0);
   });
 });
+
+describe("full-enum fallback (empty lookupMap + approotRootId anchor)", () => {
+  // Characterization: the full-enum branch has NO prevRemoteEntities, so the
+  // lookupMap starts empty (only the approotRootId -> "/" anchor). A
+  // path-missing delta item whose parentReference.id === approotRootId is a
+  // direct child of the vault root and MUST resolve via the baseline branch
+  // of deriveKeyFromParentChain (key = name, folder -> trailing "/").
+  it("resolves a path-missing direct child of the vault root via the anchor", () => {
+    const approotRootId = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
+    const lookupMap = new Map<string, string>();
+    lookupMap.set(approotRootId, "/");
+    const converter = (item: any, dir: string, requireMtime?: boolean) =>
+      fromDriveItemToEntityWithChainFallback(
+        item,
+        dir,
+        lookupMap,
+        approotRootId,
+        requireMtime
+      );
+    const child = {
+      id: "473340CC2449AD6B!s51622b9692a7443c8becccb73884cb7e",
+      name: "sub",
+      size: 0,
+      folder: {},
+      parentReference: {
+        driveType: "personal",
+        driveId: "473340CC2449AD6B",
+        id: approotRootId,
+      },
+      fileSystemInfo: {
+        lastModifiedDateTime: "2024-01-01T00:00:00Z",
+        createdDateTime: "2024-01-01T00:00:00Z",
+      },
+    };
+    const { deltaEntities } = classifyDeltaItems(
+      [child],
+      "MyVault",
+      converter,
+      lookupMap,
+      approotRootId
+    );
+    assert.strictEqual(deltaEntities.length, 1);
+    assert.strictEqual(deltaEntities[0].keyRaw, "sub/");
+  });
+
+  // A deeper child whose parent ALSO appears in the same delta batch (and
+  // resolves) must resolve on classifyDeltaItems' rescan pass — the in-batch
+  // parent->child chain, with no prev at all.
+  it("resolves a deeper child after its parent resolves in-batch (no prev)", () => {
+    const approotRootId = "ROOT!id";
+    const lookupMap = new Map<string, string>();
+    lookupMap.set(approotRootId, "/");
+    const converter = (item: any, dir: string, requireMtime?: boolean) =>
+      fromDriveItemToEntityWithChainFallback(
+        item,
+        dir,
+        lookupMap,
+        approotRootId,
+        requireMtime
+      );
+    const parent = {
+      id: "P!id",
+      name: "pdir",
+      size: 0,
+      folder: {},
+      parentReference: { id: approotRootId },
+      fileSystemInfo: {
+        lastModifiedDateTime: "2024-01-01T00:00:00Z",
+        createdDateTime: "2024-01-01T00:00:00Z",
+      },
+    };
+    const child = {
+      id: "C!id",
+      name: "cfile.md",
+      size: 5,
+      file: {},
+      parentReference: { id: "P!id" },
+      fileSystemInfo: {
+        lastModifiedDateTime: "2024-01-01T00:00:00Z",
+        createdDateTime: "2024-01-01T00:00:00Z",
+      },
+    };
+    // child listed BEFORE parent — rescan must still resolve both
+    const { deltaEntities } = classifyDeltaItems(
+      [child, parent],
+      "MyVault",
+      converter,
+      lookupMap,
+      approotRootId
+    );
+    const keys = deltaEntities.map((e) => e.keyRaw).sort();
+    // The deeper child resolves UNDER its parent (in-batch chain): pdir/ +
+    // cfile.md -> "pdir/cfile.md" (matches the 3-level test above which
+    // yields "A/B/c.md", not a root-relative "c.md").
+    assert.deepStrictEqual(keys, ["pdir/", "pdir/cfile.md"]);
+  });
+
+  // Out-of-scope items (stat returned a path that doesn't map to the vault)
+  // must propagate OUT_OF_SCOPE — NOT be swallowed as PATH_MISSING — so the
+  // stat-retry catch can drop them.
+  it("re-throws ONEDRIVE_PATH_OUT_OF_SCOPE (does not swallow as PATH_MISSING) for a non-vault path", () => {
+    const lookupMap = new Map<string, string>();
+    const outOfScopeStat = {
+      id: "X!id",
+      name: "x.md",
+      parentReference: { path: "/drive/special/approot" },
+      fileSystemInfo: {
+        lastModifiedDateTime: "2024-01-01T00:00:00Z",
+        createdDateTime: "2024-01-01T00:00:00Z",
+      },
+    };
+    try {
+      fromDriveItemToEntityWithChainFallback(
+        outOfScopeStat as any,
+        "MyVault",
+        lookupMap,
+        "ROOT!id",
+        false
+      );
+      assert.fail("should have thrown");
+    } catch (e: any) {
+      assert.strictEqual(e.code, "ONEDRIVE_PATH_OUT_OF_SCOPE");
+    }
+  });
+});

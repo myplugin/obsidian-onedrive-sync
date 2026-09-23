@@ -921,6 +921,124 @@ export class FakeFsOnedrive extends FakeFs {
   }
 
   /**
+   * Shared classify + stat-by-id retry for both walk() branches. Extracted
+   * from the incremental branch; hardened so out-of-scope stat results are
+   * silently dropped (not counted, not invalidating) and folders lacking
+   * lastModifiedDateTime don't fail the stat-retry (#3).
+   *
+   * @param lookupMap SHARED id->keyRaw working map (seeded by the caller:
+   *        incremental seeds from prevRemoteEntities, full-enum seeds only
+   *        approotRootId->"/"). classifyDeltaItems mutates it; a fresh copy so
+   *        mutations never leak into prevRemoteEntities.
+   * @param invalidateOnUnresolved Incremental passes true (unresolved items
+   *        mean the merged state is incomplete -> invalidate deltaLink so the
+   *        next sync full-walks, now with fallback). Full-enum passes false
+   *        (it just saved a fresh deltaLink; invalidating would only force an
+   *        identical full-walk next sync).
+   */
+  private async _classifyAndStatRetry(
+    driveItems: DriveItem[],
+    lookupMap: Map<string, string>,
+    invalidateOnUnresolved: boolean
+  ): Promise<{
+    entities: Entity[];
+    deletedKeys: Set<string>;
+    unresolvedCount: number;
+  }> {
+    const { deltaEntities, deletedKeys, skippedAddedOrModified, skippedItems } =
+      classifyDeltaItems(
+        driveItems,
+        this.remoteBaseDir,
+        (item, dir, requireMtime) =>
+          fromDriveItemToEntityWithChainFallback(
+            item,
+            dir,
+            lookupMap,
+            this.approotRootId,
+            requireMtime
+          ),
+        lookupMap,
+        this.approotRootId
+      );
+
+    let unresolvedCount = skippedAddedOrModified;
+
+    if (skippedItems.length > 0) {
+      console.info(
+        `walk: ${skippedItems.length} delta item(s) had no parentReference.path — retrying via stat-by-id`
+      );
+      const statResults = await Promise.all(
+        skippedItems
+          .filter((item: any) => item.id !== undefined && item.id !== null)
+          .map(async (item: any) => {
+            try {
+              return await this._getJson(
+                `/drive/items/${item.id}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,eTag`
+              );
+            } catch {
+              return null;
+            }
+          })
+      );
+      for (const statResp of statResults) {
+        if (statResp === null) continue;
+        try {
+          // (#3) requireMtime=false: folders sync by presence, not mtime; a
+          // mkdir'd folder may lack lastModifiedDateTime and must not fail
+          // the stat-retry on mtime.
+          const entity = fromDriveItemToEntityWithChainFallback(
+            statResp,
+            this.remoteBaseDir,
+            lookupMap,
+            this.approotRootId,
+            false
+          );
+          if (entity.key !== "/") {
+            deltaEntities.push(entity);
+            unresolvedCount--;
+            if (statResp.id !== undefined && entity.keyRaw !== "") {
+              lookupMap.set(statResp.id, entity.keyRaw);
+            }
+          }
+        } catch (e) {
+          // (#3) Out-of-scope item (stat path doesn't map to the vault, e.g. a
+          // sibling folder under approot): silent drop. NOT counted as
+          // unresolved, NOT invalidating — this is the thrash-stopper.
+          if (
+            e instanceof Error &&
+            (e as any).code === "ONEDRIVE_PATH_OUT_OF_SCOPE"
+          ) {
+            console.debug(
+              "walk: stat-retry dropped out-of-scope item",
+              (statResp as any).id
+            );
+          }
+          // else: genuinely unresolvable (stat 404 caught above as null, or
+          // stat also lacks path) — leave counted as unresolved.
+        }
+      }
+
+      if (unresolvedCount > 0) {
+        if (invalidateOnUnresolved) {
+          console.warn(
+            `walk: ${unresolvedCount} added/modified delta item(s) could not be parsed even after stat retry — ` +
+              "invalidating deltaLink; next sync will do a full re-enumeration."
+          );
+          this.onedriveConfig.deltaLink = "";
+          await this.saveUpdatedConfigFunc();
+        } else {
+          // Full-enum: no deltaLink worth invalidating (it was just saved).
+          console.warn(
+            `walk: ${unresolvedCount} added/modified item(s) could not be parsed in full enumeration — dropped (no deltaLink invalidation).`
+          );
+        }
+      }
+    }
+
+    return { entities: deltaEntities, deletedKeys, unresolvedCount };
+  }
+
+  /**
    * List all files and folders on the remote.
    *
    * Uses the OneDrive delta API. When a `deltaLink` from a previous sync
@@ -991,91 +1109,20 @@ export class FakeFsOnedrive extends FakeFs {
       // remoteId (old/walkPartial origin) are gracefully excluded; items
       // whose parent chain is unreachable still skip + self-heal as before.
       const idToKeyMap = buildIdToKeyMap(this.prevRemoteEntities);
-      // lookupMap is the SHARED working map: the closure-bound converter
-      // reads it while classifyDeltaItems mutates it (root anchor + every
-      // resolved item's id->keyRaw), so batch-internal parent->child chains
-      // resolve regardless of delta order (two-pass rescan). A fresh copy -
-      // mutations never leak into prevRemoteEntities.
+      // lookupMap is the SHARED working map (fresh copy — mutations never
+      // leak into prevRemoteEntities). Seeded with prev ids; the approot
+      // root anchor is seeded inside classifyDeltaItems (idempotent).
       const lookupMap = new Map(idToKeyMap);
-      if (this.approotRootId !== undefined) {
-        lookupMap.set(this.approotRootId, "/");
-      }
+
       const {
-        deltaEntities,
+        entities: deltaEntities,
         deletedKeys,
-        skippedAddedOrModified,
-        skippedItems,
-      } = classifyDeltaItems(
+        unresolvedCount,
+      } = await this._classifyAndStatRetry(
         driveItems,
-        this.remoteBaseDir,
-        (item, dir, requireMtime) =>
-          fromDriveItemToEntityWithChainFallback(
-            item,
-            dir,
-            lookupMap,
-            this.approotRootId,
-            requireMtime
-          ),
         lookupMap,
-        this.approotRootId
+        /* invalidateOnUnresolved */ true
       );
-
-      // The delta endpoint sometimes omits parentReference.path, causing
-      // path derivation to fail for items whose parent chain is not in
-      // prevRemoteEntities. The non-delta GET /drive/items/{id} endpoint
-      // returns parentReference.path reliably. Stat each skipped item by
-      // id and retry the conversion before falling back to deltaLink
-      // invalidation (which forces a full re-enumeration on every sync
-      // until the items stop appearing in the delta).
-      if (skippedItems.length > 0) {
-        console.info(
-          `walk: ${skippedItems.length} delta item(s) had no parentReference.path — retrying via stat-by-id`
-        );
-        let stillUnresolved = skippedAddedOrModified;
-        const statResults = await Promise.all(
-          skippedItems
-            .filter((item: any) => item.id !== undefined && item.id !== null)
-            .map(async (item: any) => {
-              try {
-                return await this._getJson(
-                  `/drive/items/${item.id}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,eTag`
-                );
-              } catch {
-                return null;
-              }
-            })
-        );
-        for (const statResp of statResults) {
-          if (statResp === null) continue;
-          try {
-            const entity = fromDriveItemToEntityWithChainFallback(
-              statResp,
-              this.remoteBaseDir,
-              lookupMap,
-              this.approotRootId,
-              undefined
-            );
-            if (entity.key !== "/") {
-              deltaEntities.push(entity);
-              stillUnresolved--;
-              if (statResp.id !== undefined && entity.keyRaw !== "") {
-                lookupMap.set(statResp.id, entity.keyRaw);
-              }
-            }
-          } catch {
-            // Stat response also unresolvable — leave as skipped
-          }
-        }
-
-        if (stillUnresolved > 0) {
-          console.warn(
-            `walk: ${stillUnresolved} added/modified delta item(s) could not be parsed even after stat retry — ` +
-              "invalidating deltaLink; next sync will do a full re-enumeration."
-          );
-          this.onedriveConfig.deltaLink = "";
-          await this.saveUpdatedConfigFunc();
-        }
-      }
 
       const merged = mergeDeltaWithPrevState(
         this.prevRemoteEntities,
@@ -1086,32 +1133,27 @@ export class FakeFsOnedrive extends FakeFs {
       this.lastWalkDeltaCount = driveItems.length;
       return merged;
     } else {
-      // Full enumeration — convert all items to entities. Tolerate per-item
-      // parse failures (e.g. parentReference.path omitted for a
-      // special-folder-relative item) with a warn-and-skip, mirroring
-      // classifyDeltaItems' incremental-path tolerance — otherwise a single
-      // unparseable item would crash the whole sync, and the self-heal
-      // fallback (which re-runs full enumeration after a 404) would be
-      // fragile against the very items that triggered self-heal.
-      const unifiedContents: Entity[] = [];
-      for (const x of driveItems) {
-        try {
-          const entity = fromDriveItemToEntity(x, this.remoteBaseDir);
-          if (entity.key !== "/") {
-            unifiedContents.push(entity);
-          }
-        } catch (e) {
-          console.warn(
-            "walk: skipping item in full enumeration (parse failed)",
-            e instanceof Error ? e.message : e,
-            JSON.stringify(x).slice(0, 200)
-          );
-        }
+      // Full enumeration — no prev to build an id->key map from; seed only
+      // the approot root anchor. The shared classify + stat-retry resolves
+      // path-missing in-scope items (direct children of vault root via the
+      // anchor; deeper via in-batch parent->child chains; or stat-by-id
+      // which returns parentReference.path reliably). Out-of-scope items
+      // (e.g. sibling folders under approot) are silently dropped instead
+      // of warn-skip-thrashing. invalidateOnUnresolved=false: a full-enum
+      // just saved a fresh deltaLink; invalidating would only force an
+      // identical full-walk next sync.
+      const lookupMap = new Map<string, string>();
+      if (this.approotRootId !== undefined) {
+        lookupMap.set(this.approotRootId, "/");
       }
-
-      this.lastWalkResult = unifiedContents;
+      const { entities } = await this._classifyAndStatRetry(
+        driveItems,
+        lookupMap,
+        /* invalidateOnUnresolved */ false
+      );
+      this.lastWalkResult = entities;
       this.lastWalkDeltaCount = undefined;
-      return unifiedContents;
+      return entities;
     }
   }
 
