@@ -1,0 +1,45 @@
+tests/deltaMerge.test.ts
+  s_146c66c66e0640::t_d60a440bd65ce1 976-1066,1071-1100
+  s_146c66c66e0640::t_2222cc27f52894 1067-1070
+src/fsOnedrive.ts
+  s_146c66c66e0640::t_d160e81ad5e6b3 1112-1114,1116,1118,1120-1121,1124
+  s_146c66c66e0640::t_e02834f0bdd9e4 1136-1147,1149-1154,1156
+  s_146c66c66e0640::t_8e88ef334b9622 924-947,963-1040
+  s_146c66c66e0640::t_972fc703e336fa 948-962
+  s_146c66c66e0640::t_0feef81d836bb1 923
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "8c98bdb01e83e151eb3f369b7d261079dcd96e0e",
+  "prompts": {},
+  "sessions": {
+    "s_146c66c66e0640": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f33f76733ffeKBtB3yEryxcmTu",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 123
+    },
+    "s_ddd35ba0bb0d98": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f365e2bcdffe5Z5OJJiN6URl07",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_deletions": 3
+    }
+  }
+}
