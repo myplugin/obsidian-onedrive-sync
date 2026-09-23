@@ -117,6 +117,22 @@ function pathMissingError(): Error {
 }
 
 /**
+ * Build a recognizable error for "delta/stat item's parentReference.path does
+ * not map to a vault-relative key" — the path is present but matches no known
+ * prefix, or decodes to a location outside `remoteBaseDir` (e.g. a sibling
+ * folder under approot, or a different vault). Carries a stable
+ * `.code = "ONEDRIVE_PATH_OUT_OF_SCOPE"` so the stat-retry catch can silently
+ * drop these items (they are not vault content) instead of counting them as
+ * unresolved and invalidating the deltaLink. Mirrors pathMissingError's
+ * `.code` pattern.
+ */
+function outOfScopeError(message: string): Error {
+  const err = new Error(message);
+  (err as any).code = "ONEDRIVE_PATH_OUT_OF_SCOPE";
+  return err;
+}
+
+/**
  * Derive the vault-relative key from parentReference.path + name. PURE.
  * Throws on missing parentReference.path (the approot root folder is
  * handled by the caller via isApprootRootDriveItem, NOT here). Returns the
@@ -288,7 +304,7 @@ export const deriveKeyFromPath = (
     // /drive/items/<some_id>!<another_id>:/${remoteBaseDir}/<subfolder>
     // with uri encoded!
     if (x.name === undefined || x.name === null) {
-      throw Error(
+      throw outOfScopeError(
         `OneDrive item no name variable while matching ${FOURTH_COMMON_PREFIX_RAW}`
       );
     }
@@ -300,7 +316,7 @@ export const deriveKeyFromPath = (
     } else if (key === `/${remoteBaseDir}`) {
       key = x.name;
     } else {
-      throw Error(
+      throw outOfScopeError(
         `file/folder with /drive/items/, no idea how to deal with it:
 fullPathOriginal=${fullPathOriginal}
 matchFirstPrefixRes=${matchFirstPrefixRes}
@@ -316,7 +332,7 @@ ${constructFromDriveItemToEntityError(x)}`
 
   // others
   else {
-    throw Error(
+    throw outOfScopeError(
       `file/folder, no idea how to deal with it without known prefix:
 fullPathOriginal=${fullPathOriginal}
 matchFirstPrefixRes=${matchFirstPrefixRes}

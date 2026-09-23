@@ -3,6 +3,7 @@
 import { strict as assert } from "assert";
 import {
   deriveKeyFromParentChain,
+  deriveKeyFromPath,
   fromDriveItemToEntity,
   fromDriveItemToEntityWithChainFallback,
   fromDriveItemToEntityWithIdFallback,
@@ -811,5 +812,58 @@ describe("fromDriveItemToEntityWithChainFallback", () => {
         ),
       /onedrive cannot parse mtime/
     );
+  });
+});
+
+describe("deriveKeyFromPath out-of-scope coded error", () => {
+  it("throws ONEDRIVE_PATH_OUT_OF_SCOPE for a path matching no known prefix", () => {
+    const item = {
+      name: "x.md",
+      parentReference: { path: "/drive/special/approot" },
+      fileSystemInfo: {
+        lastModifiedDateTime: MTIME,
+        createdDateTime: MTIME,
+      },
+    };
+    try {
+      deriveKeyFromPath(item as any, REMOTE_BASE_DIR);
+      assert.fail("should have thrown");
+    } catch (e: any) {
+      assert.strictEqual(
+        e.code,
+        "ONEDRIVE_PATH_OUT_OF_SCOPE",
+        "non-vault paths must carry the OUT_OF_SCOPE code"
+      );
+    }
+  });
+
+  it("throws ONEDRIVE_PATH_OUT_OF_SCOPE for a /drive/items/ path not under remoteBaseDir", () => {
+    const item = {
+      name: "x.md",
+      parentReference: { path: "/drive/items/abc!def:/OtherVault/x.md" },
+      fileSystemInfo: {
+        lastModifiedDateTime: MTIME,
+        createdDateTime: MTIME,
+      },
+    };
+    try {
+      deriveKeyFromPath(item as any, REMOTE_BASE_DIR);
+      assert.fail("should have thrown");
+    } catch (e: any) {
+      assert.strictEqual(e.code, "ONEDRIVE_PATH_OUT_OF_SCOPE");
+    }
+  });
+
+  it("throws ONEDRIVE_PATH_OUT_OF_SCOPE when a /drive/items/ item has no name", () => {
+    const item = {
+      name: undefined,
+      parentReference: { path: "/drive/items/abc!def:/MyVault/sub" },
+    };
+    try {
+      deriveKeyFromPath(item as any, REMOTE_BASE_DIR);
+      assert.fail("should have thrown");
+    } catch (e: any) {
+      assert.strictEqual(e.code, "ONEDRIVE_PATH_OUT_OF_SCOPE");
+    }
   });
 });
