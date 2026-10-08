@@ -745,7 +745,7 @@ export class FakeFsOnedrive extends FakeFs {
           `OneDrive POST failed: ${res.status} ${pathFragOrig} ${text}`
         );
         (err as any).status = res.status;
-        (err as any).headers = res.headers;
+        (err as any).headers = { "Retry-After": res.headers.get("Retry-After") };
         throw err;
       }
       return text === "" ? null : JSON.parse(text);
@@ -778,7 +778,7 @@ export class FakeFsOnedrive extends FakeFs {
           `OneDrive PATCH failed: ${res.status} ${pathFragOrig} ${text}`
         );
         (err as any).status = res.status;
-        (err as any).headers = res.headers;
+        (err as any).headers = { "Retry-After": res.headers.get("Retry-After") };
         throw err;
       }
       return text === "" ? null : JSON.parse(text);
@@ -826,7 +826,7 @@ export class FakeFsOnedrive extends FakeFs {
             `OneDrive DELETE failed: ${res.status} ${pathFragOrig} ${body}`
           );
           (err as any).status = res.status;
-          (err as any).headers = res.headers;
+          (err as any).headers = { "Retry-After": res.headers.get("Retry-After") };
           throw err;
         }
       }
@@ -1032,12 +1032,42 @@ export class FakeFsOnedrive extends FakeFs {
               // the sync's folder logic).
               if (isHttp404(e)) {
                 stat404Items.push(item);
+                // [DIAG] 404 is expected/handled: the item is deleted
+                // or in the recycle bin (not visible to a plain GET,
+                // which would need includeDeletedItems=true — we don't
+                // send it on purpose: a 404 IS the "it's gone" signal).
+                // Debug-level so a transient blip is visible without
+                // alarming (data integrity is unaffected: the item is
+                // correctly dropped, never enters the sync).
+                console.debug(
+                  "walk: stat-retry 404 for delta item (treated as gone)",
+                  item?.id
+                );
+              } else {
+                // [DIAG] non-404 GET failure (after _retryOnTransientError
+                // already retried 429/5xx): auth / scope / persistent error.
+                // The item's fate is genuinely unknown → NOT decremented,
+                // stays counted as unresolved so the terminal warn fires.
+                console.warn(
+                  "[DIAG] stat-retry GET failed (non-404) for delta item",
+                  item?.id,
+                  e instanceof Error ? e.message : e
+                );
               }
               return null;
             }
           })
       );
-      // L2: stat-404 → treat as deleted
+      // L2: stat-404 → treat as deleted. A 404 means the item is
+      // definitively gone — resolved whether it was in prev (MODIFY
+      // case → remove from prev via deletedKeys) or a brand-new item
+      // that already vanished (just drop). Always decrement so the
+      // terminal "N unresolved" warn only fires for items that are
+      // TRULY unresolved (parse failed, fate unknown). Mirrors the
+      // out-of-scope decrement below; safe because each skipped item
+      // is stat'd once and resolves as exactly one of success /
+      // out-of-scope / 404 (mutually exclusive — 404 returns null,
+      // which the statResults loop skips via `continue`).
       for (const item404 of stat404Items) {
         const ownId404 = item404.id;
         if (lookupMap.has(ownId404)) {
@@ -1045,9 +1075,8 @@ export class FakeFsOnedrive extends FakeFs {
           if (keyRaw404 !== "/" && keyRaw404 !== "") {
             deletedKeys.add(keyRaw404);
           }
-          unresolvedCount--;
         }
-        // if id not in lookupMap → new item already gone → just drop
+        unresolvedCount--;
       }
       for (const statResp of statResults) {
         if (statResp === null) continue;
