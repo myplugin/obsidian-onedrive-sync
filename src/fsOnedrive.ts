@@ -404,7 +404,7 @@ export const setConfigBySuccessfullAuthInplace = async (
 
 const getOnedrivePath = (fileOrFolderPath: string, remoteBaseDir: string) => {
   // https://docs.microsoft.com/en-us/onedrive/developer/rest-api/concepts/special-folders-appfolder?view=odsp-graph-online
-  const prefix = `/drive/special/approot:/${remoteBaseDir}`;
+  const prefix = `/me/drive/special/approot:/${remoteBaseDir}`;
 
   let key = fileOrFolderPath;
   if (fileOrFolderPath === "/" || fileOrFolderPath === "") {
@@ -572,7 +572,19 @@ export class FakeFsOnedrive extends FakeFs {
     if (this.vaultFolderExists) {
       // console.info(`already checked, /${this.remoteBaseDir} exist before`)
     } else {
-      const k = await this._getJson("/drive/special/approot/children");
+      // Warm up / provision the App Folder. Per the app-folder docs, the FIRST
+      // GET /me/drive/special/approot (the RESOURCE, not /children) materializes
+      // the Apps/{appName} special folder if it doesn't exist; GET .../children
+      // does NOT provision it.
+      // https://learn.microsoft.com/en-us/graph/onedrive-sharepoint-appfolder
+      await this._getJson("/me/drive/special/approot");
+
+      // /me/drive/... is REQUIRED here: bare /drive is not a valid POST path
+      // (driveitem-post-children lists only /me/drive, /drives/{id},
+      // /users/{id}/drive, /groups/{id}/drive, /sites/{id}/drive). Bare /drive
+      // is accepted for GET (lenient binding) but rejected on POST with
+      // invalidRequest "Invalid request".
+      const k = await this._getJson("/me/drive/special/approot/children");
       // console.debug(k);
       const rootMatches = (k.value as DriveItem[]).filter(
         (x) => x.name === this.remoteBaseDir
@@ -588,10 +600,14 @@ export class FakeFsOnedrive extends FakeFs {
       }
       if (!this.vaultFolderExists) {
         console.info(`remote does not have folder /${this.remoteBaseDir}`);
-        await this._postJson("/drive/special/approot/children", {
+        await this._postJson("/me/drive/special/approot/children", {
           name: `${this.remoteBaseDir}`,
           folder: {},
-          "@microsoft.graph.conflictBehavior": "replace",
+          // NOTE: @microsoft.graph.conflictBehavior is OMITTED on purpose.
+          // For this app registration, including conflictBehavior (any value:
+          // fail/rename/replace) makes Graph return 400 invalidRequest on
+          // POST /special/approot/children. Omitting it succeeds (the GET
+          // above already confirmed the folder doesn't exist, so no conflict).
         });
         console.info(`remote folder /${this.remoteBaseDir} created`);
         this.vaultFolderExists = true;
@@ -703,20 +719,36 @@ export class FakeFsOnedrive extends FakeFs {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`postJson, theUrl=${theUrl}`);
     return await this._retryOnTransientError(async () => {
-      return JSON.parse(
-        await request({
-          url: theUrl,
-          method: "POST",
-          contentType: "application/json",
-          body: JSON.stringify(payload),
-          headers: {
-            // Caller-supplied headers (e.g. If-Match precondition);
-            // Authorization is always set here with a fresh token.
-            ...headers,
-            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-          },
-        })
-      );
+      const accessToken = await this.authGetter.getAccessToken();
+      const res = await fetch(theUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          // Caller-supplied headers (e.g. If-Match precondition);
+          // Authorization is always set here with a fresh token.
+          ...headers,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text().catch(() => "");
+      if (!res.ok) {
+        console.error(
+          `postJson FAILED url=${theUrl} status=${res.status}`,
+          "payload=",
+          payload,
+          "body=",
+          text
+        );
+        const err = new Error(
+          `OneDrive POST failed: ${res.status} ${pathFragOrig} ${text}`
+        );
+        (err as any).status = res.status;
+        (err as any).headers = res.headers;
+        throw err;
+      }
+      return text === "" ? null : JSON.parse(text);
     });
   }
 
@@ -724,17 +756,32 @@ export class FakeFsOnedrive extends FakeFs {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`patchJson, theUrl=${theUrl}`);
     return await this._retryOnTransientError(async () => {
-      return JSON.parse(
-        await request({
-          url: theUrl,
-          method: "PATCH",
-          contentType: "application/json",
-          body: JSON.stringify(payload),
-          headers: {
-            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-          },
-        })
-      );
+      const res = await fetch(theUrl, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text().catch(() => "");
+      if (!res.ok) {
+        console.error(
+          `patchJson FAILED url=${theUrl} status=${res.status}`,
+          "payload=",
+          payload,
+          "body=",
+          text
+        );
+        const err = new Error(
+          `OneDrive PATCH failed: ${res.status} ${pathFragOrig} ${text}`
+        );
+        (err as any).status = res.status;
+        (err as any).headers = res.headers;
+        throw err;
+      }
+      return text === "" ? null : JSON.parse(text);
     });
   }
 
