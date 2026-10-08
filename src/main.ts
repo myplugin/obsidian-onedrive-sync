@@ -72,6 +72,7 @@ import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
 import {
   SYNC_ON_SAVE_RATE_LIMIT_MS,
+  deriveDeferIdleMs,
   deriveSyncOnSaveMode,
   shouldRateLimitSync,
 } from "./syncOptimize";
@@ -96,10 +97,9 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   // here would make the back-compat migration (deriveSyncOnSaveMode) never
   // run — silently disabling sync-on-save for upgraders. The migration
   // derives "off" for new users from the default syncOnSaveAfterMilliseconds=-1.
-  // NOTE: these two MUST be defaulted here — loadSettings merges
-  // DEFAULT_SETTINGS via Object.assign with no per-field fallbacks, so
+  // NOTE: deferSyncIdleMs MUST be defaulted here — loadSettings merges
+  // DEFAULT_SETTINGS via Object.assign with no per-field fallback, so
   // old data.json files (pre-feature) would otherwise load undefined.
-  deferSyncWhileEditing: true,
   deferSyncIdleMs: 5000,
   agreeToUploadExtraMetadata: true, // as of 20240106, it's safe to assume every new user agrees with this
   concurrency: 5,
@@ -242,12 +242,13 @@ export default class RemotelySavePlugin extends Plugin {
 
   async syncRun(triggerSource: SyncTriggerSourceType = "manual") {
     // Defer gate: postpone periodic-auto and sync-on-save triggers while
-    // the user is actively typing; the postponed run fires once after
-    // deferSyncIdleMs without new defer requests, or at the latest after
-    // one auto period (armDeferSync). manual / dry / auto_once_init always
-    // run immediately — they are explicit user intent or one-shot startup.
+    // the user is actively typing (deferSyncIdleMs > 0; 0 = disabled); the
+    // postponed run fires once after deferSyncIdleMs without new defer
+    // requests, or at the latest after one auto period (armDeferSync).
+    // manual / dry / auto_once_init always run immediately — they are
+    // explicit user intent or one-shot startup.
     if (
-      this.settings.deferSyncWhileEditing &&
+      (this.settings.deferSyncIdleMs ?? 0) > 0 &&
       (triggerSource === "auto" || triggerSource === "auto_sync_on_save") &&
       this.isActivelyEditing()
     ) {
@@ -883,7 +884,7 @@ export default class RemotelySavePlugin extends Plugin {
     );
 
     // Defer-sync-while-editing + dirty-buffer protection listeners. Always
-    // registered (independent of deferSyncWhileEditing / syncOnSaveMode):
+    // registered (independent of the defer gate / syncOnSaveMode):
     // the dirty set also backs the syncer's dirty-buffer guard. The two
     // workspace listeners are tracked via explicit refs and deregistered
     // in onunload; the vault modify listener uses registerEvent (auto
@@ -1357,6 +1358,15 @@ export default class RemotelySavePlugin extends Plugin {
         this.settings.syncOnSaveAfterMilliseconds
       );
     }
+    // Back-compat: the legacy `deferSyncWhileEditing` boolean toggle was
+    // merged into deferSyncIdleMs (0 = disabled). false meant "disabled" —
+    // translate to 0; any other value keeps the already-defaulted
+    // deferSyncIdleMs. See deriveDeferIdleMs + tests.
+    this.settings.deferSyncIdleMs = deriveDeferIdleMs(
+      (this.settings as any).deferSyncWhileEditing as boolean | undefined,
+      this.settings.deferSyncIdleMs
+    );
+    delete (this.settings as any).deferSyncWhileEditing;
     if (this.settings.deleteToWhere === undefined) {
       this.settings.deleteToWhere = "system";
     }

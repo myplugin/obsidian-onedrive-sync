@@ -5,6 +5,7 @@ import type { Entity, MixedEntity } from "../src/baseTypes";
 import {
   SYNC_ON_SAVE_RATE_LIMIT_MS,
   buildDeltaStartUrl,
+  deriveDeferIdleMs,
   deriveSyncOnSaveMode,
   shouldRateLimitSync,
   shouldSkipSync,
@@ -425,5 +426,28 @@ describe("deriveSyncOnSaveMode (back-compat migration from syncOnSaveAfterMillis
     for (const v of [1000, 3000, 1, 0, -1, undefined, null]) {
       assert.notStrictEqual(deriveSyncOnSaveMode(v as any), "rateLimit");
     }
+  });
+});
+
+describe("deriveDeferIdleMs (back-compat migration from deferSyncWhileEditing)", () => {
+  // The loadSettings migration folds the legacy `deferSyncWhileEditing`
+  // boolean toggle into deferSyncIdleMs (0 = disabled). An explicit false
+  // meant "feature off" → 0; anything else keeps the (already-defaulted)
+  // current idle value, with a defensive 5000 fallback when undefined.
+  it("maps an explicit false toggle to 0 (disabled) regardless of idle", () => {
+    assert.strictEqual(deriveDeferIdleMs(false, 5000), 0);
+    assert.strictEqual(deriveDeferIdleMs(false, 10000), 0);
+    assert.strictEqual(deriveDeferIdleMs(false, undefined), 0);
+  });
+
+  it("keeps the current idle value when the legacy toggle was true", () => {
+    assert.strictEqual(deriveDeferIdleMs(true, 10000), 10000);
+    assert.strictEqual(deriveDeferIdleMs(true, 5000), 5000);
+    assert.strictEqual(deriveDeferIdleMs(true, undefined), 5000);
+  });
+
+  it("keeps the current idle value for new users (no legacy field)", () => {
+    assert.strictEqual(deriveDeferIdleMs(undefined, 5000), 5000);
+    assert.strictEqual(deriveDeferIdleMs(undefined, undefined), 5000);
   });
 });

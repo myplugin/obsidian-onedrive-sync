@@ -171,6 +171,22 @@ export function deriveSyncOnSaveMode(
     : "off";
 }
 
+/**
+ * Back-compat migration for the merged defer-sync setting. Pre-merge
+ * configs stored a separate `deferSyncWhileEditing` boolean toggle;
+ * false meant "feature disabled". The merge folds it into
+ * deferSyncIdleMs where 0 = disabled. Returns 0 if the legacy toggle was
+ * explicitly false, otherwise the current deferSyncIdleMs (already
+ * defaulted by Object.assign in loadSettings; defensive 5000 fallback).
+ */
+export function deriveDeferIdleMs(
+  legacyDeferToggle: boolean | undefined,
+  currentIdleMs: number | undefined
+): number {
+  if (legacyDeferToggle === false) return 0;
+  return currentIdleMs ?? 5000;
+}
+
 const UPLOAD_DECISIONS = new Set([
   "local_is_modified_then_push",
   "local_is_created_then_push",

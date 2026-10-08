@@ -31,7 +31,6 @@ export const SYNCABLE_FIELDS = [
   "initRunAfterMilliseconds",
   "syncOnSaveAfterMilliseconds",
   "syncOnSaveMode",
-  "deferSyncWhileEditing",
   "deferSyncIdleMs",
 ] as const;
 

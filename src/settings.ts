@@ -1036,34 +1036,15 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     addSyncToggle(syncOnSaveSetting, "syncOnSaveMode", this.plugin, t);
 
-    // NOTE: hardcoded English strings — TransItemType is a strict union of
-    // existing i18n keys and the lang JSONs are out of this change's scope.
-    const deferSyncSetting = new Setting(containerEl)
-      .setName("Defer sync while editing")
-      .setDesc(
-        "Postpone automatic and sync-on-save triggers while you are " +
-          "actively typing; the postponed sync runs once after the idle " +
-          "threshold below."
-      )
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settings.deferSyncWhileEditing ?? true)
-          .onChange(async (val) => {
-            this.plugin.settings.deferSyncWhileEditing = val;
-            await this.plugin.saveSettings();
-          });
-      });
-
-    addSyncToggle(deferSyncSetting, "deferSyncWhileEditing", this.plugin, t);
-
     const deferIdleSetting = new Setting(containerEl)
-      .setName("Defer sync idle threshold")
-      .setDesc("Milliseconds without typing before a deferred sync proceeds.")
+      .setName(t("settings_defer_sync"))
+      .setDesc(t("settings_defer_sync_desc"))
       .addDropdown((dropdown) => {
-        dropdown.addOption("3000", "3 seconds");
-        dropdown.addOption("5000", "5 seconds (default)");
-        dropdown.addOption("10000", "10 seconds");
-        dropdown.addOption("30000", "30 seconds");
+        dropdown.addOption("0", t("settings_defer_sync_disabled"));
+        dropdown.addOption("3000", t("settings_defer_sync_3s"));
+        dropdown.addOption("5000", t("settings_defer_sync_5s"));
+        dropdown.addOption("10000", t("settings_defer_sync_10s"));
+        dropdown.addOption("30000", t("settings_defer_sync_30s"));
         dropdown
           .setValue(`${this.plugin.settings.deferSyncIdleMs ?? 5000}`)
           .onChange(async (val: string) => {
