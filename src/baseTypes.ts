@@ -141,7 +141,7 @@ export interface RemotelySavePluginSettings {
 
 export const COMMAND_URI = "onedrive-sync";
 export const COMMAND_CALLBACK = "onedrive-sync-cb";
-export const COMMAND_CALLBACK_ONEDRIVE = "remotely-save-cb-onedrive";
+export const COMMAND_CALLBACK_ONEDRIVE = "obsidian-onedrive-sync";
 
 export interface UriParams {
   func?: string;
