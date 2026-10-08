@@ -20,7 +20,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
-const PLUGIN_ID = "onedrive-sync";
+const PLUGIN_ID = "obsidian-onedrive-sync";
 const FILES = ["main.js", "manifest.json", "styles.css"];
 
 // Reload the plugin in the running Obsidian instance so deployed changes take

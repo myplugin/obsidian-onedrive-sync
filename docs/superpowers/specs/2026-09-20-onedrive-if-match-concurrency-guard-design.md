@@ -215,7 +215,7 @@ local_is_modified_then_push:
 - 写入固定文件:`<vault>/.onedrive-sync-conflicts.log`(或复用 `_remotely-save-sync-plans` 机制,见 `localdb.ts:17` / `debugMode.ts`)。
 - 每条记录:时间戳、文件 key、本地 mtime/size、远端 etag(walk 时 vs 写时)、处置(merge/dup)、结果文件名。
 - 设置项:保留天数(默认 30 天)、是否详细。
-- **不**写进 vault 同步目录(否则会被当普通文件同步,造成日志本身也冲突)——放 vault 根但加到 sync ignore,或放 `.obsidian/plugins/onedrive-sync/` 下。
+- **不**写进 vault 同步目录(否则会被当普通文件同步,造成日志本身也冲突)——放 vault 根但加到 sync ignore,或放 `.obsidian/plugins/obsidian-onedrive-sync/` 下。
 
 ---
 

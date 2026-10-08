@@ -1,4 +1,4 @@
-# Project Conventions — onedrive-sync
+# Project Conventions — obsidian-onedrive-sync
 
 Accumulated project-level rules. Append-only. (See also `AGENTS.md` for the canonical project guide; this file captures conventions surfaced during work that aren't yet in AGENTS.md.)
 
@@ -20,7 +20,7 @@ Throws that a `catch` matches on must carry a stable `.code` property (e.g. `ONE
 
 ## Build-time external commands must fail gracefully
 
-Any build/deploy step that shells out to an external tool — e.g. the `obsidian` CLI (`obsidian plugin:reload id=onedrive-sync`) invoked from the deploy hooks — must degrade **gracefully**: warn-only on absence/failure, never throw or exit non-zero. CI and headless builds (where the tool/Obsidian isn't present) must stay green. Use `spawnSync(..., { shell: true })` (handles Windows `.cmd` shims) and treat any `error`/non-zero `status` as a soft skip.
+Any build/deploy step that shells out to an external tool — e.g. the `obsidian` CLI (`obsidian plugin:reload id=obsidian-onedrive-sync`) invoked from the deploy hooks — must degrade **gracefully**: warn-only on absence/failure, never throw or exit non-zero. CI and headless builds (where the tool/Obsidian isn't present) must stay green. Use `spawnSync(..., { shell: true })` (handles Windows `.cmd` shims) and treat any `error`/non-zero `status` as a soft skip.
 
 ## Keep both deploy paths in sync
 

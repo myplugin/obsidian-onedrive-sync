@@ -900,22 +900,30 @@ export default class RemotelySavePlugin extends Plugin {
       this.app.vault.on("modify", this._dirtyClearOnSaveHandler)
     );
 
-    // one-time migration: copy data.json from the old plugin id folder (remotely-save-onedrive)
-    // so existing settings + OneDrive OAuth carry over to the renamed id (onedrive-sync).
+    // One-time migration: copy data.json from a previous plugin id folder so
+    // existing settings + OneDrive OAuth carry over to the current id
+    // (this.manifest.id). Previous ids are tried most-recent-first, preferring
+    // the newest former id ("onedrive-sync") before older ones.
     try {
       const adapter = this.app.vault.adapter;
       const configDir = this.app.vault.configDir;
-      const oldDataPath = `${configDir}/plugins/remotely-save-onedrive/data.json`;
       const newDataPath = `${configDir}/plugins/${this.manifest.id}/data.json`;
-      const oldExists = await adapter.exists(oldDataPath);
       const newExists = await adapter.exists(newDataPath);
-      if (oldExists && !newExists) {
-        const data = await adapter.read(oldDataPath);
-        await adapter.write(newDataPath, data);
-        new Notice("Migrated settings & OneDrive auth from remotely-save-onedrive to onedrive-sync.");
+      if (!newExists) {
+        for (const prevId of ["onedrive-sync", "remotely-save-onedrive"]) {
+          const oldDataPath = `${configDir}/plugins/${prevId}/data.json`;
+          if (await adapter.exists(oldDataPath)) {
+            const data = await adapter.read(oldDataPath);
+            await adapter.write(newDataPath, data);
+            new Notice(
+              `Migrated settings & OneDrive auth from ${prevId} to ${this.manifest.id}.`
+            );
+            break;
+          }
+        }
       }
     } catch (e) {
-      console.warn("onedrive-sync: migration shim skipped", e);
+      console.warn("obsidian-onedrive-sync: migration shim skipped", e);
     }
 
     await this.loadSettings();

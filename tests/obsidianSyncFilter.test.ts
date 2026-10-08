@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import { checkIsSkipItemOrNotByName } from "../src/skipFilter";
 
 const CF = ".obsidian";
-const PID = "onedrive-sync";
+const PID = "obsidian-onedrive-sync";
 
 function skip(
   key: string,

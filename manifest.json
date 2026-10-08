@@ -1,5 +1,5 @@
 {
-  "id": "onedrive-sync",
+  "id": "obsidian-onedrive-sync",
   "name": "OneDrive Sync",
   "version": "0.6.5",
   "minAppVersion": "0.13.21",
