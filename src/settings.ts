@@ -66,6 +66,7 @@ import {
 import { DEFAULT_PROFILER_CONFIG } from "./profiler";
 import { renderRegexListSetting } from "./regexListSetting";
 import { generateClearDupFilesSettingsPart } from "./settingsClearDupFiles";
+import { diagnoseSyncSkip } from "./syncDiagnose";
 import { addSyncToggle } from "./syncToggle";
 
 class PasswordModal extends Modal {
@@ -446,11 +447,23 @@ class ExportSettingsQrCodeModal extends Modal {
       return this.plugin.i18n.t(x, vars);
     };
 
-    const { rawUri, imgUri } = await exportQrCodeUri(
-      this.plugin.settings,
-      this.app.vault.getName(),
-      this.plugin.manifest.version
-    );
+    let rawUri: string;
+    let imgUri: string | undefined;
+    try {
+      const result = await exportQrCodeUri(
+        this.plugin.settings,
+        this.app.vault.getName(),
+        this.plugin.manifest.version
+      );
+      rawUri = result.rawUri;
+      imgUri = result.imgUri;
+    } catch (err) {
+      console.error("ExportSettingsQrCodeModal.onOpen failed:", err);
+      contentEl.createEl("p", {
+        text: t("modal_qr_error"),
+      });
+      return;
+    }
 
     const div1 = contentEl.createDiv();
     t("modal_qr_shortdesc")
@@ -460,6 +473,14 @@ class ExportSettingsQrCodeModal extends Modal {
           text: val,
         });
       });
+
+    if (imgUri === undefined) {
+      const warnDiv = contentEl.createDiv();
+      warnDiv.createEl("p", {
+        text: t("modal_qr_too_big"),
+        cls: "qrcode-too-big",
+      });
+    }
 
     const div2 = contentEl.createDiv();
     div2.createEl(
@@ -475,16 +496,18 @@ class ExportSettingsQrCodeModal extends Modal {
       }
     );
 
-    const div3 = contentEl.createDiv();
-    div3.createEl(
-      "img",
-      {
-        cls: "qrcode-img",
-      },
-      async (el) => {
-        el.src = imgUri;
-      }
-    );
+    if (imgUri !== undefined) {
+      const div3 = contentEl.createDiv();
+      div3.createEl(
+        "img",
+        {
+          cls: "qrcode-img",
+        },
+        async (el) => {
+          el.src = imgUri;
+        }
+      );
+    }
   }
 
   onClose() {
@@ -1999,6 +2022,133 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
+
+    containerEl.createEl("h3", {
+      text: t("settings_section_diag"),
+      cls: "rs-subheading",
+    });
+
+    // Interactive path diagnosis — enter one path and learn whether it would
+    // be synced and, if not, the dominant reason. Reuses the exact same
+    // .rs-regex-test-* styling as the Sync tab's regex tester, so it looks
+    // identical (same input width, button, result colors, clear-on-empty).
+    const diagSetting = new Setting(containerEl)
+      .setName(t("settings_diag_name"))
+      .setDesc(t("settings_diag_desc"));
+    diagSetting.settingEl.addClass("rs-regex-setting");
+    const diagBlock = diagSetting.controlEl.createEl("div", {
+      cls: "rs-regex-test-block",
+    });
+    const diagRow = diagBlock.createEl("div", {
+      cls: "rs-regex-test-row",
+    });
+    const diagInputEl = diagRow.createEl("input", {
+      type: "text",
+      attr: {
+        placeholder: t("settings_regex_test_path_placeholder"),
+        spellcheck: "false",
+      },
+      cls: "rs-regex-test-input",
+    });
+    const diagButtonEl = diagRow.createEl("button", {
+      text: t("settings_diag_button"),
+      cls: "rs-regex-test-button",
+    });
+    const diagResultEl = diagBlock.createEl("div", {
+      cls: "rs-regex-test-result",
+    });
+
+    const handleDiagnose = async () => {
+      const raw = diagInputEl.value.trim();
+      diagResultEl.empty();
+      if (raw === "") {
+        // empty input → clear results silently, no prompt text
+        return;
+      }
+      // Normalize to the sync-system key form: slash-separated, no leading /.
+      let key = raw.replace(/\\/g, "/");
+      if (key.startsWith("/")) {
+        key = key.slice(1);
+      }
+      // Auto-detect file vs folder when the path exists on disk: an existing
+      // folder gets a trailing / (the sync-system folder convention). If stat
+      // throws or returns nullish, leave the key as-is — a trailing / in the
+      // input already means folder, and no trailing slash means file.
+      try {
+        const st = await this.app.vault.adapter.stat(key);
+        if (st?.type === "folder" && !key.endsWith("/")) {
+          key = `${key}/`;
+        }
+      } catch {
+        // path doesn't exist or stat is unavailable; keep key unchanged
+      }
+      const diagnosis = diagnoseSyncSkip(
+        key,
+        this.plugin.settings,
+        this.app.vault.configDir!,
+        this.plugin.manifest.id
+      );
+      if (!diagnosis.skipped) {
+        diagResultEl.createEl("span", {
+          cls: "rs-regex-test-result-match",
+          text: `\u2713 ${t("settings_diag_will_sync")}`,
+        });
+        return;
+      }
+      const nomatchEl = diagResultEl.createEl("span", {
+        cls: "rs-regex-test-result-nomatch",
+      });
+      nomatchEl.appendText(`\u2717 ${t("settings_diag_wont_sync")} \u2014 `);
+      const reason = diagnosis.reason;
+      if (reason === undefined) {
+        return;
+      }
+      if (reason.code === "DENY_MATCHED") {
+        // Render the reason text (its {{pattern}} slot left empty), then show
+        // the matched ignore pattern as a styled code chip — exactly how the
+        // regex tester renders a matched regex.
+        nomatchEl.appendText(
+          t("settings_diag_reason_DENY_MATCHED", { pattern: "" })
+        );
+        nomatchEl.createEl("code", {
+          cls: "rs-regex-matched-regex",
+          text: reason.detail ?? "",
+        });
+      } else if (reason.code === "ANCESTOR_SKIPPED") {
+        // An ancestor folder is skipped (e.g. .git/), so the whole subtree
+        // is never walked — the descendant won't sync. Show the folder as a
+        // code chip via createEl({text}) (textContent is not HTML-parsed, so
+        // "/" stays "/"; Mustache {{}} would escape it to &#x2F;). Mirrors
+        // the DENY_MATCHED chip above.
+        nomatchEl.appendText(`${t("settings_diag_reason_ANCESTOR_SKIPPED")} `);
+        nomatchEl.createEl("code", {
+          cls: "rs-regex-matched-regex",
+          text: reason.detail ?? "",
+        });
+      } else {
+        nomatchEl.appendText(
+          t(`settings_diag_reason_${reason.code}` as TransItemType)
+        );
+      }
+    };
+
+    diagButtonEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      void handleDiagnose();
+    });
+    diagInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void handleDiagnose();
+      }
+    });
+    // Clear the result area the moment the input is emptied, so stale results
+    // don't linger after the user deletes the path.
+    diagInputEl.addEventListener("input", () => {
+      if (diagInputEl.value.trim() === "") {
+        diagResultEl.empty();
+      }
+    });
 
     containerEl.createEl("h3", {
       text: t("settings_adv_group_dangerzone"),
