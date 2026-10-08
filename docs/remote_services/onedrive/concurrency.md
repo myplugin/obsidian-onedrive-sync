@@ -73,7 +73,7 @@ re-routes the entry to the exact same path as a walk-time-detected conflict
 rejected** the write (nothing written remotely, local untouched), the
 re-route starts from a clean state on both sides. After the sync, `main.ts`
 shows a Notice and appends one line per resolved conflict to
-`<vault>/.remotely-save-onedrive-conflicts.log` (a per-device file, excluded
+`<vault>/.onedrive-sync-conflicts.log` (a per-device file, excluded
 from sync by `checkIsSkipItemOrNotByName`).
 
 ## @microsoft.graph.conflictBehavior (NAME collision, not content version)

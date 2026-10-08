@@ -212,10 +212,10 @@ local_is_modified_then_push:
 
 ### 7.2 冲突日志(可回溯)
 
-- 写入固定文件:`<vault>/.remotely-save-onedrive-conflicts.log`(或复用 `_remotely-save-sync-plans` 机制,见 `localdb.ts:17` / `debugMode.ts`)。
+- 写入固定文件:`<vault>/.onedrive-sync-conflicts.log`(或复用 `_remotely-save-sync-plans` 机制,见 `localdb.ts:17` / `debugMode.ts`)。
 - 每条记录:时间戳、文件 key、本地 mtime/size、远端 etag(walk 时 vs 写时)、处置(merge/dup)、结果文件名。
 - 设置项:保留天数(默认 30 天)、是否详细。
-- **不**写进 vault 同步目录(否则会被当普通文件同步,造成日志本身也冲突)——放 vault 根但加到 sync ignore,或放 `.obsidian/plugins/remotely-save-onedrive/` 下。
+- **不**写进 vault 同步目录(否则会被当普通文件同步,造成日志本身也冲突)——放 vault 根但加到 sync ignore,或放 `.obsidian/plugins/onedrive-sync/` 下。
 
 ---
 
@@ -297,4 +297,4 @@ local_is_modified_then_push:
 1. **通知形式**:Notice + 日志两者都要(§7.1 + §7.2 全做)。
 2. **小文件 If-Match 策略**:阶段 1 实测 PUT/content + If-Match(零额外往返);实测不可靠才退到阶段 2 createUploadSession(§6.2)。
 3. **P5 deferCommit 增强**:MVP 不做,竞态窗口不归零(§6.3 / §8.1);留作后续可选增强。
-4. **日志位置**:`<vault 根>/.remotely-save-onedrive-conflicts.log`,并加入 sync ignore 列表避免日志本身被同步(§7.2)。
+4. **日志位置**:`<vault 根>/.onedrive-sync-conflicts.log`,并加入 sync ignore 列表避免日志本身被同步(§7.2)。

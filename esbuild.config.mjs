@@ -41,7 +41,7 @@ function deployPlugin(pluginDir) {
           console.log(
             `[deploy] main.js + manifest.json + styles.css -> ${pluginDir}`
           );
-          reloadPlugin("remotely-save-onedrive");
+          reloadPlugin("onedrive-sync");
         } catch (e) {
           console.error(`[deploy] failed: ${e.message}`);
         }
@@ -118,7 +118,7 @@ if (vaultPath) {
     vaultPath,
     ".obsidian",
     "plugins",
-    "remotely-save-onedrive"
+    "onedrive-sync"
   );
   deployPlugins.push(deployPlugin(pluginDir));
 }

@@ -15,7 +15,7 @@
  * formatter unit-testable under plain Node.
  */
 
-export const CONFLICT_LOG_FILENAME = ".remotely-save-onedrive-conflicts.log";
+export const CONFLICT_LOG_FILENAME = ".onedrive-sync-conflicts.log";
 
 export interface ConflictLogEntry {
   ts: Date;

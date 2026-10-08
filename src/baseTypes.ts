@@ -139,9 +139,9 @@ export interface RemotelySavePluginSettings {
   howToCleanEmptyFolder?: EmptyFolderCleanType;
 }
 
-export const COMMAND_URI = "remotely-save";
-export const COMMAND_CALLBACK = "remotely-save-cb";
-export const COMMAND_CALLBACK_ONEDRIVE = "remotely-save-cb-onedrive";
+export const COMMAND_URI = "onedrive-sync";
+export const COMMAND_CALLBACK = "onedrive-sync-cb";
+export const COMMAND_CALLBACK_ONEDRIVE = "onedrive-sync-cb";
 
 export interface UriParams {
   func?: string;

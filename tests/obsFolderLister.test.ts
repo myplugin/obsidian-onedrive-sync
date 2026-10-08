@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import { listFilesInObsFolder } from "../src/obsFolderLister";
 
 const CF = ".obsidian";
-const PID = "remotely-save-onedrive";
+const PID = "onedrive-sync";
 
 // Manual mock vault (no sinon in devDependencies):
 // - adapter.stat(path) -> { type, ctime, mtime, size } or null

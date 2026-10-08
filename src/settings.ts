@@ -530,7 +530,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.style.setProperty("overflow-wrap", "break-word");
     containerEl.empty();
-    containerEl.createEl("h1", { text: "Remotely Save (OneDrive)" });
+    containerEl.createEl("h1", { text: "OneDrive Sync" });
 
     const t = (x: TransItemType, vars?: any) => {
       return this.plugin.i18n.t(x, vars);
@@ -1609,7 +1609,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setDesc(t("settings_import_desc"))
       .addText((text) =>
         text
-          .setPlaceholder("obsidian://remotely-save?func=settings&...")
+          .setPlaceholder("obsidian://onedrive-sync?func=settings&...")
           .setValue("")
           .onChange((val) => {
             importSettingVal = val;

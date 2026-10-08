@@ -25,7 +25,7 @@ Originally webpack had a `DeployPlugin` (inline, build-coupled). Migrating to es
 
 ## Auto-reload wiring (added this session)
 
-Both paths now call `reloadPlugin(id)` after copying files, running `obsidian plugin:reload id=remotely-save-onedrive`. Design choices:
+Both paths now call `reloadPlugin(id)` after copying files, running `obsidian plugin:reload id=onedrive-sync`. Design choices:
 
 - **`spawnSync` with `shell: true`** — resolves Windows `.cmd` shims for globally-installed CLIs as well as real binaries on PATH.
 - **Graceful / non-fatal** — missing CLI or closed Obsidian logs a one-line warn and continues; never breaks the build. Essential so CI/headless builds stay green.

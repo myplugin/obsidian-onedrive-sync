@@ -2,7 +2,7 @@
 
 ## What?
 
-The main basic source code for Remotely Save.
+The main basic source code for OneDrive Sync.
 
 ## License
 

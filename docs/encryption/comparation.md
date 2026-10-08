@@ -18,6 +18,6 @@ If you switch between RClone Crypt format and OpenSSL enc format, you have to de
 ## Some notes
 
 1. Anyway, security is a hard problem. The author of Remotely Save doesn't have sufficient knowledge to "judge" which one is the better format. **Use them at your own risk.**
-2. Currently the RClone Crypt format is recommended by default in Remotely Save. Just because of the taste from the Remotely Save author, who likes RClone.
+2. Currently the RClone Crypt format is recommended by default in OneDrive Sync. Just because of the taste from the Remotely Save author, who likes RClone.
 3. **Always use a long password.**
 4. Both algorithms are selected deliberately to **be compatible with some well-known third-party tools** (instead of some home-made methods) and **have many tests to ensure the correctness**.

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI agents working in `remotely-save-onedrive` — a OneDrive-only fork of the Obsidian plugin that syncs a vault to Microsoft OneDrive via the Graph App Folder API.
+Guidance for AI agents working in `onedrive-sync` — a OneDrive-only fork of the Obsidian plugin that syncs a vault to Microsoft OneDrive via the Graph App Folder API.
 
 ## Commands
 
@@ -17,7 +17,7 @@ Guidance for AI agents working in `remotely-save-onedrive` — a OneDrive-only f
 
 - `.env` is gitignored (`.gitignore` ignores `.*`). Copy from `.env.example.txt` and fill the OneDrive client ID.
 - The OneDrive OAuth values are injected at build time as `global.DEFAULT_*` constants — `DEFAULT_ONEDRIVE_CLIENT_ID` and `DEFAULT_ONEDRIVE_AUTHORITY` (see `esbuild.config.mjs` `define`). Empty values build fine, but OneDrive can't connect.
-- `VAULT_PATH` in `.env` enables auto-deploy: on `dev` (watch) and `build`, an esbuild `onEnd` plugin copies `main.js` + `manifest.json` + `styles.css` to `<vault>/.obsidian/plugins/remotely-save-onedrive/` (mirrors `scripts/deploy.mjs`, which `npm run deploy` invokes directly).
+- `VAULT_PATH` in `.env` enables auto-deploy: on `dev` (watch) and `build`, an esbuild `onEnd` plugin copies `main.js` + `manifest.json` + `styles.css` to `<vault>/.obsidian/plugins/onedrive-sync/` (mirrors `scripts/deploy.mjs`, which `npm run deploy` invokes directly).
 - Obsidian loads `main.js` + `manifest.json` + `styles.css`. Both `main.js` and `data.json` (runtime plugin data) are gitignored.
 
 ## Architecture

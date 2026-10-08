@@ -1,4 +1,4 @@
-# Remotely Save (OneDrive)
+# OneDrive Sync
 
 [English](./README.md) | 中文
 

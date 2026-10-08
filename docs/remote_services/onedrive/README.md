@@ -24,7 +24,7 @@ The solution is simple:
 
 ### Empty file is not uploaded
 
-Onedrive's API does not allow uploading empty files. You can choose to skip them or raise errors in Remotely Save plugin's settings.
+Onedrive's API does not allow uploading empty files. You can choose to skip them or raise errors in OneDrive Sync plugin's settings.
 
 ## Related
 

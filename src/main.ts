@@ -900,6 +900,24 @@ export default class RemotelySavePlugin extends Plugin {
       this.app.vault.on("modify", this._dirtyClearOnSaveHandler)
     );
 
+    // one-time migration: copy data.json from the old plugin id folder (remotely-save-onedrive)
+    // so existing settings + OneDrive OAuth carry over to the renamed id (onedrive-sync).
+    try {
+      const adapter = this.app.vault.adapter;
+      const configDir = this.app.vault.configDir;
+      const oldDataPath = `${configDir}/plugins/remotely-save-onedrive/data.json`;
+      const newDataPath = `${configDir}/plugins/${this.manifest.id}/data.json`;
+      const oldExists = await adapter.exists(oldDataPath);
+      const newExists = await adapter.exists(newDataPath);
+      if (oldExists && !newExists) {
+        const data = await adapter.read(oldDataPath);
+        await adapter.write(newDataPath, data);
+        new Notice("Migrated settings & OneDrive auth from remotely-save-onedrive to onedrive-sync.");
+      }
+    } catch (e) {
+      console.warn("onedrive-sync: migration shim skipped", e);
+    }
+
     await this.loadSettings();
 
     // MUST after loadSettings and before prepareDB

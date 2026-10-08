@@ -163,7 +163,7 @@ const migrateDBs = async (
   // drop any old code to reduce the verbose
   if (oldVer < 20220326) {
     throw Error(
-      "You are using a very old version of Remotely Save. No way to auto update internal DB. Please install and enable 0.3.40 firstly, then install a later version."
+      "You are using a very old version of OneDrive Sync. No way to auto update internal DB. Please install and enable 0.3.40 firstly, then install a later version."
     );
   }
 

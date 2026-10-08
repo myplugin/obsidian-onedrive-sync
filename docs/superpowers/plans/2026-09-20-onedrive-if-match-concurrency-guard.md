@@ -606,7 +606,7 @@ git commit -m "feat(sync): re-route push 412 to smart_conflict (mergeFile/tryDup
 
 **Interfaces:**
 - Consumes: Task 6 透传上来的 `REMOTE_ETAG_MISMATCH` error(`.code`/`.key`)
-- Produces: Notice 提示 + `<vault 根>/.remotely-save-onedrive-conflicts.log` 追加;日志文件名进默认 sync ignore
+- Produces: Notice 提示 + `<vault 根>/.onedrive-sync-conflicts.log` 追加;日志文件名进默认 sync ignore
 
 - [ ] **Step 1: 写失败测试(日志条目格式化纯函数)**
 
@@ -647,7 +647,7 @@ Expected: FAIL(未导出)。
 新建 `src/conflictLog.ts`:
 
 ```ts
-export const CONFLICT_LOG_FILENAME = ".remotely-save-onedrive-conflicts.log";
+export const CONFLICT_LOG_FILENAME = ".onedrive-sync-conflicts.log";
 
 export interface ConflictLogEntry {
   ts: Date;
@@ -721,7 +721,7 @@ Expected: PASS、不回归。
 
 ```bash
 git add src/conflictLog.ts src/main.ts src/baseTypes.ts tests/conflictLog.test.ts
-git commit -m "feat(notify): Notice + .remotely-save-onedrive-conflicts.log on 412 conflict"
+git commit -m "feat(notify): Notice + .onedrive-sync-conflicts.log on 412 conflict"
 ```
 
 ---

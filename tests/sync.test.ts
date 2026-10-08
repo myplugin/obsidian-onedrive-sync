@@ -33,7 +33,7 @@ function callSkip(
     opts.syncBookmarks ?? false,
     opts.syncThirdPartyPlugins ?? false,
     opts.syncSelfPlugin ?? false,
-    opts.selfPluginId ?? "remotely-save-onedrive"
+    opts.selfPluginId ?? "onedrive-sync"
   ).finalIsIgnored;
 }
 

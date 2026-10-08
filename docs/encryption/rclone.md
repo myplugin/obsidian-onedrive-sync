@@ -27,14 +27,14 @@ Finally, a working config file should like this:
 ```ini
 [webdav1]
 type = webdav
-url = https://example.com/sharefolder1/subfolder1 # the same as the web address in Remotely Save settings.
+url = https://example.com/sharefolder1/subfolder1 # the same as the web address in OneDrive Sync settings.
 vendor = other
 user = <some webdav username>
 pass = <some webdav password, obfuscated>
 
 [webdav1crypt]
 type = crypt
-remote = nas1test:vaultname # the same as your "Remote Base Directory" (usually the vault name) in Remotely Save settings
+remote = nas1test:vaultname # the same as your "Remote Base Directory" (usually the vault name) in OneDrive Sync settings
 password = <some encryption password, obfuscated>
 filename_encoding = base64 # don't forget this!!!
 ```

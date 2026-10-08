@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import { checkIsSkipItemOrNotByName } from "../src/skipFilter";
 
 const CF = ".obsidian";
-const PID = "remotely-save-onedrive";
+const PID = "onedrive-sync";
 
 function skip(
   key: string,
