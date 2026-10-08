@@ -1,7 +1,7 @@
 import { ChevronRight, createElement } from "lucide";
 import { type App, Modal, Notice, Platform } from "obsidian";
 import type { TransItemType } from "./i18n";
-import { testPathAgainstRegexList, validateRegex } from "./misc";
+import { validateRegex } from "./misc";
 
 export interface RegexListSettingOptions {
   app: App;
@@ -57,10 +57,10 @@ function confirmDeleteRegex(
 
 /**
  * Render a chip-list editor for a string[] of regexes, with an inline add
- * row (multi-paste aware) and a per-list path tester. Used by the
- * ignorePaths / onlyAllowPaths settings. All mutations flow through
- * `setValues` (caller persists); validation state is derived from the raw
- * strings on every render so it never drifts from stored data.
+ * row (multi-paste aware). Used by the ignorePaths / onlyAllowPaths
+ * settings. All mutations flow through `setValues` (caller persists);
+ * validation state is derived from the raw strings on every render so it
+ * never drifts from stored data.
  *
  * Render INTO a `Setting`'s controlEl — the caller wraps this in a
  * `new Setting().setName().setDesc()` so the row inherits Obsidian's
@@ -72,7 +72,7 @@ function confirmDeleteRegex(
 export function renderRegexListSetting(opts: RegexListSettingOptions): void {
   const { app, containerEl, getValues, setValues, t, placeholder } = opts;
 
-  // chip list (with a row-end collapse toggle) + collapsible add/test
+  // chip list (with a row-end collapse toggle) + collapsible add
   // panel, rendered into the Setting's controlEl.
   const blockEl = containerEl.createEl("div", { cls: "rs-regex-block" });
   // On mobile, render chips as stacked full-width rows (one regex per line,
@@ -90,7 +90,7 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
   // at the row end.
   const chipsEl = blockEl.createEl("div", { cls: "rs-regex-list" });
 
-  // collapse toggle — Add and Test are both low-frequency, so they are
+  // collapse toggle — Add is low-frequency, so it is
   // collapsed by default and revealed on demand via this small icon at
   // the row end. Mirrors the rs-disclaimer callout's ChevronRight
   // disclosure (rotate 90° on expand) for one consistent
@@ -109,8 +109,8 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
   });
   caretEl.innerHTML = createElement(ChevronRight).outerHTML;
 
-  // collapsible panel — holds the add row and the test row (both
-  // low-frequency), collapsed by default; the toggle above reveals it.
+  // collapsible panel — holds the add row (low-frequency),
+  // collapsed by default; the toggle above reveals it.
   const panelEl = blockEl.createEl("div", {
     cls: "rs-regex-panel rs-is-collapsed",
   });
@@ -125,25 +125,6 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
   const addButtonEl = addRow.createEl("button", {
     text: t("settings_regex_add_button"),
     cls: "mod-cta rs-regex-add-button",
-  });
-
-  // test row — sits below the add row, separated by a subtle dashed
-  // divider (see .rs-regex-panel .rs-regex-test-row in styles.css).
-  const testRow = panelEl.createEl("div", { cls: "rs-regex-test-row" });
-  const testInputEl = testRow.createEl("input", {
-    type: "text",
-    attr: {
-      placeholder: t("settings_regex_test_path_placeholder"),
-      spellcheck: "false",
-    },
-    cls: "rs-regex-test-input",
-  });
-  const testButtonEl = testRow.createEl("button", {
-    text: t("settings_regex_test_button"),
-    cls: "rs-regex-test-button",
-  });
-  const testResultEl = panelEl.createEl("div", {
-    cls: "rs-regex-test-result",
   });
 
   const renderChips = () => {
@@ -227,58 +208,6 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     if (e.key === "Enter") {
       e.preventDefault();
       void handleAdd();
-    }
-  });
-
-  const handleTest = () => {
-    const path = testInputEl.value.trim();
-    testResultEl.empty();
-    if (path === "") {
-      testResultEl.createEl("span", {
-        cls: "rs-regex-test-result-nomatch",
-        text: t("settings_regex_test_empty_path"),
-      });
-      return;
-    }
-    const values = getValues();
-    if (values.length === 0) {
-      testResultEl.createEl("span", {
-        cls: "rs-regex-test-result-nomatch",
-        text: t("settings_regex_test_empty_list"),
-      });
-      return;
-    }
-    const { matched, matchedRegexes } = testPathAgainstRegexList(values, path);
-    if (matched) {
-      const matchEl = testResultEl.createEl("span", {
-        cls: "rs-regex-test-result-match",
-      });
-      matchEl.createEl("span", { text: "\u2713 " });
-      // localized prefix, e.g. "Matched: " (the {{regexes}} slot rendered empty)
-      matchEl.appendText(t("settings_regex_test_match", { regexes: "" }));
-      for (const re of matchedRegexes) {
-        matchEl.createEl("code", {
-          cls: "rs-regex-matched-regex",
-          text: re,
-        });
-        matchEl.appendText(" ");
-      }
-    } else {
-      testResultEl.createEl("span", {
-        cls: "rs-regex-test-result-nomatch",
-        text: `\u2717 ${t("settings_regex_test_nomatch")}`,
-      });
-    }
-  };
-
-  testButtonEl.addEventListener("click", (e) => {
-    e.preventDefault();
-    handleTest();
-  });
-  testInputEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleTest();
     }
   });
 

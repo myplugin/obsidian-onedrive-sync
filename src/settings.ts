@@ -61,6 +61,7 @@ import {
   changeMobileStatusBar,
   checkHasSpecialCharForDir,
   stringToFragment,
+  testPathAgainstRegexList,
 } from "./misc";
 import { DEFAULT_PROFILER_CONFIG } from "./profiler";
 import { renderRegexListSetting } from "./regexListSetting";
@@ -1224,6 +1225,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
+    containerEl.createEl("h3", {
+      text: t("settings_section_regex"),
+      cls: "rs-subheading",
+    });
+
     const ignorePathsSetting = new Setting(containerEl)
       .setName(t("settings_ignorepaths"))
       .setDesc(t("settings_ignorepaths_desc"));
@@ -1254,6 +1260,126 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       },
       t,
       placeholder: t("settings_regex_add_placeholder"),
+    });
+
+    // Standalone path tester — tests one path against BOTH lists (ignore +
+    // allow) at once, replacing the old per-list embedded test row. Reuses
+    // the .rs-regex-test-* styles so it matches the lists above.
+    const regexTestSetting = new Setting(containerEl)
+      .setName(t("settings_regex_test_name"))
+      .setDesc(t("settings_regex_test_desc"));
+    regexTestSetting.settingEl.addClass("rs-regex-setting");
+    // Wrap the test row + result in a block container so they stack
+    // vertically (block flow) instead of becoming two flex items of the
+    // Setting's controlEl, which would lay the result out beside the
+    // button and crimp the input width. Mirrors how the chip-list
+    // settings above wrap their contents in .rs-regex-block.
+    const regexTestBlock = regexTestSetting.controlEl.createEl("div", {
+      cls: "rs-regex-test-block",
+    });
+    const regexTestRow = regexTestBlock.createEl("div", {
+      cls: "rs-regex-test-row",
+    });
+    const regexTestInputEl = regexTestRow.createEl("input", {
+      type: "text",
+      attr: {
+        placeholder: t("settings_regex_test_path_placeholder"),
+        spellcheck: "false",
+      },
+      cls: "rs-regex-test-input",
+    });
+    const regexTestButtonEl = regexTestRow.createEl("button", {
+      text: t("settings_regex_test_button"),
+      cls: "rs-regex-test-button",
+    });
+    const regexTestResultEl = regexTestBlock.createEl("div", {
+      cls: "rs-regex-test-result",
+    });
+
+    // Render one labeled result row (Ignore / Allow). An empty list yields
+    // "no match" naturally from testPathAgainstRegexList, so a single empty
+    // list shows ✗ for that row while the other list is still tested.
+    const renderRegexTestRow = (
+      label: string,
+      values: string[],
+      path: string
+    ) => {
+      const row = regexTestResultEl.createEl("div", {
+        cls: "rs-regex-test-result-row",
+      });
+      row.createEl("span", {
+        cls: "rs-regex-test-result-label",
+        text: label,
+      });
+      const { matched, matchedRegexes } = testPathAgainstRegexList(
+        values,
+        path
+      );
+      if (matched) {
+        const matchEl = row.createEl("span", {
+          cls: "rs-regex-test-result-match",
+        });
+        matchEl.createEl("span", { text: "\u2713 " });
+        matchEl.appendText(t("settings_regex_test_match", { regexes: "" }));
+        for (const re of matchedRegexes) {
+          matchEl.createEl("code", {
+            cls: "rs-regex-matched-regex",
+            text: re,
+          });
+          matchEl.appendText(" ");
+        }
+      } else {
+        row.createEl("span", {
+          cls: "rs-regex-test-result-nomatch",
+          text: `\u2717 ${t("settings_regex_test_nomatch")}`,
+        });
+      }
+    };
+
+    const handleRegexTest = () => {
+      const path = regexTestInputEl.value.trim();
+      regexTestResultEl.empty();
+      if (path === "") {
+        // empty input → clear results silently, no prompt text
+        return;
+      }
+      const ignoreValues = this.plugin.settings.ignorePaths ?? [];
+      const allowValues = this.plugin.settings.onlyAllowPaths ?? [];
+      if (ignoreValues.length === 0 && allowValues.length === 0) {
+        regexTestResultEl.createEl("span", {
+          cls: "rs-regex-test-result-nomatch",
+          text: t("settings_regex_test_empty_list"),
+        });
+        return;
+      }
+      renderRegexTestRow(
+        t("settings_regex_test_label_ignore"),
+        ignoreValues,
+        path
+      );
+      renderRegexTestRow(
+        t("settings_regex_test_label_allow"),
+        allowValues,
+        path
+      );
+    };
+
+    regexTestButtonEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleRegexTest();
+    });
+    regexTestInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleRegexTest();
+      }
+    });
+    // Clear the result area the moment the input is emptied, so stale
+    // results don't linger after the user deletes the path.
+    regexTestInputEl.addEventListener("input", () => {
+      if (regexTestInputEl.value.trim() === "") {
+        regexTestResultEl.empty();
+      }
     });
 
     containerEl.createEl("h3", {

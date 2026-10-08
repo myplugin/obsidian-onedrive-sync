@@ -146,7 +146,7 @@
   width: 100%;
 }
 
-/* chips + add row + path tester container */
+/* chips + add row container */
 .rs-regex-block {
   display: flex;
   flex-direction: column;
@@ -316,6 +316,14 @@
   height: 20px !important;
 }
 
+/* block wrapper around the standalone tester's row + result, so they
+   stack vertically inside the Setting's flex controlEl instead of sitting
+   side-by-side. width:100% makes the block fill the control area like the
+   chip-list settings' .rs-regex-block does. */
+.rs-regex-test-block {
+  width: 100%;
+}
+
 /* add-row + test-row share the same flex layout */
 .rs-regex-add-row,
 .rs-regex-test-row {
@@ -381,18 +389,10 @@
   transform: rotate(90deg);
 }
 
-/* collapsible panel holding the add row + test row (both low-frequency).
-   Collapsed by default; the row-end toggle above reveals it. */
+/* collapsible panel holding the add row (low-frequency). Collapsed by
+   default; the row-end toggle above reveals it. */
 .rs-regex-panel.rs-is-collapsed {
   display: none;
-}
-
-/* subtle dashed divider between the add row and the test row — a
-   restrained echo of the old full-width tester-toggle divider. */
-.rs-regex-panel .rs-regex-test-row {
-  margin-top: 4px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--background-modifier-border);
 }
 
 .rs-regex-test-result {
@@ -419,6 +419,22 @@
   background: var(--background-modifier-hover);
   padding: 0 4px;
   border-radius: 3px;
+}
+
+/* standalone regex tester (Sync ▸ Regex section): two labeled result
+   rows (Ignore / Allow), each reusing the match/nomatch + code-chip
+   styling above. The label is a muted, non-shrinking prefix; the value
+   wraps alongside it. */
+.rs-regex-test-result-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rs-regex-test-result-label {
+  flex: 0 0 auto;
+  color: var(--text-muted);
 }
 
 /* ===== Delete-confirm modal (regex list) =====
