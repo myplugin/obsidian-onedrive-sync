@@ -1,18 +1,25 @@
 // biome-ignore lint/suspicious/noShadowRestrictedNames: <explanation>
 import AggregateError from "aggregate-error";
 import cloneDeep from "lodash/cloneDeep";
+import debounce from "lodash/debounce";
 import throttle from "lodash/throttle";
 import { FileText, RefreshCcw, RotateCcw, createElement } from "lucide";
 import {
+  type Editor,
+  type EventRef,
   Events,
   FileSystemAdapter,
+  type MarkdownFileInfo,
+  MarkdownView,
   type Modal,
   Notice,
   Platform,
   Plugin,
   type Setting,
   TFolder,
+  type WorkspaceLeaf,
   addIcon,
+  normalizePath,
   requireApiVersion,
   setIcon,
 } from "obsidian";
@@ -89,6 +96,11 @@ const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   // here would make the back-compat migration (deriveSyncOnSaveMode) never
   // run — silently disabling sync-on-save for upgraders. The migration
   // derives "off" for new users from the default syncOnSaveAfterMilliseconds=-1.
+  // NOTE: these two MUST be defaulted here — loadSettings merges
+  // DEFAULT_SETTINGS via Object.assign with no per-field fallbacks, so
+  // old data.json files (pre-feature) would otherwise load undefined.
+  deferSyncWhileEditing: true,
+  deferSyncIdleMs: 5000,
   agreeToUploadExtraMetadata: true, // as of 20240106, it's safe to assume every new user agrees with this
   concurrency: 5,
   syncConfigDir: false,
@@ -206,7 +218,55 @@ export default class RemotelySavePlugin extends Plugin {
   syncEvent?: Events;
   appContainerObserver?: MutationObserver;
 
+  // --- defer-sync-while-editing + dirty-buffer protection state ---
+  // Timestamp (ms) of the last editor-change; isActivelyEditing() compares
+  // Date.now() against it to decide whether auto/sync-on-save runs defer.
+  lastEditorActivityMs = 0;
+  // Normalized vault-relative paths currently open in an editor with
+  // unsaved changes. Answered to syncer via isFileDirtyOpen so the sync
+  // guard never clobbers an unsaved buffer (writes a .dup copy instead).
+  dirtyOpenFiles: Set<string> = new Set();
+  // The postponed auto/sync-on-save trigger; higher priority wins
+  // (auto_sync_on_save > auto). Cleared when a run actually starts.
+  deferPendingTrigger: SyncTriggerSourceType | null = null;
+  // Idle debounce: fires runSync once after deferSyncIdleMs without a new
+  // defer request (i.e. the auto/save triggers stopped arriving).
+  deferIdleTimer: ReturnType<typeof debounce> | null = null;
+  // Max-wait safety net: forces a runSync after one auto period (or 10 min
+  // when periodic auto-sync is off) even if the user never stops typing.
+  deferMaxWaitTimer: number | null = null;
+  // Explicit refs for the editor-activity / leaf-change workspace listeners
+  // so onunload can deregister them.
+  private editorChangeRef?: EventRef;
+  private leafChangeRef?: EventRef;
+
   async syncRun(triggerSource: SyncTriggerSourceType = "manual") {
+    // Defer gate: postpone periodic-auto and sync-on-save triggers while
+    // the user is actively typing; the postponed run fires once after
+    // deferSyncIdleMs without new defer requests, or at the latest after
+    // one auto period (armDeferSync). manual / dry / auto_once_init always
+    // run immediately — they are explicit user intent or one-shot startup.
+    if (
+      this.settings.deferSyncWhileEditing &&
+      (triggerSource === "auto" || triggerSource === "auto_sync_on_save") &&
+      this.isActivelyEditing()
+    ) {
+      this.armDeferSync(triggerSource);
+      return;
+    }
+    await this.runSync(triggerSource);
+  }
+
+  /**
+   * Inner sync runner — the former syncRun body. Bypasses the defer gate
+   * (deferred re-runs must actually run) but still respects the isSyncing
+   * guard below.
+   */
+  async runSync(triggerSource: SyncTriggerSourceType = "manual") {
+    // A run actually starting means the defer cycle (if any) is over —
+    // cancel the timers so they don't fire a duplicate run.
+    this.clearDeferTimers();
+
     let profiler: Profiler | undefined = undefined;
     if (this.settings.profiler?.enable ?? false) {
       profiler = new Profiler(
@@ -528,6 +588,16 @@ export default class RemotelySavePlugin extends Plugin {
       if (this.currSyncMsg !== undefined && this.currSyncMsg !== "") {
         getNotice(triggerSource, this.currSyncMsg);
       }
+
+      // A deferred/auto run that collides with an in-flight sync: reuse the
+      // existing sync-on-save pending channel so SYNC_DONE re-runs it
+      // (_syncOnSaveEvent1 → _checkCurrFileModified("SYNC")). This is the
+      // same mechanism the throttle sync-on-save path uses (set flag + wait
+      // for the next event) — no second retry channel. Manual/dry keep the
+      // current drop-with-notice behavior (they're explicit user actions).
+      if (triggerSource === "auto" || triggerSource === "auto_sync_on_save") {
+        this.hasPendingSyncOnSave = true;
+      }
       return;
     }
 
@@ -563,7 +633,12 @@ export default class RemotelySavePlugin extends Plugin {
         errNotifyFunc,
         ribboonFunc,
         statusBarFunc,
-        callbackSyncProcess
+        callbackSyncProcess,
+        // Dirty-buffer protection predicate (Lane B contract): true when
+        // the vault-relative path is open in an editor with unsaved
+        // changes, so syncer writes a .dup conflict copy instead of
+        // clobbering the buffer. Last positional arg.
+        (path: string) => this.isFileDirtyOpen(path)
       );
       // C4 (Task 7): the REMOTE_ETAG_MISMATCH (412) re-route inside sync.ts
       // ABSORBS the error — the sync completes without it ever reaching
@@ -633,6 +708,149 @@ export default class RemotelySavePlugin extends Plugin {
     }
   }
 
+  // ===== defer-sync-while-editing + dirty-buffer protection =====
+
+  /** True when the user typed within the last deferSyncIdleMs. */
+  private isActivelyEditing(): boolean {
+    return (
+      Date.now() - this.lastEditorActivityMs <
+      (this.settings.deferSyncIdleMs ?? 5000)
+    );
+  }
+
+  /** Predicate handed to syncer: is this (plain-text, vault-relative) path
+    open in an editor with unsaved changes? normalizePath on both the
+    editor-file side (add) and here (query) guarantees the keys compare
+    equal — sync's local keys are vault-relative with no leading slash. */
+  private isFileDirtyOpen(path: string): boolean {
+    return this.dirtyOpenFiles.has(normalizePath(path));
+  }
+
+  /** One periodic-auto-sync interval, or a 10-min fallback when periodic
+    auto-sync is off. Used as the defer max-wait ceiling. */
+  private autoRunIntervalMs(): number {
+    const v = this.settings.autoRunEveryMilliseconds;
+    if (v !== undefined && v !== null && v > 0) {
+      return v;
+    }
+    return 10 * 60 * 1000;
+  }
+
+  /**
+   * Arm/re-arm the deferred-sync timers for a postponed auto trigger.
+   * Called from the syncRun defer gate while the user is actively editing:
+   * - deferIdleTimer: debounce firing runSync once after deferSyncIdleMs
+   *   without a new defer request (auto ticks / saves stopped arriving).
+   * - deferMaxWaitTimer: safety net forcing a runSync after one auto period
+   *   even if re-arming never stops. Reset on each re-arm.
+   * Priority: when both auto and auto_sync_on_save defer, the pending
+   * trigger keeps the higher-priority one (auto_sync_on_save > auto).
+   */
+  private armDeferSync(trigger: SyncTriggerSourceType) {
+    if (
+      this.deferPendingTrigger === null ||
+      (trigger === "auto_sync_on_save" && this.deferPendingTrigger === "auto")
+    ) {
+      this.deferPendingTrigger = trigger;
+    }
+    const pending = this.deferPendingTrigger ?? trigger;
+    const idleMs = this.settings.deferSyncIdleMs ?? 5000;
+
+    // (Re)arm the idle debounce: cancel the previous one so its internal
+    // timer can't fire, recreate with the resolved pending trigger, then
+    // call it to (re)schedule the trailing invocation.
+    if (this.deferIdleTimer !== null) {
+      this.deferIdleTimer.cancel();
+    }
+    this.deferIdleTimer = debounce(
+      () => {
+        this.runSync(pending).catch((e) => {
+          console.error("Deferred sync (idle) failed:", e);
+        });
+      },
+      idleMs,
+      { leading: false, trailing: true }
+    );
+    this.deferIdleTimer();
+
+    // (Re)arm the max-wait safety net.
+    if (this.deferMaxWaitTimer !== null) {
+      window.clearTimeout(this.deferMaxWaitTimer);
+    }
+    this.deferMaxWaitTimer = window.setTimeout(() => {
+      this.deferMaxWaitTimer = null;
+      this.deferPendingTrigger = null;
+      this.runSync(pending).catch((e) => {
+        console.error("Deferred sync (max-wait) failed:", e);
+      });
+    }, this.autoRunIntervalMs());
+  }
+
+  /** Cancel pending defer timers + clear the pending trigger. Called when
+    a run actually starts (runSync top) and from onunload. */
+  private clearDeferTimers() {
+    if (this.deferIdleTimer !== null) {
+      this.deferIdleTimer.cancel();
+      this.deferIdleTimer = null;
+    }
+    if (this.deferMaxWaitTimer !== null) {
+      window.clearTimeout(this.deferMaxWaitTimer);
+      this.deferMaxWaitTimer = null;
+    }
+    this.deferPendingTrigger = null;
+  }
+
+  /** editor-change: mark editing activity (defers auto/sync-on-save runs)
+    and track the edited file as dirty-open (unsaved buffer) for the
+    syncer's dirty-buffer guard. */
+  _editorActivityHandler = (
+    _editor: Editor,
+    info: MarkdownView | MarkdownFileInfo
+  ) => {
+    this.lastEditorActivityMs = Date.now();
+    const p = info?.file?.path;
+    if (p !== undefined && p !== null && p !== "") {
+      this.dirtyOpenFiles.add(normalizePath(p));
+    }
+  };
+
+  /** vault "modify" = the file was saved to disk → no longer dirty-open.
+    A dedicated always-on listener (registered in onload, independent of
+    syncOnSaveMode) — extending the sync-on-save modify handlers would
+    leave the dirty set stale in "rateLimit"/"off" modes, where those
+    handlers are not registered. */
+  _dirtyClearOnSaveHandler = (file: any) => {
+    const p = file?.path;
+    if (p !== undefined && p !== null && p !== "") {
+      this.dirtyOpenFiles.delete(normalizePath(p));
+    }
+  };
+
+  /** active-leaf-change: prune dirty-open entries whose markdown leaf was
+    closed or switched away — but only when no remaining markdown leaf
+    still holds that path (the same file can be open in split panes). */
+  _activeLeafChangeHandler = (_leaf: WorkspaceLeaf | null) => {
+    const openPaths = new Set<string>();
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const view = leaf.view;
+      if (view instanceof MarkdownView) {
+        const p = view.file?.path;
+        if (p !== undefined && p !== null && p !== "") {
+          openPaths.add(normalizePath(p));
+        }
+      }
+    }
+    const toRemove: string[] = [];
+    for (const p of this.dirtyOpenFiles) {
+      if (!openPaths.has(p)) {
+        toRemove.push(p);
+      }
+    }
+    for (const p of toRemove) {
+      this.dirtyOpenFiles.delete(p);
+    }
+  };
+
   async onload() {
     console.info(`loading plugin ${this.manifest.id}`);
 
@@ -662,6 +880,24 @@ export default class RemotelySavePlugin extends Plugin {
     // config. Fires only on SYNC_DONE (post-sync, DB ready).
     this.registerEvent(
       this.syncEvent?.on("SYNC_DONE", this._reconcileSidecar)!
+    );
+
+    // Defer-sync-while-editing + dirty-buffer protection listeners. Always
+    // registered (independent of deferSyncWhileEditing / syncOnSaveMode):
+    // the dirty set also backs the syncer's dirty-buffer guard. The two
+    // workspace listeners are tracked via explicit refs and deregistered
+    // in onunload; the vault modify listener uses registerEvent (auto
+    // detach on unload).
+    this.editorChangeRef = this.app.workspace.on(
+      "editor-change",
+      this._editorActivityHandler
+    );
+    this.leafChangeRef = this.app.workspace.on(
+      "active-leaf-change",
+      this._activeLeafChangeHandler
+    );
+    this.registerEvent(
+      this.app.vault.on("modify", this._dirtyClearOnSaveHandler)
     );
 
     await this.loadSettings();
@@ -998,6 +1234,21 @@ export default class RemotelySavePlugin extends Plugin {
 
   async onunload() {
     console.info(`unloading plugin ${this.manifest.id}`);
+    // Cancel any pending deferred-sync timers so they can't fire runSync
+    // against a torn-down plugin.
+    this.clearDeferTimers();
+    // Deregister the editor-activity / leaf-change workspace listeners
+    // (tracked via explicit refs; the vault modify listener is auto
+    // detached by registerEvent).
+    if (this.editorChangeRef !== undefined) {
+      this.app.workspace.offref(this.editorChangeRef);
+      this.editorChangeRef = undefined;
+    }
+    if (this.leafChangeRef !== undefined) {
+      this.app.workspace.offref(this.leafChangeRef);
+      this.leafChangeRef = undefined;
+    }
+    this.dirtyOpenFiles.clear();
     this.syncRibbon = undefined;
     if (this.appContainerObserver !== undefined) {
       this.appContainerObserver.disconnect();

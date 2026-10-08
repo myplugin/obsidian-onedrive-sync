@@ -20,7 +20,6 @@ import type { TextComponent } from "obsidian";
 import type {
   CipherMethodType,
   ConflictActionType,
-  QRExportType,
   SUPPORTED_SERVICES_TYPE_WITH_REMOTE_BASE_DIR,
   SyncDirectionType,
   SyncOnSaveMode,
@@ -434,11 +433,9 @@ export class OnedriveRevokeAuthModal extends Modal {
 
 class ExportSettingsQrCodeModal extends Modal {
   plugin: RemotelySavePlugin;
-  exportType: QRExportType;
-  constructor(app: App, plugin: RemotelySavePlugin, exportType: QRExportType) {
+  constructor(app: App, plugin: RemotelySavePlugin) {
     super(app);
     this.plugin = plugin;
-    this.exportType = exportType;
   }
 
   async onOpen() {
@@ -451,8 +448,7 @@ class ExportSettingsQrCodeModal extends Modal {
     const { rawUri, imgUri } = await exportQrCodeUri(
       this.plugin.settings,
       this.app.vault.getName(),
-      this.plugin.manifest.version,
-      this.exportType
+      this.plugin.manifest.version
     );
 
     const div1 = contentEl.createDiv();
@@ -1040,6 +1036,45 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     addSyncToggle(syncOnSaveSetting, "syncOnSaveMode", this.plugin, t);
 
+    // NOTE: hardcoded English strings — TransItemType is a strict union of
+    // existing i18n keys and the lang JSONs are out of this change's scope.
+    const deferSyncSetting = new Setting(containerEl)
+      .setName("Defer sync while editing")
+      .setDesc(
+        "Postpone automatic and sync-on-save triggers while you are " +
+          "actively typing; the postponed sync runs once after the idle " +
+          "threshold below."
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.deferSyncWhileEditing ?? true)
+          .onChange(async (val) => {
+            this.plugin.settings.deferSyncWhileEditing = val;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    addSyncToggle(deferSyncSetting, "deferSyncWhileEditing", this.plugin, t);
+
+    const deferIdleSetting = new Setting(containerEl)
+      .setName("Defer sync idle threshold")
+      .setDesc("Milliseconds without typing before a deferred sync proceeds.")
+      .addDropdown((dropdown) => {
+        dropdown.addOption("3000", "3 seconds");
+        dropdown.addOption("5000", "5 seconds (default)");
+        dropdown.addOption("10000", "10 seconds");
+        dropdown.addOption("30000", "30 seconds");
+        dropdown
+          .setValue(`${this.plugin.settings.deferSyncIdleMs ?? 5000}`)
+          .onChange(async (val: string) => {
+            const realVal = Number.parseInt(val);
+            this.plugin.settings.deferSyncIdleMs = realVal;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    addSyncToggle(deferIdleSetting, "deferSyncIdleMs", this.plugin, t);
+
     containerEl.createEl("h3", {
       text: t("settings_section_obsidian_sync"),
       cls: "rs-subheading",
@@ -1446,7 +1481,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    // status bar
+    containerEl.createEl("h3", {
+      text: t("settings_adv_group_statusbar"),
+      cls: "rs-subheading",
+    });
+
     // custom status bar items is not supported on mobile
     if (!Platform.isMobileApp) {
       new Setting(containerEl)
@@ -1521,6 +1560,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
     }
 
+    containerEl.createEl("h3", {
+      text: t("settings_adv_group_renametracking"),
+      cls: "rs-subheading",
+    });
+
     new Setting(containerEl)
       .setName(t("settings_trackrenames"))
       .setDesc(t("settings_trackrenames_desc"))
@@ -1543,35 +1587,21 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    //////////////////////////////////////////////////
-    // below for import and export functions
-    //////////////////////////////////////////////////
+    containerEl.createEl("h3", {
+      text: t("settings_adv_group_importexport"),
+      cls: "rs-subheading",
+    });
 
-    const importExportDivSetting1 = new Setting(containerEl)
+    const exportSetting = new Setting(containerEl)
       .setName(t("settings_export"))
       .setDesc(t("settings_export_desc"));
-    importExportDivSetting1.settingEl.addClass("setting-need-wrapping");
-    importExportDivSetting1
-      .addButton(async (button) => {
-        button.setButtonText(t("settings_export_basic_and_advanced_button"));
-        button.onClick(async () => {
-          new ExportSettingsQrCodeModal(
-            this.app,
-            this.plugin,
-            "basic_and_advanced"
-          ).open();
-        });
-      })
-      .addButton(async (button) => {
-        button.setButtonText(t("settings_export_onedrive_button"));
-        button.onClick(async () => {
-          new ExportSettingsQrCodeModal(
-            this.app,
-            this.plugin,
-            "onedrive"
-          ).open();
-        });
+    exportSetting.settingEl.addClass("setting-need-wrapping");
+    exportSetting.addButton(async (button) => {
+      button.setButtonText(t("settings_export"));
+      button.onClick(async () => {
+        new ExportSettingsQrCodeModal(this.app, this.plugin).open();
       });
+    });
 
     let importSettingVal = "";
     new Setting(containerEl)
@@ -1586,7 +1616,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           })
       )
       .addButton(async (button) => {
-        button.setButtonText(t("confirm"));
+        button.setButtonText(t("settings_import"));
         button.onClick(async () => {
           if (importSettingVal !== "") {
             // console.debug(importSettingVal);
@@ -1625,9 +1655,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    //////////////////////////////////////////////////
-    // below for debug
-    //////////////////////////////////////////////////
+    containerEl.createEl("h3", {
+      text: t("settings_adv_group_logging"),
+      cls: "rs-subheading",
+    });
 
     new Setting(containerEl)
       .setName(t("settings_debuglevel"))
@@ -1683,6 +1714,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName(t("settings_viewconsolelog"))
       .setDesc(stringToFragment(t("settings_viewconsolelog_desc")));
+
+    containerEl.createEl("h3", {
+      text: t("settings_adv_group_syncdiagnostics"),
+      cls: "rs-subheading",
+    });
 
     const debugDivExportSyncPlans = new Setting(containerEl)
       .setName(t("settings_syncplans"))
@@ -1780,6 +1816,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
+    containerEl.createEl("h3", {
+      text: t("settings_adv_group_profiler"),
+      cls: "rs-subheading",
+    });
+
     new Setting(containerEl)
       .setName(t("settings_profiler_results"))
       .setDesc(t("settings_profiler_results_desc"))
@@ -1851,6 +1892,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
+
+    containerEl.createEl("h3", {
+      text: t("settings_adv_group_dangerzone"),
+      cls: "rs-subheading",
+    });
 
     new Setting(containerEl)
       .setName(t("settings_outputbasepathvaultid"))

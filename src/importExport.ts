@@ -3,7 +3,6 @@ import QRCode from "qrcode";
 
 import {
   COMMAND_URI,
-  type QRExportType,
   type RemotelySavePluginSettings,
   type UriParams,
 } from "./baseTypes";
@@ -12,18 +11,10 @@ import { getShrinkedSettings as getShrinkedSettingsOnedrive } from "./fsOnedrive
 export const exportQrCodeUri = async (
   settings: RemotelySavePluginSettings,
   currentVaultName: string,
-  pluginVersion: string,
-  exportFields: QRExportType
+  pluginVersion: string
 ) => {
-  let settings2: Partial<RemotelySavePluginSettings> = {};
-
-  if (exportFields === "basic_and_advanced") {
-    settings2 = cloneDeep(settings);
-    delete settings2.onedrive;
-  } else if (exportFields === "onedrive") {
-    settings2 = { onedrive: getShrinkedSettingsOnedrive(settings.onedrive) };
-  }
-
+  const settings2: Partial<RemotelySavePluginSettings> = cloneDeep(settings);
+  settings2.onedrive = getShrinkedSettingsOnedrive(settings.onedrive);
   delete settings2.vaultRandomID;
   const data = encodeURIComponent(JSON.stringify(settings2));
   const vault = encodeURIComponent(currentVaultName);

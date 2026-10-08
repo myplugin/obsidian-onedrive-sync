@@ -31,6 +31,8 @@ export const SYNCABLE_FIELDS = [
   "initRunAfterMilliseconds",
   "syncOnSaveAfterMilliseconds",
   "syncOnSaveMode",
+  "deferSyncWhileEditing",
+  "deferSyncIdleMs",
 ] as const;
 
 /** Default selection: every catalog field is synced unless the user opts out. */

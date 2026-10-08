@@ -16,7 +16,13 @@ import type {
   SyncTriggerSourceType,
 } from "./baseTypes";
 import { CONFLICT_LOG_FILENAME, type ConflictLogEntry } from "./conflictLog";
-import { isMergable, mergeFile, tryDuplicateFile } from "./conflictLogic";
+import {
+  computeMergedContent,
+  isMergable,
+  mergeFile,
+  tryDuplicateFile,
+  writeDupCopyForDirtyOpen,
+} from "./conflictLogic";
 import { copyFile, copyFileOrFolder, copyFolder } from "./copyLogic";
 import {
   clearFileContentHistoryByVaultAndProfile,
@@ -1850,8 +1856,45 @@ export const handleConflictModifiedSmartConflict = async (
   fsEncrypt: FakeFsEncrypt,
   db: InternalDBs,
   vaultRandomID: string,
-  profileID: string
+  profileID: string,
+  isFileDirtyOpen?: (path: string) => boolean,
+  dirtyOpenHandledPaths?: Set<string>
 ) => {
+  // Dirty-buffer guard: both sub-paths below would clobber an unsaved
+  // editor buffer — mergeFile writes the merged result over the local
+  // file, and tryDuplicateFile renames the local file away then downloads
+  // over the original name. Instead, write ONE .dup conflict copy (holding
+  // the merged content for mergeable files, the raw remote content
+  // otherwise), leave the local file and the remote completely untouched,
+  // and skip ALL prev-sync record updates (no clear, no upsert), so a
+  // later run re-decides this conflict from the unchanged state once the
+  // user saves the buffer.
+  if (!r.key.endsWith("/") && isFileDirtyOpen?.(r.key) === true) {
+    if (!dirtyOpenHandledPaths?.has(r.key)) {
+      dirtyOpenHandledPaths?.add(r.key);
+      let mergedContent: ArrayBuffer | undefined = undefined;
+      if (isMergable(r.local!, r.remote!)) {
+        const origContent = await getFileContentHistoryByVaultAndProfile(
+          db,
+          vaultRandomID,
+          profileID,
+          r.local!
+        );
+        mergedContent = await computeMergedContent(
+          r.key,
+          fsLocal,
+          fsEncrypt,
+          origContent
+        );
+      }
+      await writeDupCopyForDirtyOpen(r.key, fsLocal, fsEncrypt, {
+        content: mergedContent,
+        remoteMtime: r.remote?.mtimeCli ?? r.remote?.mtimeSvr,
+      });
+    }
+    return;
+  }
+
   // heavy lifting
   if (isMergable(r.local!, r.remote!)) {
     const origContent = await getFileContentHistoryByVaultAndProfile(
@@ -1929,7 +1972,9 @@ export const dispatchOperationToActualV3 = async (
   fsEncrypt: FakeFsEncrypt,
   db: InternalDBs,
   conflictAction: ConflictActionType,
-  conflictsEncountered?: ConflictLogEntry[]
+  conflictsEncountered?: ConflictLogEntry[],
+  isFileDirtyOpen?: (path: string) => boolean,
+  dirtyOpenHandledPaths?: Set<string>
 ) => {
   // console.debug(
   //   `inside dispatchOperationToActualV3, key=${key}, r=${JSON.stringify(
@@ -2074,7 +2119,9 @@ export const dispatchOperationToActualV3 = async (
           fsEncrypt,
           db,
           vaultRandomID,
-          profileID
+          profileID,
+          isFileDirtyOpen,
+          dirtyOpenHandledPaths
         );
         // C4 (Task 7): record the SUCCESSFULLY re-routed conflict (the
         // handler returned without throwing) so main.ts can notify the user
@@ -2100,6 +2147,23 @@ export const dispatchOperationToActualV3 = async (
     r.decision === "conflict_modified_then_keep_remote" ||
     r.decision === "folder_existed_remote_then_also_create_local"
   ) {
+    // Dirty-buffer guard: the download below ends in fsLocal.writeFile ->
+    // vault.adapter.writeBinary, which bypasses Obsidian's editor
+    // reconciliation, and the sync plan only saw the ON-DISK mtime, so an
+    // unsaved editor buffer is invisible to the conflict decisions. If the
+    // target file is open with unsaved changes, do NOT overwrite it: write
+    // the remote content to a .dup conflict copy instead, and skip the
+    // prev-sync record + content history updates below, so a later run
+    // retries this download once the user saves the buffer.
+    if (!r.key.endsWith("/") && isFileDirtyOpen?.(r.key) === true) {
+      if (!dirtyOpenHandledPaths?.has(r.key)) {
+        dirtyOpenHandledPaths?.add(r.key);
+        await writeDupCopyForDirtyOpen(r.key, fsLocal, fsEncrypt, {
+          remoteMtime: r.remote?.mtimeCli ?? r.remote?.mtimeSvr,
+        });
+      }
+      return;
+    }
     let e1: Entity | undefined = undefined;
     let c1: ArrayBuffer | undefined = undefined;
     if (r.key.endsWith("/")) {
@@ -2146,6 +2210,27 @@ export const dispatchOperationToActualV3 = async (
       }
     }
   } else if (r.decision === "remote_is_deleted_thus_also_delete_local") {
+    // Dirty-buffer guard: deleting the disk file under an editor with
+    // unsaved changes can make Obsidian drop the editor and lose the
+    // user's buffer. Keep the local file in place — that IS the
+    // protection here; the remote is already gone, so there is nothing
+    // to preserve and NO .dup copy is written (unlike the download /
+    // smart-conflict guards). Also skip clearing the prev-sync record
+    // (and the file-content history) below, so the next run re-decides
+    // this path from the unchanged state: once the user saves the
+    // buffer, the disk mtime advances and the plan becomes branch 8
+    // (local_is_modified_then_push — the file is re-created on the
+    // remote) or branch 34 (do-nothing) for pull-only directions, which
+    // the existing conflict logic already handles. Self-resolving.
+    if (!r.key.endsWith("/") && isFileDirtyOpen?.(r.key) === true) {
+      if (!dirtyOpenHandledPaths?.has(r.key)) {
+        dirtyOpenHandledPaths?.add(r.key);
+        console.debug(
+          `dirty-open guard: ${r.key} is open with unsaved changes, skipping local deletion of the remote-deleted file`
+        );
+      }
+      return;
+    }
     // remote is deleted, we need to delete local now
     await fsLocal.rm(r.key);
     await clearPrevSyncRecordByVaultAndProfile(
@@ -2174,7 +2259,9 @@ export const dispatchOperationToActualV3 = async (
       fsEncrypt,
       db,
       vaultRandomID,
-      profileID
+      profileID,
+      isFileDirtyOpen,
+      dirtyOpenHandledPaths
     );
   } else if (r.decision === "folder_to_be_created") {
     await fsLocal.mkdir(r.key);
@@ -2288,7 +2375,9 @@ export const doActualSync = async (
   triggerSource: SyncTriggerSourceType,
   callbackSyncProcess?: any,
   remoteDeltaCount?: number,
-  conflictsEncountered?: ConflictLogEntry[]
+  conflictsEncountered?: ConflictLogEntry[],
+  isFileDirtyOpen?: (path: string) => boolean,
+  dirtyOpenHandledPaths?: Set<string>
 ) => {
   profiler?.addIndent();
   profiler?.insert("doActualSync: enter");
@@ -2432,7 +2521,9 @@ export const doActualSync = async (
             fsEncrypt,
             db,
             conflictAction,
-            conflictsEncountered
+            conflictsEncountered,
+            isFileDirtyOpen,
+            dirtyOpenHandledPaths
           );
         };
 
@@ -2568,7 +2659,9 @@ export const doActualSync = async (
               fsEncrypt,
               db,
               conflictAction,
-              conflictsEncountered
+              conflictsEncountered,
+              isFileDirtyOpen,
+              dirtyOpenHandledPaths
             );
           };
 
@@ -2649,7 +2742,12 @@ export async function syncer(
     step: number,
     everythingOk: boolean
   ) => any,
-  callbackSyncProcess?: any
+  callbackSyncProcess?: any,
+  // Dirty-buffer protection: injected by main.ts, returns true when the
+  // (plain-text, vault-relative) path is currently open in an editor with
+  // unsaved changes. Optional — when not supplied, the guard is a no-op
+  // and behavior is unchanged.
+  isFileDirtyOpen?: (path: string) => boolean
 ) {
   console.info(`starting sync.`);
   markIsSyncingFunc(true);
@@ -2661,6 +2759,15 @@ export async function syncer(
   // so main.ts reads this from the return value after the sync to notify
   // the user and append to the vault-root conflict log.
   const conflictsEncountered: ConflictLogEntry[] = [];
+
+  // Dirty-buffer guard anti-loop / dedupe: paths the dirty-open guard has
+  // already handled during THIS run — either by writing a .dup conflict
+  // copy (download / smart-conflict paths) or by skipping a local
+  // deletion (remote-deleted path) — so each dirty-open file is acted on
+  // and logged at most once per run. Fresh set per syncer call; across
+  // runs the dup-chain freshness check inside writeDupCopyForDirtyOpen
+  // takes over for the copy-writing paths.
+  const dirtyOpenHandledPaths = new Set<string>();
 
   try {
     // try mode?
@@ -2817,7 +2924,9 @@ export async function syncer(
           triggerSource,
           callbackSyncProcess,
           fsRemote.lastWalkDeltaCount,
-          conflictsEncountered
+          conflictsEncountered,
+          isFileDirtyOpen,
+          dirtyOpenHandledPaths
         );
         profiler?.insert(`finish step${step} (actual sync)`);
       } else {

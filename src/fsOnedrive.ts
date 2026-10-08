@@ -1051,10 +1051,14 @@ export class FakeFsOnedrive extends FakeFs {
             console.warn(
               "[DIAG] stat-retry conversion failed for",
               (statResp as any)?.id,
-              "code=", (e as any)?.code,
-              "statHasPath=", (statResp as any)?.parentReference?.path != null,
-              "statName=", (statResp as any)?.name,
-              "msg=", e instanceof Error ? e.message : e
+              "code=",
+              (e as any)?.code,
+              "statHasPath=",
+              (statResp as any)?.parentReference?.path != null,
+              "statName=",
+              (statResp as any)?.name,
+              "msg=",
+              e instanceof Error ? e.message : e
             );
           }
         }
@@ -1077,8 +1081,10 @@ export class FakeFsOnedrive extends FakeFs {
         // caught the item (name === remoteBaseDir + folder).
         console.warn(
           `walk: ${unresolvedCount} added/modified delta item(s) could not be parsed even after stat retry — dropped (no deltaLink invalidation; a full re-enum has fewer lookup entries and would fail identically, so invalidating only thrashes).`,
-          "approotRootId=", this.approotRootId,
-          "remoteBaseDir=", this.remoteBaseDir,
+          "approotRootId=",
+          this.approotRootId,
+          "remoteBaseDir=",
+          this.remoteBaseDir,
           "skipped=",
           JSON.stringify(
             skippedItems.map((it: any) => ({

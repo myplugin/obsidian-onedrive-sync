@@ -45,8 +45,6 @@ export type SyncDirectionType =
 
 export type CipherMethodType = "rclone-base64" | "openssl-base64" | "unknown";
 
-export type QRExportType = "basic_and_advanced" | SUPPORTED_SERVICES_TYPE;
-
 export interface ProfilerConfig {
   enable?: boolean;
   enablePrinting?: boolean;
@@ -73,6 +71,14 @@ export interface RemotelySavePluginSettings {
    * auto-sync catches up; requires autoRunEveryMilliseconds > 0).
    */
   syncOnSaveMode?: SyncOnSaveMode;
+
+  /** Defer sync while editing: postpone periodic/auto and sync-on-save
+   *  triggers while the user is actively typing; the postponed sync runs
+   *  once after deferSyncIdleMs without typing. Default true. */
+  deferSyncWhileEditing?: boolean;
+  /** Idle threshold in milliseconds (no typing) before a deferred sync
+   *  proceeds. UI offers 3000/5000/10000/30000. Default 5000. */
+  deferSyncIdleMs?: number;
 
   concurrency?: number;
   syncConfigDir?: boolean;
