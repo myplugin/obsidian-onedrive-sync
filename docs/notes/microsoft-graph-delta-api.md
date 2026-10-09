@@ -71,3 +71,17 @@ For the **modify case** (item existed in prev sync), a simpler fallback suffices
 ## Key takeaway
 
 Under delta, **never assume `parentReference.path` (or any `itemReference` field) is present.** Track by `id`; treat `path` as an optional optimization, not a dependency. A converter that throws on missing `path` is fighting the documented contract.
+
+## The `@odata.deltaLink` cursor (vs the path-omission contract above)
+
+The delta API returns a **`@odata.deltaLink`** URL alongside (or at the end of) its page sequence. This is an **opaque server-issued cursor** encoding "everything up to this point has been seen." Persist it; on the next sync, request THAT URL (not the base delta endpoint) and Graph returns ONLY items changed since that cursor — the incremental sync.
+
+- First sync (no deltaLink saved) → call the base delta endpoint → full enumeration; the response carries a deltaLink to save for next time.
+- Subsequent syncs (deltaLink saved) → call the saved deltaLink → only changes.
+- If the deltaLink has expired server-side, the delta query fails and the client must fall back to full enumeration (and save the fresh deltaLink).
+
+### deltaLink is per-device sync state, NOT a transferable credential
+
+The cursor encodes **this device's** sync position. It is meaningless on a different device whose local vault state differs: a device that imports a foreign deltaLink would believe "I've already synced everything up to cursor X" and SKIP fetching files it has never actually seen → silent data gaps. So deltaLink must never be transferred across devices in a settings-export/credential-transfer flow. A freshly-connected device should start with an empty deltaLink → full enumeration → reconcile its local state safely.
+
+(This is distinct from the `parentReference.path` omission discussed above, which is a response-shape contract. The cursor is a state marker.)

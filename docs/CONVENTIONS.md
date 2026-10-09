@@ -34,3 +34,38 @@ When `parentReference.path` is missing for a non-root delta item (the documented
 - Resolution tiers: own-id in `lookupMap` (modify case, reuse `keyRaw` verbatim) → baseline `parentReference.id === approotRootId` (`name(+"/")`) → chain `parentKey+name(+"/")` (`parentKey=="/"` degrades to baseline, never `//`) → else throw `ONEDRIVE_PATH_MISSING` → skip + deltaLink self-heal.
 - `approotRootId` is captured in `FakeFsOnedrive._init()` from the `/drive/special/approot/children` filter hit (`x.name === remoteBaseDir`); stable per-instance, populated on the first `_init()` of each session. Gracefully degrades to `undefined` (baseline branch never matches → self-heal) if capture is missed.
 - `classifyDeltaItems` takes a shared `lookupMap` (4th param; prev `idToKeyMap` ∪ `{approotRootId→"/"}`) and mutates it IN-PLACE across a two-pass rescan (each resolved item seeds `id→keyRaw` for in-batch parent-child chains, order-independent). The caller MUST pass a FRESH COPY (`new Map(idToKeyMap)`) so `prevRemoteEntities` is never mutated. The 5th param `approotRootId?` documents caller intent; the actual fallback is performed by the closure-bound converter (same pattern as the 4th param).
+
+## Settings export: split by storage source
+
+Settings export (`src/importExport.ts`, modal in `src/settings.ts`) produces **two** independent URIs/QRs, each reading the store that actually holds that data:
+
+- **Config QR** (`func=settings`): credential-free. Take a settings clone, run `stripOnedriveAuthInPlace` on `onedrive` (clears refreshToken/deltaLink/username/accessToken/expiry) AND clear `settings.password` (= the data.json shape). Share-safe; this is the default export.
+- **Credentials QR** (`func=onedrive_auth`): read the IndexedDB auth record (`getOnedriveAuthByVault`); payload is exactly `{refreshToken, password, username, credentialsShouldBeDeletedAtTime, clientID, authority}`. Opt-in (modal shows a strong warning). Shows "not connected" if no refreshToken.
+
+`deltaLink` is NEVER exported (per-device sync cursor; importing a foreign one makes a device skip files it never saw). `accessToken` is NEVER exported (short-lived; the target refreshes). See `docs/aar/settings-export-qr-split.md`.
+
+## CONFIG_SCHEMA_VERSION
+
+`CONFIG_SCHEMA_VERSION` (in `src/baseTypes.ts`) is an integer **independent of the plugin release version**, carried in export URIs as `sv=<n>`. Bump rules:
+
+- **+1 ONLY on an incompatible change** to the exported settings shape: renamed/removed/redefined field, narrowed type, a default change that silently alters imported behavior.
+- **No bump** for compatible changes: adding an optional field (importer fills its default), changing a default value, adding an enum value, widening a type.
+
+Import (`applyImportedUriParams` in `main.ts`) rejects when exporter's `sv` ≠ importer's. The importer must (a) fill defaults for fields missing in the incoming payload (the `Object.assign({}, DEFAULT_SETTINGS, loaded)` pattern already does), and (b) tolerate/ignore unknown fields. Same-`sv` ⇒ default-stripping is safe.
+
+## QR rendering: ECC L + copy-URI fallback
+
+`QRCode.toDataURL` is called with `errorCorrectionLevel: "L"` (max capacity; we control the display so low redundancy is acceptable). The call is wrapped in try/catch and returns `imgUri?: string` — `undefined` when the payload won't fit a QR. The modal must handle `imgUri === undefined` by showing a "too big" message AND a copy-URI button (the URI itself always builds, so clipboard transfer still works). Never let a QR-too-big throw reach the modal's `onOpen` uncaught (that was the original blank-modal bug).
+
+## Import merge routing (no shallow-merge of partial onedrive)
+
+`applyImportedUriParams(inputParams)` is the SINGLE entry for applying an imported `obsidian://onedrive-sync?...` URI (shared by the protocol handler and the settings-tab text paste). It dispatches on `func`:
+
+- `func=settings`: `Object.assign({}, this.settings, copied)` then **`await mergeOnedriveAuthFromDBOrMigrate()`** then `saveSettings()`. The re-merge is mandatory: the config payload's stripped onedrive (`refreshToken:""`, `password:""`) would otherwise be extracted-and-written to the DB by `saveSettings`, clobbering the target's login. The re-merge restores the target's real auth first.
+- `func=onedrive_auth`: merge the imported fields into the target's EXISTING DB auth record (`getOnedriveAuthByVault` → `upsertOnedriveAuthByVault`), preserving the target's `accessToken`/`deltaLink`/`accessTokenExpires*`. Never replace the whole record with a partial. Then `mergeOnedriveAuthFromDB` + `saveSettings`.
+
+Never `Object.assign` a partial `onedrive` object onto `this.settings` — shallow merge replaces the whole `onedrive` and clobbers sibling fields. Route to the right store instead.
+
+## Device secrets storage (IndexedDB, not data.json)
+
+Device-specific secrets — `refreshToken`, `deltaLink`, `username`, `accessToken`, `accessTokenExpires*`, and the vault `password` — live in IndexedDB as one `OnedriveAuthFields` record keyed `<vaultRandomID>-onedriveAuth` (`getOnedriveAuthByVault` / `upsertOnedriveAuthByVault` in `localdb.ts`). They are NOT persisted to `data.json`: `saveSettings` calls `extractOnedriveAuth` (→ DB) then `stripOnedriveAuthInPlace` (clears them from the data.json-bound copy). At load, `loadSettings` reads data.json then `mergeOnedriveAuthFromDBOrMigrate` overlays the auth fields back into in-memory `settings.onedrive`. Do not regress this: any new code reading `this.settings.onedrive.refreshToken` (etc.) for EXPORT purposes must remember the live value is the DB-merged one, while data.json on disk is stripped.
