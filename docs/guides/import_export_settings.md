@@ -1,19 +1,23 @@
-## Bonus: Import And Export Not-Oauth2 Plugin Settings By QR Code
+## Import And Export Plugin Settings By QR Code
 
-It's often verbose / inconvenient to input not-oauth2 credentials on mobile. (On different desktop computers, it's trivial to copy and paste `data.json` across different devices.)
+It's often verbose or inconvenient to type settings — and especially OneDrive login credentials — on a mobile device. (On desktop computers, it's trivial to copy `data.json` across devices instead.)
 
-So this plugin has a helper function to export those settings as a QR code, then you could use mobile device's camera to import the settings.
+So the plugin exports your setup as **two separate QR codes**. On the other device you scan the matching code (or paste its URI) to transfer the setup.
 
-Attention:
+### The two QR codes
 
-1. Oauth2 - related information is omitted. It means that OneDrive login credentials are NOT included in the QR Code.
-2. Please, NEVER share the QR Code to others. It's as equivalent to the login credentials.
+The export modal offers two independent codes:
 
-Steps:
+1. **Plugin preferences (share-safe).** Your sync settings only — **no passwords or login tokens**. This code is safe to screenshot or share.
+2. **OneDrive login credentials (sensitive).** Your OneDrive `refreshToken`, vault password, username, and the app's client ID / authority. **Anyone who has it can access your OneDrive — never share or post it.** Kept separate so the preferences QR stays small and share-safe. This code is only available when the current device is already connected to OneDrive.
 
-1. Configure the plugin settings on one device, and make sure the sync functions work. (E.g, you could sync notes using OneDrive credentials.)
-2. Open plugin settings page. Then scroll down the page, until the section "Import and Export Settings". Click the button "Get QR Code". A new modal should show up and you should see a QR code.
-3. On a second device, make sure the vault name is the same as the first device's.
-4. On that second device, use its camera app, or any apps that support scanning QR codes, to scan the QR code from the first device. (On latest iOS, the system's built in camera app should work. On Android, at least one open source app [Binary Eye](https://github.com/markusfisch/BinaryEye) is tested to be working.)
-5. A link / url / address should be identified in the scan-QR-code app, and you could follow the instruction in the app, and then you should be redirected to open the Obsidian app.
-6. And finally, there should be a new notice in the Obsidian app saying the settings are successfully imported. Otherwise please check the error message in the notice.
+### Steps
+
+1. Configure the plugin on one device and make sure sync works (e.g. you can sync notes over OneDrive).
+2. Open the plugin settings page, scroll to the **Import & Export** section, and click **Export**. A modal opens showing both QR codes.
+3. On a second device, make sure the vault name matches the first device's.
+4. On that second device, scan the QR code with the camera app or any QR-code reader. (On recent iOS the built-in camera works. On Android, the open-source [BinaryEye](https://github.com/markusfisch/BinaryEye) app is tested as working.) If the payload is too large to render as a QR code, use the **copy URI** button under it and paste the URI into the **Import** field instead.
+5. The scan / import app opens a link that redirects into Obsidian. A notice confirms which export landed — *"new settings imported"* for the preferences code, or *"OneDrive login credentials imported"* for the credentials code.
+6. Reopen the plugin settings so the new preferences take effect. After importing the credentials code, the OneDrive connection should already be active on the new device.
+
+> Tip: You can transfer just the preferences code to share your sync configuration without exposing any credentials, then have the new device sign in to OneDrive on its own.
