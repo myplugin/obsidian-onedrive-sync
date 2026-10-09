@@ -25,7 +25,6 @@ import type {
   SyncOnSaveMode,
 } from "./baseTypes";
 
-import cloneDeep from "lodash/cloneDeep";
 import { API_VER_ENSURE_REQURL_OK, VALID_REQURL } from "./baseTypes";
 import { messyConfigToNormal } from "./configPersist";
 import {
@@ -38,11 +37,7 @@ import {
   getAuthUrlAndVerifier as getAuthUrlAndVerifierOnedrive,
 } from "./fsOnedrive";
 import type { TransItemType } from "./i18n";
-import {
-  exportQrCodeUri,
-  importQrCodeUri,
-  parseUriByHand,
-} from "./importExport";
+import { parseUriByHand } from "./importExport";
 import {
   clearAllPrevSyncRecordByVault,
   clearAllSyncPlanRecords,
@@ -447,65 +442,106 @@ class ExportSettingsQrCodeModal extends Modal {
       return this.plugin.i18n.t(x, vars);
     };
 
-    let rawUri: string;
-    let imgUri: string | undefined;
-    try {
-      const result = await exportQrCodeUri(
-        this.plugin.settings,
-        this.app.vault.getName(),
-        this.plugin.manifest.version
-      );
-      rawUri = result.rawUri;
-      imgUri = result.imgUri;
-    } catch (err) {
-      console.error("ExportSettingsQrCodeModal.onOpen failed:", err);
-      contentEl.createEl("p", {
-        text: t("modal_qr_error"),
-      });
-      return;
-    }
+    contentEl.addClass("qrcode-export-modal");
 
-    const div1 = contentEl.createDiv();
-    t("modal_qr_shortdesc")
+    // Top intro: frames the two independent exports below.
+    const intro = contentEl.createDiv({ cls: "qrcode-intro" });
+    t("modal_qr_intro")
       .split("\n")
-      .forEach((val) => {
-        div1.createEl("p", {
-          text: val,
+      .forEach((line) => {
+        intro.createEl("p", { text: line });
+      });
+
+    // Renders a QR image (or the "too big" fallback) plus a copy-URI button.
+    // Shared by both sections; primitive params only, so no extra type import.
+    const renderQrBody = (
+      container: HTMLElement,
+      rawUri: string,
+      imgUri: string | undefined,
+      buttonLabel: string
+    ) => {
+      if (imgUri === undefined) {
+        container.createEl("p", {
+          text: t("modal_qr_too_big"),
+          cls: "qrcode-too-big",
         });
-      });
+      } else {
+        const imgWrap = container.createDiv({ cls: "qrcode-img-wrap" });
+        imgWrap.createEl("img", { cls: "qrcode-img" }, (el) => {
+          el.src = imgUri;
+        });
+      }
 
-    if (imgUri === undefined) {
-      const warnDiv = contentEl.createDiv();
-      warnDiv.createEl("p", {
-        text: t("modal_qr_too_big"),
-        cls: "qrcode-too-big",
-      });
-    }
-
-    const div2 = contentEl.createDiv();
-    div2.createEl(
-      "button",
-      {
-        text: t("modal_qr_button"),
-      },
-      (el) => {
+      const btnWrap = container.createDiv({ cls: "qrcode-button-wrap" });
+      btnWrap.createEl("button", { text: buttonLabel }, (el) => {
         el.onclick = async () => {
           await navigator.clipboard.writeText(rawUri);
           new Notice(t("modal_qr_button_notice"));
         };
-      }
+      });
+    };
+
+    // Both exports are independent — build them in parallel.
+    let configResult: Awaited<ReturnType<RemotelySavePlugin["exportConfigQr"]>>;
+    let credentialsResult: Awaited<
+      ReturnType<RemotelySavePlugin["exportCredentialsQr"]>
+    >;
+    try {
+      [configResult, credentialsResult] = await Promise.all([
+        this.plugin.exportConfigQr(),
+        this.plugin.exportCredentialsQr(),
+      ]);
+    } catch (err) {
+      console.error("ExportSettingsQrCodeModal.onOpen failed:", err);
+      contentEl.createEl("p", {
+        text: t("modal_qr_error"),
+        cls: "qrcode-warning",
+      });
+      return;
+    }
+
+    // ===== Section 1 — plugin preferences (share-safe) =====
+    const configSection = contentEl.createDiv({ cls: "qrcode-section" });
+    configSection.createEl("h3", {
+      text: t("modal_qr_config_title"),
+      cls: "qrcode-section-title",
+    });
+    configSection.createEl("p", {
+      text: t("modal_qr_config_desc"),
+      cls: "qrcode-section-desc",
+    });
+    renderQrBody(
+      configSection,
+      configResult.rawUri,
+      configResult.imgUri,
+      t("modal_qr_button")
     );
 
-    if (imgUri !== undefined) {
-      const div3 = contentEl.createDiv();
-      div3.createEl(
-        "img",
-        {
-          cls: "qrcode-img",
-        },
-        async (el) => {
-          el.src = imgUri;
-        }
+    // ===== Section 2 — OneDrive login credentials (sensitive) =====
+    const authSection = contentEl.createDiv({
+      cls: "qrcode-section qrcode-section--sensitive",
+    });
+    authSection.createEl("h3", {
+      text: t("modal_qr_auth_title"),
+      cls: "qrcode-section-title qrcode-section-title--sensitive",
+    });
+    authSection.createEl("p", {
+      text: t("modal_qr_auth_warning"),
+      cls: "qrcode-warning",
+    });
+
+    if ("status" in credentialsResult && credentialsResult.status === "error") {
+      // Not connected to OneDrive — no credentials to export.
+      authSection.createEl("p", {
+        text: credentialsResult.message || t("modal_qr_notconnected"),
+        cls: "qrcode-section-desc",
+      });
+    } else if ("rawUri" in credentialsResult) {
+      renderQrBody(
+        authSection,
+        credentialsResult.rawUri,
+        credentialsResult.imgUri,
+        t("modal_qr_auth_button")
       );
     }
   }
@@ -1739,7 +1775,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setDesc(t("settings_import_desc"))
       .addText((text) =>
         text
-          .setPlaceholder("obsidian://onedrive-sync?func=settings&...")
+          .setPlaceholder("obsidian://onedrive-sync?func=...&...")
           .setValue("")
           .onChange((val) => {
             importSettingVal = val;
@@ -1749,30 +1785,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         button.setButtonText(t("settings_import"));
         button.onClick(async () => {
           if (importSettingVal !== "") {
-            // console.debug(importSettingVal);
             try {
               const inputParams = parseUriByHand(importSettingVal);
-              const parsed = importQrCodeUri(
-                inputParams,
-                this.app.vault.getName()
-              );
-              if (parsed.status === "error") {
-                new Notice(parsed.message);
-              } else {
-                const copied = cloneDeep(parsed.result);
-                // new Notice(JSON.stringify(copied))
-                this.plugin.settings = Object.assign(
-                  {},
-                  this.plugin.settings,
-                  copied
-                );
-                this.plugin.saveSettings();
-                new Notice(
-                  t("protocol_saveqr", {
-                    manifestName: this.plugin.manifest.name,
-                  })
-                );
-              }
+              const r = await this.plugin.applyImportedUriParams(inputParams);
+              new Notice(r.message);
             } catch (e) {
               new Notice(`${e}`);
             }

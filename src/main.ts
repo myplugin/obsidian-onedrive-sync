@@ -32,6 +32,7 @@ import {
   COMMAND_CALLBACK,
   COMMAND_CALLBACK_ONEDRIVE,
   COMMAND_URI,
+  CONFIG_SCHEMA_VERSION,
 } from "./baseTypes";
 import { API_VER_ENSURE_REQURL_OK } from "./baseTypes";
 import { messyConfigToNormal, normalConfigToMessy } from "./configPersist";
@@ -48,7 +49,13 @@ import {
 } from "./fsOnedrive";
 import { I18n } from "./i18n";
 import type { LangTypeAndAuto, TransItemType } from "./i18n";
-import { importQrCodeUri } from "./importExport";
+import {
+  type CredentialsPayload,
+  type QrResult,
+  exportConfigUri,
+  exportCredentialsUri,
+  importQrCodeUri,
+} from "./importExport";
 import {
   type InternalDBs,
   type OnedriveAuthFields,
@@ -999,21 +1006,8 @@ export default class RemotelySavePlugin extends Plugin {
     }
 
     this.registerObsidianProtocolHandler(COMMAND_URI, async (inputParams) => {
-      // console.debug(inputParams);
-      const parsed = importQrCodeUri(inputParams, this.app.vault.getName());
-      if (parsed.status === "error") {
-        new Notice(parsed.message);
-      } else {
-        const copied = cloneDeep(parsed.result);
-        // new Notice(JSON.stringify(copied))
-        this.settings = Object.assign({}, this.settings, copied);
-        this.saveSettings();
-        new Notice(
-          t("protocol_saveqr", {
-            manifestName: this.manifest.name,
-          })
-        );
-      }
+      const r = await this.applyImportedUriParams(inputParams);
+      new Notice(r.message);
     });
 
     this.registerObsidianProtocolHandler(
@@ -1513,6 +1507,152 @@ export default class RemotelySavePlugin extends Plugin {
         this.vaultRandomID,
         this.extractOnedriveAuth()
       );
+    }
+  }
+
+  /** Build the credential-free config QR (preferences only; share-safe). */
+  async exportConfigQr(): Promise<QrResult> {
+    return exportConfigUri(
+      this.settings,
+      this.app.vault.getName(),
+      this.manifest.version
+    );
+  }
+
+  /**
+   * Build the credentials QR (refreshToken + vault password + username +
+   * expiry + clientID/authority). Returns an error result when this device
+   * isn't connected to OneDrive (nothing to transfer).
+   */
+  async exportCredentialsQr(): Promise<
+    QrResult | { status: "error"; message: string }
+  > {
+    if (!this.isDbReady()) {
+      return {
+        status: "error",
+        message: this.i18n.t("modal_qr_notconnected" as TransItemType),
+      };
+    }
+    const auth = await getOnedriveAuthByVault(this.db, this.vaultRandomID);
+    if (auth === null || auth === undefined || auth.refreshToken === "") {
+      return {
+        status: "error",
+        message: this.i18n.t("modal_qr_notconnected" as TransItemType),
+      };
+    }
+    const payload: CredentialsPayload = {
+      refreshToken: auth.refreshToken,
+      password: auth.password,
+      username: auth.username,
+      credentialsShouldBeDeletedAtTime: auth.credentialsShouldBeDeletedAtTime,
+      clientID: this.settings.onedrive.clientID,
+      authority: this.settings.onedrive.authority,
+    };
+    return exportCredentialsUri(
+      payload,
+      this.app.vault.getName(),
+      this.manifest.version
+    );
+  }
+
+  /**
+   * Apply an imported `obsidian://onedrive-sync?...` URI (config or
+   * credentials). Centralizes the merge routing so the protocol handler and
+   * the settings-tab text-paste import stay identical.
+   *
+   * - func=settings (config): shallow-overlay the config onto live settings,
+   *   then RE-MERGE auth from the DB so the stripped placeholders don't
+   *   clobber this device's existing refreshToken/password/deltaLink when
+   *   saveSettings writes back. Then save.
+   * - func=onedrive_auth (credentials): merge the imported credential fields
+   *   into the target's existing DB auth record (preserving the target's
+   *   accessToken/deltaLink/expiry — only refreshToken/password/username/
+   *   expiry/clientID/authority come from the import), upsert, refresh
+   *   in-memory, and save (clientID/authority land in data.json; the rest
+   *   stays in the DB, stripped from data.json as usual).
+   *
+   * Schema-version mismatch → reject with a Notice.
+   */
+  async applyImportedUriParams(
+    inputParams: any
+  ): Promise<{ status: "ok" | "error"; message: string }> {
+    const parsed = importQrCodeUri(inputParams, this.app.vault.getName());
+    if (parsed.status === "error") {
+      return { status: "error", message: parsed.message };
+    }
+    if (
+      parsed.sv === undefined ||
+      `${parsed.sv}` !== `${CONFIG_SCHEMA_VERSION}`
+    ) {
+      return {
+        status: "error",
+        message: this.i18n.t("modal_qr_schemamismatch" as TransItemType, {
+          expected: `${CONFIG_SCHEMA_VERSION}`,
+          got: parsed.sv ?? "",
+        }),
+      };
+    }
+    try {
+      if (parsed.func === "settings") {
+        const copied = cloneDeep(parsed.parsed);
+        this.settings = Object.assign({}, this.settings, copied);
+        await this.mergeOnedriveAuthFromDBOrMigrate();
+        await this.saveSettings();
+        return {
+          status: "ok",
+          message: this.i18n.t("protocol_saveqr" as TransItemType, {
+            manifestName: this.manifest.name,
+          }),
+        };
+      }
+      if (parsed.func === "onedrive_auth") {
+        const f = parsed.parsed as CredentialsPayload;
+        if (!this.isDbReady()) {
+          return {
+            status: "error",
+            message: this.i18n.t("modal_qr_notconnected" as TransItemType),
+          };
+        }
+        const existing = (await getOnedriveAuthByVault(
+          this.db,
+          this.vaultRandomID
+        )) as OnedriveAuthFields | null;
+        const base = (existing ?? {}) as Partial<OnedriveAuthFields>;
+        const merged: OnedriveAuthFields = {
+          accessToken: base.accessToken ?? "",
+          refreshToken: f.refreshToken ?? base.refreshToken ?? "",
+          accessTokenExpiresInSeconds: base.accessTokenExpiresInSeconds ?? 0,
+          accessTokenExpiresAtTime: base.accessTokenExpiresAtTime ?? 0,
+          // Preserve the target's deltaLink (per-device cursor); the imported
+          // payload intentionally omits it. Clobbering it would force an
+          // unnecessary full re-enumeration on the next sync.
+          deltaLink: base.deltaLink ?? "",
+          username: f.username ?? base.username ?? "",
+          credentialsShouldBeDeletedAtTime:
+            f.credentialsShouldBeDeletedAtTime ??
+            base.credentialsShouldBeDeletedAtTime,
+          password: f.password ?? base.password ?? "",
+        };
+        await upsertOnedriveAuthByVault(this.db, this.vaultRandomID, merged);
+        if (typeof f.clientID === "string" && f.clientID !== "") {
+          this.settings.onedrive.clientID = f.clientID;
+        }
+        if (typeof f.authority === "string" && f.authority !== "") {
+          this.settings.onedrive.authority = f.authority;
+        }
+        this.mergeOnedriveAuthFromDB(merged);
+        await this.saveSettings();
+        return {
+          status: "ok",
+          message: this.i18n.t("protocol_saveqr_auth" as TransItemType, {
+            manifestName: this.manifest.name,
+          }),
+        };
+      }
+      return { status: "error", message: `unknown func: ${parsed.func}` };
+    } catch (e) {
+      console.error("applyImportedUriParams failed:", e);
+      return { status: "error", message: `${e}` };
     }
   }
 

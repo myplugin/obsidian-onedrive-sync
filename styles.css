@@ -115,6 +115,105 @@
   height: 350px;
 }
 
+.qrcode-too-big {
+  color: var(--text-warning);
+  font-weight: bold;
+  margin: 0 0 12px 0;
+  font-size: var(--font-ui-small);
+}
+
+/* ===== QR export modal: two sections (preferences + credentials) =====
+   Section 1 is neutral/share-safe; section 2 gets a warning-colored accent
+   so the sensitive login-credentials QR can never be mistaken for the
+   preferences QR above it. Built on Obsidian theme variables so it tracks
+   whatever theme the user runs. */
+.qrcode-export-modal {
+  padding-top: 4px;
+}
+
+.qrcode-intro {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.qrcode-intro p {
+  margin: 0 0 4px 0;
+}
+
+.qrcode-intro p:last-child {
+  margin-bottom: 0;
+}
+
+.qrcode-section {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background-color: var(--background-primary);
+  padding: 16px 18px 18px;
+  margin-bottom: 16px;
+}
+
+.qrcode-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Sensitive (credentials) section: warning border + left accent bar + a
+   subtle warm tint. The tint degrades to plain secondary background if
+   color-mix isn't available in the running theme. */
+.qrcode-section--sensitive {
+  border-color: var(--text-warning);
+  border-left: 4px solid var(--text-warning);
+  background-color: var(--background-secondary);
+  background-color: color-mix(
+    in srgb,
+    var(--text-warning) 6%,
+    var(--background-primary)
+  );
+}
+
+.qrcode-section-title {
+  margin: 0 0 6px 0;
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.qrcode-section-title--sensitive {
+  color: var(--text-warning);
+}
+
+.qrcode-section-desc {
+  margin: 0 0 12px 0;
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* Strong inline warning box for the credentials section. */
+.qrcode-warning {
+  margin: 0 0 12px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-s);
+  color: var(--text-warning);
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+  background-color: var(--background-secondary);
+  background-color: color-mix(in srgb, var(--text-warning) 12%, transparent);
+}
+
+.qrcode-img-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 14px;
+}
+
+.qrcode-button-wrap {
+  display: flex;
+  justify-content: center;
+}
+
 .setting-need-wrapping .setting-item-control {
   /* flex-wrap: wrap; */
   display: grid;

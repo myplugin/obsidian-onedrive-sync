@@ -139,10 +139,23 @@ export const COMMAND_URI = "onedrive-sync";
 export const COMMAND_CALLBACK = "onedrive-sync-cb";
 export const COMMAND_CALLBACK_ONEDRIVE = "obsidian-onedrive-sync";
 
+/**
+ * Settings/config transfer schema version, INDEPENDENT of the plugin release
+ * version. Starts at 1; bump +1 ONLY on an incompatible change to the exported
+ * settings shape (renamed/removed/redefined field, narrowed type). Compatible
+ * changes (adding an optional field, changing a default, adding an enum value)
+ * do NOT bump it — the importer fills defaults for missing fields and ignores
+ * unknown ones. Import rejects when exporter and importer schema versions
+ * differ. Carried in the export URI as `sv=<n>`.
+ */
+export const CONFIG_SCHEMA_VERSION = 1;
+
 export interface UriParams {
   func?: string;
   vault?: string;
   ver?: string;
+  /** Settings transfer schema version (CONFIG_SCHEMA_VERSION). */
+  sv?: string;
   data?: string;
 }
 
