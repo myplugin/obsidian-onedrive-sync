@@ -43,9 +43,6 @@ describe("conflict log line", () => {
   });
 
   it("pins the vault-root log filename (also the sync-ignore entry)", () => {
-    assert.strictEqual(
-      CONFLICT_LOG_FILENAME,
-      ".onedrive-sync-conflicts.log"
-    );
+    assert.strictEqual(CONFLICT_LOG_FILENAME, ".onedrive-sync-conflicts.log");
   });
 });

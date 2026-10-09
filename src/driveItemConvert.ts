@@ -179,8 +179,7 @@ export const deriveKeyFromPath = (
 
   // another report, why???
   // /drive/root:/something/app/{appRootName}/${remoteBaseDir}
-  const THIRD_COMMON_PREFIX_REGEX =
-    /^\/drive\/root:\/[^\/]+\/app\/[^\/]+\//g;
+  const THIRD_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/app\/[^\/]+\//g;
 
   // another possibile prefix
   const FOURTH_COMMON_PREFIX_RAW = `/drive/items/`;

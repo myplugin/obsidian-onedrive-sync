@@ -745,7 +745,9 @@ export class FakeFsOnedrive extends FakeFs {
           `OneDrive POST failed: ${res.status} ${pathFragOrig} ${text}`
         );
         (err as any).status = res.status;
-        (err as any).headers = { "Retry-After": res.headers.get("Retry-After") };
+        (err as any).headers = {
+          "Retry-After": res.headers.get("Retry-After"),
+        };
         throw err;
       }
       return text === "" ? null : JSON.parse(text);
@@ -778,7 +780,9 @@ export class FakeFsOnedrive extends FakeFs {
           `OneDrive PATCH failed: ${res.status} ${pathFragOrig} ${text}`
         );
         (err as any).status = res.status;
-        (err as any).headers = { "Retry-After": res.headers.get("Retry-After") };
+        (err as any).headers = {
+          "Retry-After": res.headers.get("Retry-After"),
+        };
         throw err;
       }
       return text === "" ? null : JSON.parse(text);
@@ -826,7 +830,9 @@ export class FakeFsOnedrive extends FakeFs {
             `OneDrive DELETE failed: ${res.status} ${pathFragOrig} ${body}`
           );
           (err as any).status = res.status;
-          (err as any).headers = { "Retry-After": res.headers.get("Retry-After") };
+          (err as any).headers = {
+            "Retry-After": res.headers.get("Retry-After"),
+          };
           throw err;
         }
       }

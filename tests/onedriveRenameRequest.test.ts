@@ -31,7 +31,10 @@ describe("onedrive RENAME request builder", () => {
   });
   it("url is the Graph path of the OLD item (the PATCH target)", () => {
     const r = _buildRenameRequest("folder/old.md", "folder/new.md", "MyVault");
-    assert.strictEqual(r.url, "/me/drive/special/approot:/MyVault/folder/old.md");
+    assert.strictEqual(
+      r.url,
+      "/me/drive/special/approot:/MyVault/folder/old.md"
+    );
   });
   it("folder rename: trailing slash stripped from the basename", () => {
     const r = _buildRenameRequest("old_folder/", "new_folder/", "MyVault");
