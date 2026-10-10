@@ -1,0 +1,304 @@
+src/syncSettings.ts
+  s_0760e3d980da5c::t_54e1c8c40a8137 34-35
+src/conflictLogic.ts
+  s_bc0d3140c70231::t_d26049b1c22c30 367-371,389-399
+  s_bc0d3140c70231::t_24f65b00fe0630 428-522
+  s_bc0d3140c70231::t_90058c1fcf4b06 113-120,125,156-181
+  s_bc0d3140c70231::t_904c7099c2d28a 182
+src/langs/en.json
+  s_fa74a4695fe891::t_bdb8eba57dc715 90
+  s_fa74a4695fe891::t_2de0823c16fee3 300-306
+  s_fa74a4695fe891::t_25663c27711386 243-244
+  s_fa74a4695fe891::t_da31ae7e73d5df 229
+src/main.ts
+  s_ea70ea38b45b2d::t_5995cab8b79e0f 221-242,244-269
+  s_ea70ea38b45b2d::t_7e9bee23fbae17 636-641
+  s_ea70ea38b45b2d::t_dfe9dd5d1381df 4,8-9,12-13,20,22
+  s_ea70ea38b45b2d::t_449f085d45ce99 99-103
+  s_ea70ea38b45b2d::t_8218512008a957 885-902
+  s_ea70ea38b45b2d::t_c33a79a1afff58 1237-1251
+  s_ea70ea38b45b2d::t_36656442bd2fad 598
+  s_ea70ea38b45b2d::t_2812abe3e5a6ed 711-853
+  s_ea70ea38b45b2d::t_e3925ab31062a5 591-597,599-600
+src/fsOnedrive.ts
+  s_d8117ef277ed3e::t_4ae6ba3b5f4de7 1054-1061,1084-1087
+src/baseTypes.ts
+  s_0760e3d980da5c::t_b9cbcfe1cb8963 75-82
+src/importExport.ts
+  s_515b8eaa5e6008::t_1e80cb721f3f20 14,16-17
+src/settings.ts
+  s_d8117ef277ed3e::t_f2b8e5a1b326da 1484-1487
+  s_d8117ef277ed3e::t_d44d1ad9af75aa 1819-1822
+  s_d8117ef277ed3e::t_529cf7c0bb4617 1896-1899
+  s_d8117ef277ed3e::t_418330abeced23 1658-1661
+  s_515b8eaa5e6008::t_ed0f8ae99440de 1718-1719,1721-1722
+  s_515b8eaa5e6008::t_26c9a0db708944 1619
+  s_515b8eaa5e6008::t_935c1bd767b81a 1563-1564,1566-1567
+  s_d8117ef277ed3e::t_873815c87be89b 1592
+  s_515b8eaa5e6008::t_5027cc1a93df06 451
+  s_d8117ef277ed3e::t_1149b392993965 1720
+  s_0760e3d980da5c::t_edb5e2b8cd19bd 1061
+  s_515b8eaa5e6008::t_60200153440b23 436
+  s_515b8eaa5e6008::t_89766e9a7e77de 1488
+  s_0760e3d980da5c::t_50ce4ebd6fbbab 1039-1060,1062-1077
+  s_515b8eaa5e6008::t_1e2036416ae040 1900
+  s_d8117ef277ed3e::t_90e2c2b125311c 1565
+  s_515b8eaa5e6008::t_a8d31d4ed22e27 1823
+  s_515b8eaa5e6008::t_8d084ae2762f18 1590-1591,1593,1595,1598-1602,1604
+src/sync.ts
+  s_bc0d3140c70231::t_fdcac2a1263d18 2927-2928
+  s_bc0d3140c70231::t_3f71ecf4102847 1975-1976
+  s_bc0d3140c70231::t_bad83a7162960f 2763-2769
+  s_bc0d3140c70231::t_607b5e75a66c59 1859-1860,1863-1872,1875-1897
+  s_bc0d3140c70231::t_57d1a27cfca47b 19-25
+  s_bc0d3140c70231::t_f4907bdc0431b0 2524-2525
+  s_bc0d3140c70231::t_04cc54e1560f96 2378-2379
+  s_bc0d3140c70231::t_433032cfbd0af4 1861,1873-1874,1977,2124,2159-2160,2264,2380,2526,2664,2770,2929
+  s_bc0d3140c70231::t_5c5461a90fd5ec 2122-2123
+  s_bc0d3140c70231::t_6e7789397c0c17 2213-2233
+  s_bc0d3140c70231::t_62a7e2c7ca4ecc 2662-2663
+  s_bc0d3140c70231::t_a17a31e5e77a91 2745-2750
+  s_bc0d3140c70231::t_acbd7238a45c3c 2771
+  s_bc0d3140c70231::t_4d21b9eab370e9 2150-2158,2161-2166
+  s_bc0d3140c70231::t_11c06ed1b99609 2262-2263
+src/langs/zh_tw.json
+  s_fa74a4695fe891::t_9e5221a5d00f90 243-244
+  s_fa74a4695fe891::t_42b07ea088bdfd 300-306
+  s_fa74a4695fe891::t_e9964a566518b3 90
+  s_fa74a4695fe891::t_8c4f66ea310915 229
+src/langs/zh_cn.json
+  s_fa74a4695fe891::t_62fcf2c14c34cc 243-244
+  s_fa74a4695fe891::t_5e02b319652c4b 229
+  s_fa74a4695fe891::t_bd710caa9b65bf 90
+  s_fa74a4695fe891::t_5ccd2fdbd8960a 300-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "5441b936cfb62a0a12add0fbca00bb3b6ad7383e",
+  "prompts": {},
+  "humans": {
+    "h_b8e9e22b7b320f": {
+      "author": "chenyude <chenyude@h-partners.com>"
+    }
+  },
+  "sessions": {
+    "s_0760e3d980da5c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31953f5fffep4XEuQuBNBFL5R",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 52,
+      "total_deletions": 3,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_50ce4ebd6fbbab": "qwen3.8-max",
+        "t_54e1c8c40a8137": "qwen3.8-max",
+        "t_b9cbcfe1cb8963": "qwen3.8-max",
+        "t_edb5e2b8cd19bd": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 52,
+          "deletions": 3
+        }
+      }
+    },
+    "s_515b8eaa5e6008": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31c20e60ffe95QzfXzdu7YziT",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 31,
+      "total_deletions": 50,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_1e2036416ae040": "qwen3.8-max",
+        "t_1e80cb721f3f20": "qwen3.8-max",
+        "t_26c9a0db708944": "qwen3.8-max",
+        "t_3bdfcd72f30e0a": "qwen3.8-max",
+        "t_5027cc1a93df06": "qwen3.8-max",
+        "t_60200153440b23": "qwen3.8-max",
+        "t_79cb1fd4ac5456": "qwen3.8-max",
+        "t_821354d928cd06": "qwen3.8-max",
+        "t_83d2867385c4ac": "qwen3.8-max",
+        "t_89766e9a7e77de": "qwen3.8-max",
+        "t_8d084ae2762f18": "qwen3.8-max",
+        "t_935c1bd767b81a": "qwen3.8-max",
+        "t_a8d31d4ed22e27": "qwen3.8-max",
+        "t_ed0f8ae99440de": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 31,
+          "deletions": 50
+        }
+      }
+    },
+    "s_bc0d3140c70231": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3194ef2cffegtpRyCWbk0kuPX",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 283,
+      "total_deletions": 47,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_04cc54e1560f96": "qwen3.8-max",
+        "t_11c06ed1b99609": "qwen3.8-max",
+        "t_24f65b00fe0630": "qwen3.8-max",
+        "t_3f71ecf4102847": "qwen3.8-max",
+        "t_433032cfbd0af4": "qwen3.8-max",
+        "t_4d21b9eab370e9": "qwen3.8-max",
+        "t_57d1a27cfca47b": "qwen3.8-max",
+        "t_5c5461a90fd5ec": "qwen3.8-max",
+        "t_607b5e75a66c59": "qwen3.8-max",
+        "t_62a7e2c7ca4ecc": "qwen3.8-max",
+        "t_6e7789397c0c17": "qwen3.8-max",
+        "t_90058c1fcf4b06": "qwen3.8-max",
+        "t_a17a31e5e77a91": "qwen3.8-max",
+        "t_acbd7238a45c3c": "qwen3.8-max",
+        "t_bad83a7162960f": "qwen3.8-max",
+        "t_d26049b1c22c30": "qwen3.8-max",
+        "t_f4907bdc0431b0": "qwen3.8-max",
+        "t_fdcac2a1263d18": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 283,
+          "deletions": 47
+        }
+      }
+    },
+    "s_d8117ef277ed3e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31e46d6effegG96ZPIlPEv9ti",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 31,
+      "total_deletions": 10,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_1149b392993965": "glm-5.2",
+        "t_418330abeced23": "glm-5.2",
+        "t_4ae6ba3b5f4de7": "glm-5.2",
+        "t_529cf7c0bb4617": "glm-5.2",
+        "t_873815c87be89b": "glm-5.2",
+        "t_90e2c2b125311c": "glm-5.2",
+        "t_d44d1ad9af75aa": "glm-5.2",
+        "t_f2b8e5a1b326da": "glm-5.2"
+      },
+      "model_totals": {
+        "glm-5.2": {
+          "additions": 31,
+          "deletions": 10
+        }
+      }
+    },
+    "s_ddd35ba0bb0d98": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f365e2bcdffe5Z5OJJiN6URl07",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 21,
+      "overridden_lines": 0
+    },
+    "s_ea70ea38b45b2d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f317a27b9ffe4iPem3qp7rklE0",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 256,
+      "total_deletions": 5,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_2812abe3e5a6ed": "qwen3.8-max",
+        "t_36656442bd2fad": "qwen3.8-max",
+        "t_449f085d45ce99": "qwen3.8-max",
+        "t_5995cab8b79e0f": "qwen3.8-max",
+        "t_7e9bee23fbae17": "qwen3.8-max",
+        "t_8218512008a957": "qwen3.8-max",
+        "t_c33a79a1afff58": "qwen3.8-max",
+        "t_dfe9dd5d1381df": "qwen3.8-max",
+        "t_e3925ab31062a5": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 256,
+          "deletions": 5
+        }
+      }
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 3,
+      "overridden_lines": 0
+    },
+    "s_fa74a4695fe891": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31c289d3ffev3Z4QYHHHloosR",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 33,
+      "total_deletions": 37,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_08547ceff79e5b": "qwen3.8-max",
+        "t_08b9a5ea156533": "qwen3.8-max",
+        "t_19dfaff75f66b4": "qwen3.8-max",
+        "t_20c1af52a1ec86": "qwen3.8-max",
+        "t_25663c27711386": "qwen3.8-max",
+        "t_2602c9ac3d144b": "qwen3.8-max",
+        "t_2de0823c16fee3": "qwen3.8-max",
+        "t_37f469d4832653": "qwen3.8-max",
+        "t_42b07ea088bdfd": "qwen3.8-max",
+        "t_5ccd2fdbd8960a": "qwen3.8-max",
+        "t_5e02b319652c4b": "qwen3.8-max",
+        "t_5f96fa0c5a39bb": "qwen3.8-max",
+        "t_62fcf2c14c34cc": "qwen3.8-max",
+        "t_6777ba9a06d238": "qwen3.8-max",
+        "t_706eabe706d7fe": "qwen3.8-max",
+        "t_763300829b7616": "qwen3.8-max",
+        "t_8047eae0c72790": "qwen3.8-max",
+        "t_85564351d199c6": "qwen3.8-max",
+        "t_8c4f66ea310915": "qwen3.8-max",
+        "t_9db4ee54df9664": "qwen3.8-max",
+        "t_9e5221a5d00f90": "qwen3.8-max",
+        "t_bd710caa9b65bf": "qwen3.8-max",
+        "t_bdb8eba57dc715": "qwen3.8-max",
+        "t_cb2fe0ae72f3bf": "qwen3.8-max",
+        "t_cbc6612eb0d40b": "qwen3.8-max",
+        "t_da31ae7e73d5df": "qwen3.8-max",
+        "t_e9964a566518b3": "qwen3.8-max",
+        "t_ff68b241f93561": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 33,
+          "deletions": 37
+        }
+      }
+    }
+  }
+}
