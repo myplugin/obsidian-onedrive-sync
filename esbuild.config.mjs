@@ -17,8 +17,14 @@ console.log(`esbuild version = ${esbuild.version}`);
 
 const prod = process.argv[2] === "production";
 
-const DEFAULT_ONEDRIVE_CLIENT_ID = process.env.ONEDRIVE_CLIENT_ID || "";
-const DEFAULT_ONEDRIVE_AUTHORITY = process.env.ONEDRIVE_AUTHORITY || "";
+// Self-owned public client app (PKCE, no secret). The client ID is public by
+// design — it ships baked into every released main.js — so hardcode it here
+// as the fallback. This guarantees any clone/build works out of the box even
+// without a .env (which is gitignored). .env can still override for dev/test.
+const DEFAULT_ONEDRIVE_CLIENT_ID =
+  process.env.ONEDRIVE_CLIENT_ID || "5be03f08-f4bf-406b-9e78-ff6a7d4e7cd4";
+const DEFAULT_ONEDRIVE_AUTHORITY =
+  process.env.ONEDRIVE_AUTHORITY || "https://login.microsoftonline.com/common";
 
 // Auto-deploy to Obsidian vault on build/watch (if VAULT_PATH set in .env).
 // Mirrors scripts/deploy.mjs and the former webpack DeployPlugin so that
