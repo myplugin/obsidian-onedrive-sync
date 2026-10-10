@@ -1,0 +1,16 @@
+.env.example.txt
+  h_b8e9e22b7b320f 1-5
+esbuild.config.mjs
+  h_b8e9e22b7b320f 20-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "2e19affa3ca001fb97f1e326180180d6d6c7096f",
+  "prompts": {},
+  "humans": {
+    "h_b8e9e22b7b320f": {
+      "author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
