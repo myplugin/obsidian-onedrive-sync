@@ -1,5 +1,5 @@
 import {
-  DEFAULT_DEBUG_FOLDER,
+  isDebugFolderPath,
   type Entity,
   type RenameOpts,
 } from "./baseTypes";
@@ -101,13 +101,10 @@ export class FakeFsLocal extends FakeFs {
         throw Error(`unexpected ${entry}`);
       }
 
-      if (r.keyRaw.startsWith(DEFAULT_DEBUG_FOLDER)) {
-        // skip listing the debug folder,
-        // which should always not involved in sync
-        // continue;
-      } else {
-        local.push(r);
+      if (isDebugFolderPath(r.keyRaw)) {
+        continue; // debug export folder never participates in sync
       }
+      local.push(r);
     }
 
     this.profiler?.insert("finish transforming walk for local");

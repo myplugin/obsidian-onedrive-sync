@@ -3,7 +3,7 @@ import type { Vault } from "obsidian";
 import {
   DEFAULT_DEBUG_FOLDER,
   DEFAULT_PROFILER_RESULT_FILE_PREFIX,
-  DEFAULT_SYNC_PLANS_HISTORY_FILE_PREFIX,
+  DEFAULT_SYNC_DECISIONS_FILE_PREFIX,
 } from "./baseTypes";
 import {
   readAllProfilerResultsByVault,
@@ -13,12 +13,15 @@ import type { InternalDBs } from "./localdb";
 import { mkdirpInVault } from "./misc";
 import type { SyncPlanType } from "./sync";
 
-const getSubsetOfSyncPlan = (x: string, onlyChange: boolean) => {
-  if (!onlyChange) {
-    return x;
-  }
+const getSubsetOfSyncPlan = (
+  x: string,
+  onlyChange: boolean
+): SyncPlanType => {
   const y: SyncPlanType = JSON.parse(x);
-  const z: SyncPlanType = Object.fromEntries(
+  if (!onlyChange) {
+    return y;
+  }
+  return Object.fromEntries(
     Object.entries(y).filter(([key, val]) => {
       if (key === "/$@meta") {
         return true;
@@ -26,7 +29,6 @@ const getSubsetOfSyncPlan = (x: string, onlyChange: boolean) => {
       return val.change === undefined || val.change === true;
     })
   );
-  return JSON.stringify(z, null, 2);
 };
 
 export const exportVaultSyncPlansToFiles = async (
@@ -39,32 +41,17 @@ export const exportVaultSyncPlansToFiles = async (
   console.info("exporting sync plans");
   await mkdirpInVault(DEFAULT_DEBUG_FOLDER, vault);
   const records = await readAllSyncPlanRecordTextsByVault(db, vaultRandomID);
-  let md = "";
-  if (records.length === 0) {
-    md = "No sync plans history found";
-  } else {
-    if (howMany <= 0) {
-      md =
-        "Sync plans found:\n\n" +
-        records
-          .map(
-            (x) => "```json\n" + getSubsetOfSyncPlan(x, onlyChange) + "\n```\n"
-          )
-          .join("\n");
-    } else {
-      md =
-        "Sync plans found:\n\n" +
-        records
-          .map(
-            (x) => "```json\n" + getSubsetOfSyncPlan(x, onlyChange) + "\n```\n"
-          )
-          .slice(0, howMany)
-          .join("\n");
-    }
-  }
+  const selected = howMany <= 0 ? records : records.slice(0, howMany);
+  const plans = selected.map((x) => getSubsetOfSyncPlan(x, onlyChange));
   const ts = Date.now();
-  const filePath = `${DEFAULT_DEBUG_FOLDER}${DEFAULT_SYNC_PLANS_HISTORY_FILE_PREFIX}${ts}.md`;
-  await vault.create(filePath, md, {
+  const payload = {
+    exportedAt: ts,
+    onlyChange,
+    count: plans.length,
+    plans,
+  };
+  const filePath = `${DEFAULT_DEBUG_FOLDER}${DEFAULT_SYNC_DECISIONS_FILE_PREFIX}${ts}.json`;
+  await vault.create(filePath, JSON.stringify(payload, null, 2), {
     mtime: ts,
   });
   console.info("finish exporting sync plans");

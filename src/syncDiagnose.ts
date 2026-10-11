@@ -1,7 +1,7 @@
 // License: Apache-2.0. See LICENSE.
 
 import XRegExp from "xregexp";
-import type { RemotelySavePluginSettings } from "./baseTypes";
+import { isDebugFolderPath, type RemotelySavePluginSettings } from "./baseTypes";
 import { CONFLICT_LOG_FILENAME } from "./conflictLog";
 import {
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE,
@@ -125,6 +125,13 @@ function diagnoseSelf(
   selfPluginId: string
 ): SyncDiagnosis {
   const normalizedKey = key.replace(/\\/g, "/");
+
+  // Debug export folder: excluded at the fsLocal.walk layer (not by name
+  // rules). Mirror it here so the diagnosis reports the truth. Checked first
+  // so descendants also resolve via ancestor pruning.
+  if (isDebugFolderPath(normalizedKey)) {
+    return { skipped: true, reason: { code: "DEBUG_FOLDER" } };
+  }
 
   // Mirror of sync.ts:120 isInsideObsFolder (not exported there).
   const inObsidianFolder =
