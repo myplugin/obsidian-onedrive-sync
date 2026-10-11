@@ -97,6 +97,28 @@ function extractHttpStatus(e: any): number | undefined {
 }
 
 /**
+ * Detect transport-level (non-HTTP-status) network errors worth retrying:
+ * Chromium HTTP/2 stream resets ('net::ERR_HTTP2_...', e.g.
+ * ERR_HTTP2_PROTOCOL_ERROR returned alongside a 200 status after the server
+ * reset the stream mid-body), connection resets, and the generic fetch
+ * 'Failed to fetch' / NetworkError. extractHttpStatus() returns undefined for
+ * these (there is no status code), so without this they bypass
+ * _retryOnTransientError and abort the whole sync.
+ */
+export function isTransientNetworkError(e: any): boolean {
+  const msg =
+    typeof e?.message === "string"
+      ? e.message
+      : typeof e === "string"
+        ? e
+        : "";
+  if (msg === "") return false;
+  return /ERR_HTTP2|ERR_QUIC|ERR_CONNECTION_(RESET|CLOSED|ABORTED|REFUSED)|ERR_NETWORK_CHANGED|ERR_SOCKET_NOT_CONNECTED|net::ERR_|Failed to fetch|NetworkError/i.test(
+    msg
+  );
+}
+
+/**
  * Build a recognizable error for the "remote file was deleted between the
  * walk and the stat/download" race condition. The sync collects these in an
  * AggregateError; main.ts groups them into a single friendly notice.
@@ -141,6 +163,29 @@ export function classifyOneDriveWriteError(
   if (status === 412) return "REMOTE_ETAG_MISMATCH";
   if (status === 404) return "REMOTE_NOT_FOUND";
   return null;
+}
+
+/**
+ * HTTP statuses that the write paths treat as expected, non-bug outcomes:
+ *  - 404/412 — the documented stale-view race (deleted since walk) and the
+ *    If-Match conflict, both absorbed/re-routed by sync.ts (nothing reaches
+ *    errNotifyFunc);
+ *  - 429/500/502/503/504 — transient; _retryOnTransientError retries them and
+ *    logs its own warning.
+ * Such responses are NOT failures, so the write methods must not log them via
+ * console.error (that only adds red noise for normal operation). Kept as a
+ * pure, unit-testable predicate.
+ */
+export function isHandledHttpStatus(status: number | undefined): boolean {
+  return (
+    status === 404 ||
+    status === 412 ||
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  );
 }
 
 /**
@@ -666,8 +711,11 @@ export class FakeFsOnedrive extends FakeFs {
             status === 502 ||
             status === 503 ||
             status === 504);
+        // Transport-level network errors carry no HTTP status (see
+        // isTransientNetworkError) and are intermittent; retry them too.
+        const isTransientNetwork = isTransientNetworkError(e);
 
-        if (!isThrottled && !isTransientServerError) {
+        if (!isThrottled && !isTransientServerError && !isTransientNetwork) {
           throw e;
         }
         if (attempt >= maxRetries) {
@@ -684,8 +732,9 @@ export class FakeFsOnedrive extends FakeFs {
           : Math.min(2 ** attempt, 10);
         const waitMs = retryAfterSec * 1000;
         console.warn(
-          `Graph API transient error (status ${status ?? "unknown"}), ` +
-            `waiting ${retryAfterSec}s (attempt ${attempt + 1}/${maxRetries})`
+          `Graph API transient error (${
+            status !== undefined ? `status ${status}` : "network"
+          }), waiting ${retryAfterSec}s (attempt ${attempt + 1}/${maxRetries})`
         );
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
@@ -734,13 +783,18 @@ export class FakeFsOnedrive extends FakeFs {
       });
       const text = await res.text().catch(() => "");
       if (!res.ok) {
-        console.error(
-          `postJson FAILED url=${theUrl} status=${res.status}`,
-          "payload=",
-          payload,
-          "body=",
-          text
-        );
+        // Handled statuses (404/412 races, 429/5xx transient) are not failures.
+        if (isHandledHttpStatus(res.status)) {
+          console.debug(`postJson handled status=${res.status} url=${theUrl}`);
+        } else {
+          console.error(
+            `postJson FAILED url=${theUrl} status=${res.status}`,
+            "payload=",
+            payload,
+            "body=",
+            text
+          );
+        }
         const err = new Error(
           `OneDrive POST failed: ${res.status} ${pathFragOrig} ${text}`
         );
@@ -769,13 +823,18 @@ export class FakeFsOnedrive extends FakeFs {
       });
       const text = await res.text().catch(() => "");
       if (!res.ok) {
-        console.error(
-          `patchJson FAILED url=${theUrl} status=${res.status}`,
-          "payload=",
-          payload,
-          "body=",
-          text
-        );
+        // Handled statuses (404/412 races, 429/5xx transient) are not failures.
+        if (isHandledHttpStatus(res.status)) {
+          console.debug(`patchJson handled status=${res.status} url=${theUrl}`);
+        } else {
+          console.error(
+            `patchJson FAILED url=${theUrl} status=${res.status}`,
+            "payload=",
+            payload,
+            "body=",
+            text
+          );
+        }
         const err = new Error(
           `OneDrive PATCH failed: ${res.status} ${pathFragOrig} ${text}`
         );
@@ -1660,39 +1719,46 @@ export class FakeFsOnedrive extends FakeFs {
       return { entity, content };
     }
 
-    // Download content using the pre-authenticated URL
-    let content: ArrayBuffer;
-    // biome-ignore lint/correctness/noConstantCondition: hard code
-    if (false /*VALID_REQURL*/) {
-      content = (
+    // Download content using the pre-authenticated URL, retrying transient
+    // transport errors (HTTP/2 stream resets carry no HTTP status).
+    const content = await this._retryOnTransientError(() =>
+      this._downloadByPreAuthUrl(downloadUrl)
+    );
+    return { entity, content };
+  }
+
+  /**
+   * Download file content by its pre-authenticated `download.aspx` URL.
+   * Tries the renderer fetch first (deliberately WITHOUT Authorization or
+   * Cache-Control headers — adding one triggers a CORS failure), then falls
+   * back to Obsidian's CORS-free requestUrl. Errors propagate so the caller's
+   * _retryOnTransientError wrapper can retry them.
+   */
+  private async _downloadByPreAuthUrl(
+    downloadUrl: string
+  ): Promise<ArrayBuffer> {
+    try {
+      // cannot set no-cache here, will have cors error
+      return await (
+        await fetch(downloadUrl, { cache: "no-store" })
+      ).arrayBuffer();
+    } catch (e) {
+      // let's try again to bypass the CORS
+      return (
         await requestUrl({
           url: downloadUrl,
           headers: { "Cache-Control": "no-cache" },
         })
       ).arrayBuffer;
-    } else {
-      try {
-        content = await (
-          await fetch(downloadUrl, { cache: "no-store" })
-        ).arrayBuffer();
-      } catch (e) {
-        // CORS fallback
-        content = (
-          await requestUrl({
-            url: downloadUrl,
-            headers: { "Cache-Control": "no-cache" },
-          })
-        ).arrayBuffer;
-      }
     }
-    return { entity, content };
   }
 
   async _readFileFromRoot(key: string): Promise<ArrayBuffer> {
     const rsp = await this._getJson(
       `${key}?$select=@microsoft.graph.downloadUrl`
     );
-    const downloadUrl: string = rsp["@microsoft.graph.downloadUrl"];
+    const downloadUrl: string | undefined =
+      rsp["@microsoft.graph.downloadUrl"];
     if (!downloadUrl) {
       // Fallback: when the pre-auth download URL annotation is absent
       // (not reliably returned for OneDrive App Folder), use the standard
@@ -1716,35 +1782,13 @@ export class FakeFsOnedrive extends FakeFs {
         return await res.arrayBuffer();
       });
     }
-    // biome-ignore lint/correctness/noConstantCondition: <explanation>
-    if (false /*VALID_REQURL*/) {
-      const content = (
-        await requestUrl({
-          url: downloadUrl,
-          headers: { "Cache-Control": "no-cache" },
-        })
-      ).arrayBuffer;
-      return content;
-    } else {
-      // so strange, sometimes (!!!)
-      // we cannot download the file because of CORS
-      try {
-        // cannot set no-cache here, will have cors error
-        const content = await (
-          await fetch(downloadUrl, { cache: "no-store" })
-        ).arrayBuffer();
-        return content;
-      } catch (e) {
-        // let's try again to bypass the CORS
-        const content = (
-          await requestUrl({
-            url: downloadUrl,
-            headers: { "Cache-Control": "no-cache" },
-          })
-        ).arrayBuffer;
-        return content;
-      }
-    }
+    // Retry the download itself: a mid-body HTTP/2 stream reset
+    // (net::ERR_HTTP2_PROTOCOL_ERROR) has no HTTP status, so this wrapper is
+    // the only layer that can recover it. Retries run seconds apart, well
+    // within the pre-auth URL's minute-scale validity.
+    return await this._retryOnTransientError(() =>
+      this._downloadByPreAuthUrl(downloadUrl)
+    );
   }
 
   /** Cache: OneDrive path of parent folder → Graph item id.

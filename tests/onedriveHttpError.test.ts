@@ -8,7 +8,10 @@ import "./_obsidianStub";
 import { strict as assert } from "assert";
 import { describe, it } from "mocha";
 import {
+  FakeFsOnedrive,
   classifyOneDriveWriteError,
+  isHandledHttpStatus,
+  isTransientNetworkError,
   remoteEtagMismatchError,
 } from "../src/fsOnedrive";
 
@@ -54,5 +57,102 @@ describe("onedrive write-error classification", () => {
     assert.strictEqual(classifyOneDriveWriteError({ status: 429 }), null);
     assert.strictEqual(classifyOneDriveWriteError(new Error("boom")), null);
     assert.strictEqual(classifyOneDriveWriteError(undefined), null);
+  });
+});
+
+describe("isTransientNetworkError", () => {
+  it("treats a generic fetch failure as transient", () => {
+    assert.strictEqual(
+      isTransientNetworkError(new Error("TypeError: Failed to fetch")),
+      true
+    );
+  });
+
+  it("treats an HTTP/2 stream reset (statusless) as transient", () => {
+    assert.strictEqual(
+      isTransientNetworkError(
+        new Error("net::ERR_HTTP2_PROTOCOL_ERROR 200 (OK)")
+      ),
+      true
+    );
+  });
+
+  it("treats a connection reset as transient", () => {
+    assert.strictEqual(
+      isTransientNetworkError(new Error("ERR_CONNECTION_RESET")),
+      true
+    );
+  });
+
+  it("treats an incomplete chunked encoding reset as transient", () => {
+    assert.strictEqual(
+      isTransientNetworkError(
+        new Error("net::ERR_INCOMPLETE_CHUNKED_ENCODING 200 (OK)")
+      ),
+      true
+    );
+  });
+
+  it("does not treat an HTTP-status error as a network error", () => {
+    assert.strictEqual(
+      isTransientNetworkError(new Error("Request failed, status 404")),
+      false
+    );
+  });
+
+  it("does not treat a status-bearing object as a network error", () => {
+    assert.strictEqual(isTransientNetworkError({ status: 500 }), false);
+  });
+
+  it("does not treat undefined as a network error", () => {
+    assert.strictEqual(isTransientNetworkError(undefined), false);
+  });
+});
+
+describe("_retryOnTransientError retries statusless network errors", () => {
+  it("retries a net::ERR_HTTP2_PROTOCOL_ERROR until it succeeds", async function () {
+    // The wrapper's exponential backoff waits 1s + 2s; allow more than the
+    // mocha default 2s so the retry-happens assertion can run.
+    this.timeout(10000);
+    const fs = Object.create(FakeFsOnedrive.prototype) as any;
+    let calls = 0;
+    const result = await fs._retryOnTransientError(async () => {
+      calls += 1;
+      if (calls < 3) {
+        throw new Error("net::ERR_HTTP2_PROTOCOL_ERROR 200 (OK)");
+      }
+      return "ok";
+    });
+    assert.strictEqual(result, "ok");
+    assert.strictEqual(calls, 3);
+  });
+});
+
+describe("_retryOnTransientError does not retry a 412 precondition", () => {
+  it("rethrows REMOTE_ETAG_MISMATCH immediately without retrying", async () => {
+    const fs = Object.create(FakeFsOnedrive.prototype) as any;
+    let calls = 0;
+    await assert.rejects(
+      fs._retryOnTransientError(async () => {
+        calls += 1;
+        throw remoteEtagMismatchError("Lab/.obsidian/plugins/copilot/data.json");
+      }),
+      /Remote etag mismatch/
+    );
+    assert.strictEqual(calls, 1);
+  });
+});
+
+describe("isHandledHttpStatus", () => {
+  it("treats 404/412 races and 429/5xx transient as handled", () => {
+    for (const s of [404, 412, 429, 500, 502, 503, 504]) {
+      assert.strictEqual(isHandledHttpStatus(s), true, `status ${s}`);
+    }
+  });
+
+  it("does not treat genuine failures or success as handled", () => {
+    for (const s of [200, 400, 401, 403, 409, 507, undefined]) {
+      assert.strictEqual(isHandledHttpStatus(s), false, `status ${s}`);
+    }
   });
 });
