@@ -1,0 +1,20 @@
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+src/fsOnedrive.ts
+  h_77bd96c5a60e28 34,54-135,868,911,969,1011-1028,1073-1102,1819-1824,1830,1844
+versions.json
+  h_77bd96c5a60e28 11-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "169f8a5494ec531cdf323c3b4fc0c84f692cdc80",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
