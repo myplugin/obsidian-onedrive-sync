@@ -1,11 +1,10 @@
 // License: PolyForm Strict 1.0.0 (source-available). See LICENSE.pro.
 
-import { type App, Modal, Notice, Setting } from "obsidian";
+import { type App, Modal, Notice, Setting, sanitizeHTMLToDom } from "obsidian";
 import { clearDupFiles, getDupFiles } from "./clearDupFiles";
 import { FakeFsLocal } from "./fsLocal";
 import type { TransItemType } from "./i18n";
 import type RemotelySavePlugin from "./main";
-import { stringToFragment } from "./misc";
 
 class ClearDupFilesModal extends Modal {
   readonly plugin: RemotelySavePlugin;
@@ -69,7 +68,7 @@ export const generateClearDupFilesSettingsPart = (
 ) => {
   new Setting(containerEl)
     .setName(t("settings_cleardupfiles"))
-    .setDesc(stringToFragment(t("settings_cleardupfiles_desc")))
+    .setDesc(sanitizeHTMLToDom(t("settings_cleardupfiles_desc")))
     .addButton(async (button) => {
       button.setButtonText(t("settings_cleardupfiles_button"));
       button.onClick(async () => {

@@ -629,3 +629,12 @@
 .rs-sync-toggle-icon.is-off {
   opacity: 0.5;
 }
+
+/* Static style values moved out of inline setCssProps (obsidianmd/no-static-styles-assignment
+   flags setCssProps with quoted-string keys regardless of value). Applied via addClass. */
+.rs-statusbar-flex {
+  display: flex;
+}
+.rs-overflow-wrap {
+  overflow-wrap: break-word;
+}

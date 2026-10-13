@@ -517,17 +517,6 @@ export const compareVersion = (x: string | null, y: string | null) => {
 };
 
 /**
- * https://stackoverflow.com/questions/19929641/how-to-append-an-html-string-to-a-documentfragment
- * To introduce some advanced html fragments.
- * @param string
- * @returns
- */
-export const stringToFragment = (string: string) => {
-  const range = document.createRange();
-  return range.createContextualFragment(string);
-};
-
-/**
  * https://stackoverflow.com/questions/39538473/using-settimeout-on-promise-chain
  * @param ms
  * @returns
@@ -577,10 +566,8 @@ export const changeMobileStatusBar = (
               .getComputedStyle(k as Element)
               .getPropertyValue("height");
 
-            statusbar.setCssProps({
-              display: "flex",
-              "margin-bottom": height,
-            });
+            statusbar.addClass("rs-statusbar-flex");
+            statusbar.style.marginBottom = height;
           }
         }
       }
@@ -600,7 +587,8 @@ export const changeMobileStatusBar = (
       )[0] as HTMLElement;
       // thanks to community's solution
       const height = window.getComputedStyle(navBar).getPropertyValue("height");
-      statusbar.setCssProps({ display: "flex", "margin-bottom": height });
+      statusbar.addClass("rs-statusbar-flex");
+      statusbar.style.marginBottom = height;
     } catch (e) {
       // skip
     }
@@ -613,6 +601,7 @@ export const changeMobileStatusBar = (
       // biome-ignore lint/style/noParameterAssign: we want gc
       oldAppContainerObserver = undefined;
     }
+    statusbar.removeClass("rs-statusbar-flex");
     statusbar.style.removeProperty("display");
     statusbar.style.removeProperty("margin-bottom");
     return undefined;

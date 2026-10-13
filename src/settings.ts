@@ -15,6 +15,7 @@ import {
   Setting,
   moment,
   requireApiVersion,
+  sanitizeHTMLToDom,
 } from "obsidian";
 import type { TextComponent } from "obsidian";
 import type {
@@ -55,7 +56,6 @@ import type RemotelySavePlugin from "./main"; // unavoidable
 import {
   changeMobileStatusBar,
   checkHasSpecialCharForDir,
-  stringToFragment,
   testPathAgainstRegexList,
 } from "./misc";
 import { DEFAULT_PROFILER_CONFIG } from "./profiler";
@@ -171,7 +171,7 @@ class EncryptionMethodModal extends Modal {
       .split("\n")
       .forEach((val, idx) => {
         contentEl.createEl("p", {
-          text: stringToFragment(val),
+          text: sanitizeHTMLToDom(val),
         });
       });
 
@@ -328,7 +328,7 @@ export class OnedriveAuthModal extends Modal {
         .split("\n")
         .forEach((val) => {
           contentEl.createEl("p", {
-            text: stringToFragment(val),
+            text: sanitizeHTMLToDom(val),
           });
         });
     }
@@ -579,7 +579,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
   display(): void {
     const { containerEl } = this;
-    containerEl.setCssProps({ "overflow-wrap": "break-word" });
+    containerEl.addClass("rs-overflow-wrap");
     containerEl.empty();
     new Setting(containerEl).setName("OneDrive Sync").setHeading();
 
@@ -921,7 +921,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName(t("setting_syncdirection"))
-      .setDesc(stringToFragment(t("setting_syncdirection_desc")))
+      .setDesc(sanitizeHTMLToDom(t("setting_syncdirection_desc")))
       .addDropdown((dropdown) => {
         dropdown.addOption(
           "bidirectional",
@@ -1537,7 +1537,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     }
     const conflictActionSetting = new Setting(containerEl)
       .setName(t("settings_conflictaction"))
-      .setDesc(stringToFragment(conflictActionSettingOrigDesc));
+      .setDesc(sanitizeHTMLToDom(conflictActionSettingOrigDesc));
     conflictActionSetting.addDropdown((dropdown) => {
       dropdown
         .addOption("keep_newer", t("settings_conflictaction_keep_newer"))
@@ -1561,7 +1561,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             );
           }
           conflictActionSetting.setDesc(
-            stringToFragment(conflictActionSettingOrigDesc)
+            sanitizeHTMLToDom(conflictActionSettingOrigDesc)
           );
         });
     });
@@ -1610,7 +1610,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     }
     encryptionMethodSetting
       .setName(t("settings_encryptionmethod"))
-      .setDesc(stringToFragment(t("settings_encryptionmethod_desc")))
+      .setDesc(sanitizeHTMLToDom(t("settings_encryptionmethod_desc")))
       .addDropdown((dropdown) => {
         dropdown
           .addOption("rclone-base64", t("settings_encryptionmethod_rclone"))
@@ -1840,7 +1840,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName(t("settings_viewconsolelog"))
-      .setDesc(stringToFragment(t("settings_viewconsolelog_desc")));
+      .setDesc(sanitizeHTMLToDom(t("settings_viewconsolelog_desc")));
 
     new Setting(containerEl)
       .setName(t("settings_adv_group_syncdiagnostics"))

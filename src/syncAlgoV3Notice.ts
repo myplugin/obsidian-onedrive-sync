@@ -1,8 +1,6 @@
-import { type App, Modal } from "obsidian";
+import { type App, Modal, sanitizeHTMLToDom } from "obsidian";
 import type { TransItemType } from "./i18n";
 import type RemotelySavePlugin from "./main"; // unavoidable
-
-import { stringToFragment } from "./misc";
 
 export class SyncAlgoV3Modal extends Modal {
   agree: boolean;
@@ -31,7 +29,7 @@ export class SyncAlgoV3Modal extends Modal {
       .split("\n")
       .forEach((val) => {
         ul.createEl("li", {
-          text: stringToFragment(val),
+          text: sanitizeHTMLToDom(val),
         });
       });
 
