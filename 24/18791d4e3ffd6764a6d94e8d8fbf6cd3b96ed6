@@ -1,0 +1,14 @@
+docs/releasing/community-review-checklist.md
+  h_77bd96c5a60e28 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "2418791d4e3ffd6764a6d94e8d8fbf6cd3b96ed6",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
