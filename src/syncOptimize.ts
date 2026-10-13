@@ -187,17 +187,6 @@ export function deriveDeferIdleMs(
   return currentIdleMs ?? 5000;
 }
 
-const UPLOAD_DECISIONS = new Set([
-  "local_is_modified_then_push",
-  "local_is_created_then_push",
-  "conflict_created_then_keep_local",
-  "conflict_modified_then_keep_local",
-  // Smart conflicts do both upload+download internally via mergeFile;
-  // put in uploads queue to avoid deadlock with download queue.
-  "conflict_created_then_smart_conflict",
-  "conflict_modified_then_smart_conflict",
-]);
-
 const DOWNLOAD_DECISIONS = new Set([
   "remote_is_modified_then_pull",
   "remote_is_created_then_pull",

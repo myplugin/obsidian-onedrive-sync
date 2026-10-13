@@ -14,7 +14,6 @@ import {
   PluginSettingTab,
   Setting,
   moment,
-  requireApiVersion,
   sanitizeHTMLToDom,
 } from "obsidian";
 import type { TextComponent } from "obsidian";
@@ -26,7 +25,6 @@ import type {
   SyncOnSaveMode,
 } from "./baseTypes";
 
-import { API_VER_ENSURE_REQURL_OK, VALID_REQURL } from "./baseTypes";
 import { messyConfigToNormal } from "./configPersist";
 import {
   exportVaultProfilerResultsToFiles,
@@ -1007,7 +1005,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
             ) {
               const intervalID = window.setInterval(() => {
                 console.info("auto run from settings.ts");
-                this.plugin.syncRun("auto");
+                void this.plugin.syncRun("auto").catch(console.error);
               }, realVal);
               this.plugin.autoRunIntervalID = intervalID;
               this.plugin.registerInterval(intervalID);
@@ -1772,7 +1770,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
               const r = await this.plugin.applyImportedUriParams(inputParams);
               new Notice(r.message);
             } catch (e) {
-              new Notice(`${e}`);
+              new Notice(`${String(e)}`);
             }
 
             importSettingVal = "";

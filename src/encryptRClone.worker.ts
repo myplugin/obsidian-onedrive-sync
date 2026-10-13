@@ -25,7 +25,7 @@ async function decryptContentBuf(input: ArrayBuffer) {
   return (await cipher.decryptData(new Uint8Array(input))).buffer;
 }
 
-ctx.addEventListener("message", async (event: any) => {
+async function handleMessage(event: any) {
   const port: MessagePort = event.ports[0];
   const {
     action,
@@ -178,7 +178,11 @@ ctx.addEventListener("message", async (event: any) => {
   } else {
     port.postMessage({
       status: "error",
-      error: `worker [${workerNanoID}]: unknown action=${action}`,
+      error: `worker [${workerNanoID}]: unknown action=${String(action)}`,
     });
   }
+}
+
+ctx.addEventListener("message", (event: any) => {
+  void handleMessage(event);
 });

@@ -164,22 +164,22 @@ export const deriveKeyFromPath = (
   // (this fork uses "obsidian-onedrive-sync"; upstream used "remotely-save");
   // the delta is app-scoped so only this app's approot items appear, making a
   // generic match safe.
-  const FIRST_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/[^\/]+\//g;
+  const FIRST_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^/]+\/[^/]+\//g;
 
   // why?? /drive/root:/Apps/Graph
-  const FIFTH_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/Graph\//g;
+  const FIFTH_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^/]+\/Graph\//g;
 
   // why again?? /drive/root:/Apps/Graph 1
-  const SIXTH_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/Graph 1\//g;
-  const SIXTH_COMMON_PREFIX_REGEX_V2 = /^\/drive\/root:\/[^\/]+\/Graph%201\//g;
+  const SIXTH_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^/]+\/Graph 1\//g;
+  const SIXTH_COMMON_PREFIX_REGEX_V2 = /^\/drive\/root:\/[^/]+\/Graph%201\//g;
 
   // or the root is absolute path /Livefolders,
   // e.g.: /Livefolders/应用/{appRootName}/${remoteBaseDir}
-  const SECOND_COMMON_PREFIX_REGEX = /^\/Livefolders\/[^\/]+\/[^\/]+\//g;
+  const SECOND_COMMON_PREFIX_REGEX = /^\/Livefolders\/[^/]+\/[^/]+\//g;
 
   // another report, why???
   // /drive/root:/something/app/{appRootName}/${remoteBaseDir}
-  const THIRD_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^\/]+\/app\/[^\/]+\//g;
+  const THIRD_COMMON_PREFIX_REGEX = /^\/drive\/root:\/[^/]+\/app\/[^/]+\//g;
 
   // another possibile prefix
   const FOURTH_COMMON_PREFIX_RAW = `/drive/items/`;
@@ -323,12 +323,12 @@ export const deriveKeyFromPath = (
       throw outOfScopeError(
         `file/folder with /drive/items/, no idea how to deal with it:
 fullPathOriginal=${fullPathOriginal}
-matchFirstPrefixRes=${matchFirstPrefixRes}
-matchFifthPrefixRes=${matchFifthPrefixRes}
-matchSixthPrefixRes=${matchSixthPrefixRes}
-matchSixthV2PrefixRes=${matchSixthV2PrefixRes}
-matchSecondPrefixRes=${matchSecondPrefixRes}
-matchThirdPrefixRes=${matchThirdPrefixRes}
+matchFirstPrefixRes=${String(matchFirstPrefixRes)}
+matchFifthPrefixRes=${String(matchFifthPrefixRes)}
+matchSixthPrefixRes=${String(matchSixthPrefixRes)}
+matchSixthV2PrefixRes=${String(matchSixthV2PrefixRes)}
+matchSecondPrefixRes=${String(matchSecondPrefixRes)}
+matchThirdPrefixRes=${String(matchThirdPrefixRes)}
 ${constructFromDriveItemToEntityError(x)}`
       );
     }
@@ -339,12 +339,12 @@ ${constructFromDriveItemToEntityError(x)}`
     throw outOfScopeError(
       `file/folder, no idea how to deal with it without known prefix:
 fullPathOriginal=${fullPathOriginal}
-matchFirstPrefixRes=${matchFirstPrefixRes}
-matchFifthPrefixRes=${matchFifthPrefixRes}
-matchSixthPrefixRes=${matchSixthPrefixRes}
-matchSixthV2PrefixRes=${matchSixthV2PrefixRes}
-matchSecondPrefixRes=${matchSecondPrefixRes}
-matchThirdPrefixRes=${matchThirdPrefixRes}
+matchFirstPrefixRes=${String(matchFirstPrefixRes)}
+matchFifthPrefixRes=${String(matchFifthPrefixRes)}
+matchSixthPrefixRes=${String(matchSixthPrefixRes)}
+matchSixthV2PrefixRes=${String(matchSixthV2PrefixRes)}
+matchSecondPrefixRes=${String(matchSecondPrefixRes)}
+matchThirdPrefixRes=${String(matchThirdPrefixRes)}
 ${constructFromDriveItemToEntityError(x)}`
     );
   }

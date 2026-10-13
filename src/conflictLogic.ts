@@ -7,15 +7,7 @@ import isEqual from "lodash/isEqual";
 //   stringifyPatches,
 //   parsePatch,
 // } from "@sanity/diff-match-patch";
-import {
-  LCS,
-  diff3Merge,
-  diffComm,
-  diffPatch,
-  mergeDiff3,
-  mergeDigIn,
-  patch,
-} from "node-diff3";
+import { LCS, mergeDigIn } from "node-diff3";
 import type { Entity } from "./baseTypes";
 import { copyFile } from "./copyLogic";
 import type { FakeFs } from "./fsAll";
@@ -187,7 +179,7 @@ export async function mergeFile(
   // upload firstly
   const rightEntity = await right.writeFile(key, newArrayBuffer, mtime, mtime);
   // write local secondly
-  const leftEntity = await left.writeFile(
+  await left.writeFile(
     key,
     newArrayBuffer,
     rightEntity.mtimeCli ?? mtime,
@@ -380,7 +372,7 @@ async function findUsableDupKey(key: string, fsLocal: FakeFs) {
       console.debug(`key2=${key2} exists, cannot use for new file`);
       key2 = getFileRenameForDup(key2);
       console.debug(`key2=${key2} is prepared for next try`);
-    } catch (e) {
+    } catch {
       // not exists, exactly what we want
       console.debug(`key2=${key2} doesn't exist, usable for new file`);
       usable = true;
@@ -470,7 +462,7 @@ export async function writeDupCopyForDirtyOpen(
     try {
       const s = await fsRemote.stat(key);
       remoteMtime = s?.mtimeCli ?? s?.mtimeSvr;
-    } catch (e) {
+    } catch {
       remoteMtime = undefined;
     }
   }
@@ -486,7 +478,7 @@ export async function writeDupCopyForDirtyOpen(
       if (t !== null && t !== undefined) {
         s = t;
       }
-    } catch (e) {
+    } catch {
       // not exists: end of the chain, dupKey is free
     }
     if (s === undefined) {

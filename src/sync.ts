@@ -7,7 +7,6 @@ import XRegExp from "xregexp";
 import type {
   BatchRenameOp,
   ConflictActionType,
-  EmptyFolderCleanType,
   Entity,
   MixedEntity,
   RemotelySavePluginSettings,
@@ -44,7 +43,6 @@ import {
 } from "./metadataOnRemote";
 import {
   atWhichLevel,
-  checkValidName,
   getFolderLevels,
   getParentFolder,
   isHiddenPath,
@@ -122,17 +120,6 @@ const isInsideObsFolder = (x: string, configDir: string) => {
     throw Error(`configDir should starts with . but we get ${configDir}`);
   }
   return x === configDir || x.startsWith(`${configDir}/`);
-};
-
-const isBookmarksFile = (x: string, configDir: string) => {
-  if (!configDir.startsWith(".")) {
-    throw Error(`configDir should starts with . but we get ${configDir}`);
-  }
-  return (
-    x === configDir ||
-    x === `${configDir}/` ||
-    x === `${configDir}/bookmarks.json`
-  );
 };
 
 interface IsSkipResult {
@@ -511,7 +498,7 @@ const ensembleMixedEnties = async (
       const prevSyncCopied = await fsEncrypt.encryptEntity(
         copyEntityAndFixTimeFormat(prevSync, serviceType)
       );
-      if (finalMappings.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(finalMappings, key)) {
         finalMappings[key].prevSync = prevSyncCopied;
       } else {
         finalMappings[key] = {
@@ -562,7 +549,7 @@ const ensembleMixedEnties = async (
     const localCopied = await fsEncrypt.encryptEntity(
       copyEntityAndFixTimeFormat(local, serviceType)
     );
-    if (finalMappings.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(finalMappings, key)) {
       finalMappings[key].local = localCopied;
     } else {
       finalMappings[key] = {
@@ -977,7 +964,7 @@ const getSyncPlanInplace = async (
                 keptFolder.add(getParentFolder(key));
               } else {
                 throw Error(
-                  `no idea how to deal with syncDirection=${syncDirection} while conflict created`
+                  `no idea how to deal with syncDirection=${String(syncDirection)} while conflict created`
                 );
               }
             } else {
@@ -1039,7 +1026,7 @@ const getSyncPlanInplace = async (
                 keptFolder.add(getParentFolder(key));
               } else {
                 throw Error(
-                  `no idea how to deal with syncDirection=${syncDirection} while conflict modified`
+                  `no idea how to deal with syncDirection=${String(syncDirection)} while conflict modified`
                 );
               }
             }
@@ -1272,7 +1259,7 @@ const getSyncPlanInplace = async (
     // folders with no decisions. Crashing the whole sync is worse than
     // warn-skipping — the next sync's delta will resolve them.
     console.warn(
-      `sync: ${keptFolder.size} folder(s) kept with no decisions (likely stale entries from move/rename — warn-skip, not crash): ${[...keptFolder]}`
+      `sync: ${keptFolder.size} folder(s) kept with no decisions (likely stale entries from move/rename — warn-skip, not crash): ${String([...keptFolder])}`
     );
   }
 
@@ -1568,7 +1555,7 @@ const detectMoves = async (
         entry.local.hash = quickXorHash(content);
         hashedCount += 1;
       } catch (e) {
-        console.warn(`detectMoves: could not hash ${key}: ${e}`);
+        console.warn(`detectMoves: could not hash ${key}: ${String(e)}`);
       }
     }
   }
@@ -2164,13 +2151,11 @@ export const dispatchOperationToActualV3 = async (
       }
       return;
     }
-    let e1: Entity | undefined = undefined;
     let c1: ArrayBuffer | undefined = undefined;
     if (r.key.endsWith("/")) {
       await fsLocal.mkdir(r.key);
     } else {
-      const { entity, content } = await copyFile(r.key, fsEncrypt, fsLocal);
-      e1 = entity;
+      const { content } = await copyFile(r.key, fsEncrypt, fsLocal);
       c1 = content;
     }
     await upsertPrevSyncRecordByVaultAndProfile(

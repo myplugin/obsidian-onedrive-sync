@@ -121,13 +121,13 @@ export abstract class FakeFs {
       try {
         await this.rm(filename);
       } catch (e) {
-        console.warn(`check connect: cleanup file failed (ignored): ${e}`);
+        console.warn(`check connect: cleanup file failed (ignored): ${String(e)}`);
       }
       console.info(`check connect: cleanup folder`);
       try {
         await this.rm(folderName);
       } catch (e) {
-        console.warn(`check connect: cleanup folder failed (ignored): ${e}`);
+        console.warn(`check connect: cleanup folder failed (ignored): ${String(e)}`);
       }
     }
   }

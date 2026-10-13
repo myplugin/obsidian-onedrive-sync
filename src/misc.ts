@@ -54,7 +54,6 @@ export const getFolderLevels = (x: string, addEndingSlash = false) => {
   }
 
   const y1 = x.split("/");
-  const i = 0;
   for (let index = 0; index + 1 < y1.length; index++) {
     let k = y1.slice(0, index + 1).join("/");
     if (k === "" || k === "/") {
@@ -393,7 +392,7 @@ export const toText = (x: any) => {
     typeof x === "bigint" ||
     typeof x === "boolean"
   ) {
-    return `${x}`;
+    return `${String(x)}`;
   }
 
   if (
@@ -543,7 +542,9 @@ export const changeMobileStatusBar = (
   if (appContainer === undefined || statusbar === undefined) {
     // give up, exit
     console.warn(`give up watching appContainer for statusbar`);
-    console.warn(`appContainer=${appContainer}, statusbar=${statusbar}`);
+    console.warn(
+      `appContainer=${appContainer === undefined ? "undefined" : "present"}, statusbar=${statusbar === undefined ? "undefined" : "present"}`
+    );
     return undefined;
   }
 
@@ -572,7 +573,9 @@ export const changeMobileStatusBar = (
         }
       }
     };
-    const observer = new MutationObserver(callback);
+    const observer = new MutationObserver((mutationList, obs) => {
+      void callback(mutationList, obs);
+    });
     observer.observe(appContainer, {
       attributes: false,
       childList: true,
@@ -589,7 +592,7 @@ export const changeMobileStatusBar = (
       const height = window.getComputedStyle(navBar).getPropertyValue("height");
       statusbar.addClass("rs-statusbar-flex");
       statusbar.style.marginBottom = height;
-    } catch (e) {
+    } catch {
       // skip
     }
 
@@ -627,7 +630,7 @@ export const fixEntityListCasesInplace = (entities: { keyRaw: string }[]) => {
     const segs = e.keyRaw.split("/");
     if (e.keyRaw.endsWith("/")) {
       // folder
-      if (caseMapping.hasOwnProperty(parentFolderLower)) {
+      if (Object.prototype.hasOwnProperty.call(caseMapping, parentFolderLower)) {
         const newKeyRaw = `${caseMapping[parentFolderLower]}${segs
           .slice(-2)
           .join("/")}`;
@@ -639,7 +642,7 @@ export const fixEntityListCasesInplace = (entities: { keyRaw: string }[]) => {
       }
     } else {
       // file
-      if (caseMapping.hasOwnProperty(parentFolderLower)) {
+      if (Object.prototype.hasOwnProperty.call(caseMapping, parentFolderLower)) {
         const newKeyRaw = `${caseMapping[parentFolderLower]}${segs
           .slice(-1)
           .join("/")}`;
@@ -680,7 +683,7 @@ export const roughSizeOfObject = (object: any) => {
         if (!objectList.includes(value)) {
           objectList.push(value);
           for (const prop in value) {
-            if (value.hasOwnProperty(prop)) {
+            if (Object.prototype.hasOwnProperty.call(value, prop)) {
               stack.push(value[prop]);
             }
           }
@@ -730,7 +733,7 @@ export const getSha1 = async (x: ArrayBuffer, stringify: "base64" | "hex") => {
   } else if (stringify === "hex") {
     return arrayBufferToHex(y);
   }
-  throw Error(`not supported stringify option = ${stringify}`);
+  throw Error(`not supported stringify option = ${String(stringify)}`);
 };
 
 /**

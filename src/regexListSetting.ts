@@ -156,8 +156,7 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
         attr: { "aria-label": "remove" },
       });
       const idx = index;
-      delBtn.addEventListener("click", async (e) => {
-        e.preventDefault();
+      const handleDelete = async () => {
         // themed in-page second confirmation (NOT window.confirm — that
         // minimizes the settings window and pops an OS dialog). Prevents
         // accidental deletion when the × is tapped.
@@ -167,6 +166,10 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
         current.splice(idx, 1);
         await setValues(current);
         renderChips();
+      };
+      delBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        void handleDelete();
       });
     });
     // re-anchor the toggle as the last child so it always sits at the

@@ -20,7 +20,6 @@ import {
   type WorkspaceLeaf,
   addIcon,
   normalizePath,
-  requireApiVersion,
   setIcon,
 } from "obsidian";
 import type {
@@ -34,7 +33,6 @@ import {
   COMMAND_URI,
   CONFIG_SCHEMA_VERSION,
 } from "./baseTypes";
-import { API_VER_ENSURE_REQURL_OK } from "./baseTypes";
 import { messyConfigToNormal, normalConfigToMessy } from "./configPersist";
 import { appendConflictLog, formatConflictLogLine } from "./conflictLog";
 import { exportVaultSyncPlansToFiles } from "./debugMode";
@@ -78,7 +76,6 @@ import { RemotelySaveSettingTab } from "./settings";
 import { syncer } from "./sync";
 import { SyncAlgoV3Modal } from "./syncAlgoV3Notice";
 import {
-  SYNC_ON_SAVE_RATE_LIMIT_MS,
   deriveDeferIdleMs,
   deriveSyncOnSaveMode,
   shouldRateLimitSync,
@@ -192,7 +189,7 @@ const getStatusBarShortMsgFromSyncSource = (
     case "auto_sync_on_save":
       return t("statusbar_sync_source_auto_sync_on_save");
     default:
-      throw Error(`no translate for ${s}`);
+      throw Error(`no translate for ${String(s)}`);
   }
 };
 
@@ -561,7 +558,7 @@ export default class RemotelySavePlugin extends Plugin {
       }
     };
 
-    const markIsSyncingFunc = async (isSyncing: boolean) => {
+    const markIsSyncingFunc = (isSyncing: boolean) => {
       this.isSyncing = isSyncing;
     };
 
@@ -677,7 +674,7 @@ export default class RemotelySavePlugin extends Plugin {
       // fsEncrypt.closeResources() (resource leak) and SYNC_DONE (blocks
       // syncOnSave + sidecar reconciliation listeners).
       try {
-        fsEncrypt.closeResources();
+        await fsEncrypt.closeResources();
 
         // Save the remote entity list so the next sync can use it for
         // incremental delta enumeration (only fetch changed items).
@@ -886,9 +883,13 @@ export default class RemotelySavePlugin extends Plugin {
     // design-level clobber fix: re-read the sidecar into in-memory settings +
     // persist to data.json, so memory never goes stale over a freshly-pulled
     // config. Fires only on SYNC_DONE (post-sync, DB ready).
-    this.registerEvent(
-      this.syncEvent?.on("SYNC_DONE", this._reconcileSidecar)!
+    const reconcileSidecarRef = this.syncEvent?.on(
+      "SYNC_DONE",
+      this._reconcileSidecar
     );
+    if (reconcileSidecarRef !== undefined) {
+      this.registerEvent(reconcileSidecarRef);
+    }
 
     // Defer-sync-while-editing + dirty-buffer protection listeners. Always
     // registered (independent of the defer gate / syncOnSaveMode):
@@ -957,7 +958,7 @@ export default class RemotelySavePlugin extends Plugin {
       await this.getVaultRandomIDFromOldConfigFile();
 
     // no need to await this
-    this.tryToAddIgnoreFile();
+    void this.tryToAddIgnoreFile().catch(console.error);
 
     const vaultBasePath = this.getVaultBasePath();
 
@@ -1058,17 +1059,16 @@ export default class RemotelySavePlugin extends Plugin {
             throw Error(`${JSON.stringify(rsp)}`);
           }
 
-          const self = this;
-          setConfigBySuccessfullAuthInplaceOnedrive(
+          await setConfigBySuccessfullAuthInplaceOnedrive(
             this.settings.onedrive,
             rsp as AccessCodeResponseSuccessfulTypeOnedrive,
-            () => self.saveSettings()
+            () => this.saveSettings()
           );
 
           const client = getClient(
             this.settings,
             this.app.vault.getName(),
-            () => self.saveSettings()
+            () => this.saveSettings()
           );
           this.settings.onedrive.username = await client.getUserDisplayName();
           await this.saveSettings();
@@ -1133,21 +1133,29 @@ export default class RemotelySavePlugin extends Plugin {
       }
       // update statusbar text every 30 seconds
       this.registerInterval(
-        window.setInterval(async () => {
-          // best-effort: a transient DB error must not become an unhandled
-          // rejection that surfaces as a console error every 30 s.
-          try {
-            if (!this.isSyncing) {
-              this.updateLastSyncMsg(
-                undefined,
-                "not_syncing",
-                await getLastSuccessSyncTimeByVault(this.db, this.vaultRandomID),
-                await getLastFailedSyncTimeByVault(this.db, this.vaultRandomID)
-              );
+        window.setInterval(() => {
+          void (async () => {
+            // best-effort: a transient DB error must not become an unhandled
+            // rejection that surfaces as a console error every 30 s.
+            try {
+              if (!this.isSyncing) {
+                this.updateLastSyncMsg(
+                  undefined,
+                  "not_syncing",
+                  await getLastSuccessSyncTimeByVault(
+                    this.db,
+                    this.vaultRandomID
+                  ),
+                  await getLastFailedSyncTimeByVault(
+                    this.db,
+                    this.vaultRandomID
+                  )
+                );
+              }
+            } catch {
+              // ignore — status-bar refresh will retry next interval
             }
-          } catch {
-            // ignore — status-bar refresh will retry next interval
-          }
+          })();
         }, 1000 * 30)
       );
     }
@@ -1157,7 +1165,7 @@ export default class RemotelySavePlugin extends Plugin {
       name: t("command_startsync"),
       icon: iconNameSyncWait,
       callback: async () => {
-        this.syncRun("manual");
+        void this.syncRun("manual").catch(console.error);
       },
     });
 
@@ -1166,7 +1174,7 @@ export default class RemotelySavePlugin extends Plugin {
       name: t("command_drynrun"),
       icon: iconNameSyncWait,
       callback: async () => {
-        this.syncRun("dry");
+        void this.syncRun("dry").catch(console.error);
       },
     });
 
@@ -1252,14 +1260,14 @@ export default class RemotelySavePlugin extends Plugin {
     }
 
     // compare versions and read new versions
-    const { oldVersion } = await upsertPluginVersionByVault(
+    await upsertPluginVersionByVault(
       this.db,
       this.vaultRandomID,
       this.manifest.version
     );
   }
 
-  async onunload() {
+  onunload() {
     console.info(`unloading plugin ${this.manifest.id}`);
     // Cancel any pending deferred-sync timers so they can't fire runSync
     // against a torn-down plugin.
@@ -1658,7 +1666,7 @@ export default class RemotelySavePlugin extends Plugin {
       return { status: "error", message: `unknown func: ${parsed.func}` };
     } catch (e) {
       console.error("applyImportedUriParams failed:", e);
-      return { status: "error", message: `${e}` };
+      return { status: "error", message: `${String(e)}` };
     }
   }
 
@@ -1954,7 +1962,7 @@ export default class RemotelySavePlugin extends Plugin {
   }
 
   _syncOnSaveEvent1 = () => {
-    this._checkCurrFileModified("SYNC");
+    void this._checkCurrFileModified("SYNC").catch(console.error);
   };
 
   _syncOnSaveModifyHandler = (file: any) => {
@@ -1962,7 +1970,7 @@ export default class RemotelySavePlugin extends Plugin {
     // _checkCurrFileModified checks the right file even if the user
     // switched to a different file before the throttle fires.
     this.lastModifiedFile = file;
-    this._syncOnSaveEvent2();
+    void Promise.resolve(this._syncOnSaveEvent2()).catch(console.error);
   };
 
   _syncOnSaveEvent2 = throttle(
@@ -2055,9 +2063,13 @@ export default class RemotelySavePlugin extends Plugin {
     if (mode === "throttle") {
       this.app.workspace.onLayoutReady(() => {
         // listen to sync done
-        this.registerEvent(
-          this.syncEvent?.on("SYNC_DONE", this._syncOnSaveEvent1)!
+        const syncOnSaveDoneRef = this.syncEvent?.on(
+          "SYNC_DONE",
+          this._syncOnSaveEvent1
         );
+        if (syncOnSaveDoneRef !== undefined) {
+          this.registerEvent(syncOnSaveDoneRef);
+        }
         // listen to current file save changes
         // Use _syncOnSaveModifyHandler for "modify" to track the actual
         // modified file, not just getActiveFile() at throttle time.
@@ -2280,7 +2292,7 @@ export default class RemotelySavePlugin extends Plugin {
             // just skip
           });
       }
-    } catch (error) {
+    } catch {
       // just skip
     }
   }
@@ -2291,7 +2303,7 @@ export default class RemotelySavePlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       // init run
       window.setTimeout(() => {
-        clearAllLoggerOutputRecords(this.db);
+        void clearAllLoggerOutputRecords(this.db).catch(console.error);
       }, initClearOutputToDBHistAfterMilliseconds);
     });
   }
@@ -2303,12 +2315,12 @@ export default class RemotelySavePlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       // init run
       window.setTimeout(() => {
-        clearExpiredSyncPlanRecords(this.db);
+        void clearExpiredSyncPlanRecords(this.db).catch(console.error);
       }, initClearSyncPlanHistAfterMilliseconds);
 
       // scheduled run
       const intervalID = window.setInterval(() => {
-        clearExpiredSyncPlanRecords(this.db);
+        void clearExpiredSyncPlanRecords(this.db).catch(console.error);
       }, autoClearSyncPlanHistAfterMilliseconds);
       this.registerInterval(intervalID);
     });

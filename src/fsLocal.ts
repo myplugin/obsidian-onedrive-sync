@@ -98,7 +98,7 @@ export class FakeFsLocal extends FakeFs {
           sizeRaw: 0,
         };
       } else {
-        throw Error(`unexpected ${entry}`);
+        throw Error(`unexpected ${entry.path}`);
       }
 
       if (isDebugFolderPath(r.keyRaw)) {

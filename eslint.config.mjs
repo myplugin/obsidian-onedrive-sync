@@ -21,6 +21,10 @@ export default defineConfig([
   ...obsidianmd.configs.recommended,
   {
     languageOptions: {
+      globals: {
+        Buffer: "readonly",
+        process: "readonly",
+      },
       parserOptions: {
         projectService: {
           allowDefaultProject: ["eslint.config.*"],
@@ -39,7 +43,7 @@ export default defineConfig([
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-unbound-method": "off",
+      "@typescript-eslint/unbound-method": "off",
       "@typescript-eslint/no-empty-object-type": "off",
     },
   },

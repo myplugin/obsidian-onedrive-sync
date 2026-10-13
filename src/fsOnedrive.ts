@@ -31,7 +31,6 @@ import {
   fromDriveItemToEntityWithChainFallback,
 } from "./driveItemConvert";
 import { FakeFs } from "./fsAll";
-import { bufferToArrayBuffer } from "./misc";
 import { buildDeltaStartUrl } from "./syncOptimize";
 
 const SCOPES = ["User.Read", "Files.ReadWrite.AppFolder", "offline_access"];
@@ -538,7 +537,7 @@ class MyAuthProvider implements AuthenticationProvider {
     if ((r as any).error !== undefined) {
       const r2 = r as AccessCodeResponseFailedType;
       throw Error(
-        `Error while refreshing accessToken: ${r2.error}, ${r2.error_codes}: ${r2.error_description}`
+        `Error while refreshing accessToken: ${r2.error}, ${String(r2.error_codes)}: ${r2.error_description}`
       );
     }
     const r2 = r as AccessCodeResponseSuccessfulType;
@@ -924,48 +923,33 @@ export class FakeFsOnedrive extends FakeFs {
       // TODO:
       // 20220401: On Android, requestUrl has issue that text becomes base64.
       // Use fetch everywhere instead!
-      // biome-ignore lint/correctness/noConstantCondition: hard code
-      if (false /*VALID_REQURL*/) {
-        const res = await requestUrl({
-          url: theUrl,
-          method: "PUT",
-          body: payload,
-          contentType: DEFAULT_CONTENT_TYPE,
-          headers: {
-            "Content-Type": DEFAULT_CONTENT_TYPE,
-            Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
-          },
-        });
-        return res.json as DriveItem | UploadSession;
-      } else {
-        // _buildPutRequest is the unit-tested header builder (adds If-Match
-        // only when ifMatch is a non-empty string); Authorization is filled
-        // here with a fresh token on every (re)attempt.
-        const req = _buildPutRequest(theUrl, payload, ifMatch);
-        req.headers.Authorization = `Bearer ${await this.authGetter.getAccessToken()}`;
-        const res = await fetch(theUrl, {
-          method: "PUT",
-          body: payload,
-          headers: req.headers,
-        });
-        if (res.status === 429) {
-          throw { status: 429, headers: res.headers } as any;
-        }
-        if (res.status === 412 && key !== undefined) {
-          // If-Match precondition failed: another device changed this file
-          // since the sync walk. Throw the coded error (REMOTE_ETAG_MISMATCH)
-          // so upper layers can re-route to the smart-conflict path. The
-          // retry wrapper rethrows it immediately (not 429/5xx).
-          throw remoteEtagMismatchError(key);
-        }
-        if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          throw new Error(
-            `OneDrive PUT failed: ${res.status} ${theUrl} ${body}`
-          );
-        }
-        return (await res.json()) as DriveItem | UploadSession;
+      // _buildPutRequest is the unit-tested header builder (adds If-Match
+      // only when ifMatch is a non-empty string); Authorization is filled
+      // here with a fresh token on every (re)attempt.
+      const req = _buildPutRequest(theUrl, payload, ifMatch);
+      req.headers.Authorization = `Bearer ${await this.authGetter.getAccessToken()}`;
+      const res = await fetch(theUrl, {
+        method: "PUT",
+        body: payload,
+        headers: req.headers,
+      });
+      if (res.status === 429) {
+        throw { status: 429, headers: res.headers } as any;
       }
+      if (res.status === 412 && key !== undefined) {
+        // If-Match precondition failed: another device changed this file
+        // since the sync walk. Throw the coded error (REMOTE_ETAG_MISMATCH)
+        // so upper layers can re-route to the smart-conflict path. The
+        // retry wrapper rethrows it immediately (not 429/5xx).
+        throw remoteEtagMismatchError(key);
+      }
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(
+          `OneDrive PUT failed: ${res.status} ${theUrl} ${body}`
+        );
+      }
+      return (await res.json()) as DriveItem | UploadSession;
     });
   }
 
@@ -996,53 +980,37 @@ export class FakeFsOnedrive extends FakeFs {
       // TODO:
       // 20220401: On Android, requestUrl has issue that text becomes base64.
       // Use fetch everywhere instead!
-      // biome-ignore lint/correctness/noConstantCondition: hard code
-      if (false /*VALID_REQURL*/) {
-        const res = await requestUrl({
-          url: theUrl,
-          method: "PUT",
-          body: bufferToArrayBuffer(payload.subarray(rangeStart, rangeEnd)),
-          contentType: DEFAULT_CONTENT_TYPE,
-          headers: {
-            // no "Content-Length" allowed here
-            "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
-            /* "Cache-Control": "no-cache", not allowed here!!! */
-          },
-        });
-        return res.json as DriveItem | UploadSession;
-      } else {
-        const res = await fetch(theUrl, {
-          method: "PUT",
-          body: payload.subarray(
-            rangeStart,
-            rangeEnd
-          ) as Uint8Array<ArrayBuffer>,
-          headers: {
-            "Content-Length": `${rangeEnd - rangeStart}`,
-            "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
-            "Content-Type": DEFAULT_CONTENT_TYPE,
-            /* "Cache-Control": "no-cache", not allowed here!!! */
-          },
-        });
-        if (res.status === 429) {
-          throw { status: 429, headers: res.headers } as any;
-        }
-        if (res.status === 412 && key !== undefined) {
-          // Precondition failed on a fragment PUT: a concurrent write
-          // invalidated the upload. Throw the coded error
-          // (REMOTE_ETAG_MISMATCH) so upper layers can re-route to the
-          // smart-conflict path; the retry wrapper rethrows it immediately
-          // (not 429/5xx). Same pattern as _putArrayBuffer.
-          throw remoteEtagMismatchError(key);
-        }
-        if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          throw new Error(
-            `OneDrive PUT range failed: ${res.status} ${theUrl} ${body}`
-          );
-        }
-        return (await res.json()) as DriveItem | UploadSession;
+      const res = await fetch(theUrl, {
+        method: "PUT",
+        body: payload.subarray(
+          rangeStart,
+          rangeEnd
+        ) as Uint8Array<ArrayBuffer>,
+        headers: {
+          "Content-Length": `${rangeEnd - rangeStart}`,
+          "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
+          "Content-Type": DEFAULT_CONTENT_TYPE,
+          /* "Cache-Control": "no-cache", not allowed here!!! */
+        },
+      });
+      if (res.status === 429) {
+        throw { status: 429, headers: res.headers } as any;
       }
+      if (res.status === 412 && key !== undefined) {
+        // Precondition failed on a fragment PUT: a concurrent write
+        // invalidated the upload. Throw the coded error
+        // (REMOTE_ETAG_MISMATCH) so upper layers can re-route to the
+        // smart-conflict path; the retry wrapper rethrows it immediately
+        // (not 429/5xx). Same pattern as _putArrayBuffer.
+        throw remoteEtagMismatchError(key);
+      }
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(
+          `OneDrive PUT range failed: ${res.status} ${theUrl} ${body}`
+        );
+      }
+      return (await res.json()) as DriveItem | UploadSession;
     });
   }
 
@@ -1338,7 +1306,6 @@ export class FakeFsOnedrive extends FakeFs {
       const {
         entities: deltaEntities,
         deletedKeys,
-        unresolvedCount,
       } = await this._classifyAndStatRetry(
         driveItems,
         lookupMap,
@@ -1756,7 +1723,7 @@ export class FakeFsOnedrive extends FakeFs {
       return await (
         await fetch(downloadUrl, { cache: "no-store" })
       ).arrayBuffer();
-    } catch (e) {
+    } catch {
       // let's try again to bypass the CORS
       return (
         await requestUrl({

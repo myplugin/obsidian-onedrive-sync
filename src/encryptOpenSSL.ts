@@ -78,7 +78,6 @@ export const decryptArrayBuffer = async (
   password: string,
   rounds: number = DEFAULT_ITER
 ) => {
-  const prefix = arrBuf.slice(0, 8);
   const salt = arrBuf.slice(8, 16);
   const derivedKey = await getKeyIVFromPassword(
     new Uint8Array(salt),

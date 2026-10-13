@@ -114,7 +114,7 @@ export class SyncAlgoV3Modal extends Modal {
     contentEl.empty();
     if (this.agree) {
       console.info("agree to use the new algorithm");
-      this.plugin.saveAgreeToUseNewSyncAlgorithm();
+      void this.plugin.saveAgreeToUseNewSyncAlgorithm().catch(console.error);
       this.plugin.enableAutoSyncIfSet();
       this.plugin.enableInitSyncIfSet();
       this.plugin.toggleSyncOnSaveIfSet();
