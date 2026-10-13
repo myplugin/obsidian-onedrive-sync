@@ -1,0 +1,52 @@
+eslint.config.mjs
+  h_77bd96c5a60e28 24-27,46
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+src/conflictLogic.ts
+  h_77bd96c5a60e28 10,182,375,465,481
+src/driveItemConvert.ts
+  h_77bd96c5a60e28 167,170,173-174,178,182,326-331,342-347
+src/encryptRClone.ts
+  h_77bd96c5a60e28 70,74,76,110,116,118,144,147,154,156,183,189,191,224,227,234,238
+src/encryptRClone.worker.ts
+  h_77bd96c5a60e28 28,181,184-187
+src/fsAll.ts
+  h_77bd96c5a60e28 124,130
+src/fsEncrypt.ts
+  h_77bd96c5a60e28 169,626,640
+src/fsLocal.ts
+  h_77bd96c5a60e28 101
+src/fsOnedrive.ts
+  h_77bd96c5a60e28 540,926-944,946-952,983-997,999-1013,1726
+src/main.ts
+  h_77bd96c5a60e28 192,561,677,886-888,890-892,961,1062,1065,1071,1136-1156,1158,1168,1177,1263,1270,1669,1965,1973,2066-2068,2070-2072,2295,2306,2318,2323
+src/metadataOnRemote.ts
+  h_77bd96c5a60e28 76,96,103,105
+src/misc.ts
+  h_77bd96c5a60e28 395,545-547,576-578,595,633,645,686,736
+src/profiler.ts
+  h_77bd96c5a60e28 118
+src/regexListSetting.ts
+  h_77bd96c5a60e28 159,169-172
+src/settings.ts
+  h_77bd96c5a60e28 1008,1773
+src/sync.ts
+  h_77bd96c5a60e28 501,552,967,1029,1262,1558,2158
+src/syncAlgoV3Notice.ts
+  h_77bd96c5a60e28 117
+versions.json
+  h_77bd96c5a60e28 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "c59827afed0e6756bfd12f282566adfdfef76318",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
