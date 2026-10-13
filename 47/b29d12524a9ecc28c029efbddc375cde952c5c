@@ -1,0 +1,789 @@
+src/deltaMerge.ts
+  s_c7970f70270c76::t_19d1b4378d1225 1,12,46,57,108-115,138,140,183
+  s_ed741c418eb3a5::t_6881e33be886d1 69-89
+  s_ed741c418eb3a5::t_0b51a4edd93292 149,156,177
+  s_ed741c418eb3a5::t_ee513b6642c7ff 68
+  s_b6b178d6ca96e3::t_b1848da5ec8143 150-155,157-172
+  s_b6b178d6ca96e3::t_48321364bba6ee 178-179,185-205,207-208,211-253,255-258,260-264,269-275,277-285,287-293
+  s_b6b178d6ca96e3::t_5d73b4beaf2405 294
+  s_2d8720350674f7::t_9b53b4464757d2 276,286,295-300
+  s_2d8720350674f7::t_e2299c2401bbd8 116-121
+src/driveItemConvert.ts
+  s_c7970f70270c76::t_20d9b5ff04e6fd 1-2,4-61,109,140,143,145,155-159,168-176,179-180,183-189,190-310,312-322,324-338,340-355,358,403,429,459,504,674,676,682,686-687
+  s_c7970f70270c76::t_45e2995b5e3c43 3
+  s_ed741c418eb3a5::t_0d69aef13c0a1d 68
+  s_ed741c418eb3a5::t_8aca077a66fc1c 62-67,69-88,95-98,135-139,141-142,144,146-153,356-357,359-392,394-402,404-414,416,418-422,424-425
+  s_ed741c418eb3a5::t_153b9db83b312f 429-478,480-500,686-687
+  s_c3a5dd2fc4646e::t_ad3ce9f6df9575 154
+  s_c3a5dd2fc4646e::t_9ed70d84ca81f7 479
+  s_c3a5dd2fc4646e::t_a8609c5a5b0581 100-118
+  s_c3a5dd2fc4646e::t_ca99f813dc8f0a 99
+  s_b6b178d6ca96e3::t_f751c2f3012d00 504-647,649-684,686-687
+  s_b6b178d6ca96e3::t_549af905439213 648
+  s_082e756d7b8900::t_5dc2edf89309ab 89-94
+  s_082e756d7b8900::t_c29b6ff189e6a4 426,501,685
+  s_5894ef5b2d2789::t_4a3145328cc876 120-134
+  s_5894ef5b2d2789::t_ea700728704336 311
+  s_5894ef5b2d2789::t_4f98db185dca4a 323
+  s_5894ef5b2d2789::t_6e664e87e0a2fd 339
+  s_5894ef5b2d2789::t_2e9841e4246618 119
+tests/deltaMerge.test.ts
+  s_c7970f70270c76::t_9f3d5e2529a200 587-636
+  s_c7970f70270c76::t_8d897add857a29 1,245,325,332,386,403,408,411,413,427,441,518-586,637
+  s_ed741c418eb3a5::t_b24d77a1360ce2 638-678,681-690,692-702,707-752
+  s_ed741c418eb3a5::t_53ff868dd70fcb 5,8-12,14-16
+  s_ed741c418eb3a5::t_f4e06cccdf6c16 6-7,679-680
+  s_ed741c418eb3a5::t_ee948e5993725d 691,703-706
+  s_b6b178d6ca96e3::t_9a897affa2772c 753-975
+  s_b6b178d6ca96e3::t_ee152b2d00e319 13
+  s_146c66c66e0640::t_d60a440bd65ce1 976-1066,1071-1100
+  s_146c66c66e0640::t_2222cc27f52894 1067-1070
+src/fsOnedrive.ts
+  s_c7970f70270c76::t_8d897add857a29 1,35,61,69,690,865,1002-1005,1253,1268,1281,1309-1310,1355,1376,1386-1402,1508,1690-1692,2068
+  s_ed741c418eb3a5::t_c9ca0a5f1bdb02 135-158,162-167
+  s_ed741c418eb3a5::t_5fbbc80982c085 159-161
+  s_ed741c418eb3a5::t_de8d3733c2daad 1489-1490
+  s_ed741c418eb3a5::t_14e05ed7e7e7f4 1523,1526
+  s_ed741c418eb3a5::t_5e475960fe955f 1504-1505
+  s_ed741c418eb3a5::t_0d1b2a27ddaf1d 931
+  s_ed741c418eb3a5::t_9cd9a6418e0057 191-213
+  s_ed741c418eb3a5::t_0c012d69b222e1 1568-1570
+  s_ed741c418eb3a5::t_5c0bd82e4dd5b8 901-906,927-930,935,940-945
+  s_ed741c418eb3a5::t_134d60bb74b6b1 946
+  s_ed741c418eb3a5::t_a69d1dc7398ee3 1573-1595
+  s_ed741c418eb3a5::t_9220e6ed122021 971-972
+  s_ed741c418eb3a5::t_ae0f735c19a1fc 255-278
+  s_ed741c418eb3a5::t_68e7e60067289d 1524-1525
+  s_ed741c418eb3a5::t_c1706a884c5b4f 1612-1620,1623-1626
+  s_ed741c418eb3a5::t_2f028b2dd6f4d5 1646-1647
+  s_ed741c418eb3a5::t_0558964a742436 763-767
+  s_ed741c418eb3a5::t_e1b501af4887d2 1016-1023
+  s_ed741c418eb3a5::t_2720b4e69a57f5 24-30,32
+  s_ed741c418eb3a5::t_a12253108f6ffe 1318
+  s_b6b178d6ca96e3::t_41aa9154ae75bb 634-645
+  s_b6b178d6ca96e3::t_a8c225f4a0c4a1 31
+  s_b6b178d6ca96e3::t_022220ac68cccd 1311-1317,1322
+  s_b6b178d6ca96e3::t_a2f8d2dda596a3 571-582
+  s_b6b178d6ca96e3::t_96411bf67119b4 570
+  s_2d8720350674f7::t_d046cc6b3f8621 1329,1330,1332-1333,1847,1943,2010
+  s_2d8720350674f7::t_e4280619e3d19f 12-13,21,214-254,1324,1326,1422,1794-1808,1813-1846,1848-1942,1944-2009,2011-2032,2053-2057
+  s_146c66c66e0640::t_d160e81ad5e6b3 1319-1321,1323,1325,1327-1328,1331
+  s_146c66c66e0640::t_e02834f0bdd9e4 1343-1354,1356-1361,1363
+  s_146c66c66e0640::t_8e88ef334b9622 1036-1059,1075-1081,1083-1090,1122-1125,1146-1177,1204,1205-1208,1242-1247
+  s_146c66c66e0640::t_972fc703e336fa 1060-1074
+  s_146c66c66e0640::t_0feef81d836bb1 1035
+  s_146c66c66e0640::t_a271353be145ad 1178-1184
+  s_ddd35ba0bb0d98::t_924dedb88e043d 1472-1481
+  s_ddd35ba0bb0d98::t_6c453f466f8e41 1185-1194,1203
+  s_ddd35ba0bb0d98::t_fa72b33e02357d 1139
+  s_ddd35ba0bb0d98::t_3575cf5e674a6b 1209-1224,1229-1241
+  s_ddd35ba0bb0d98::t_4dfd0f37d70b3f 2033-2052
+  s_ddd35ba0bb0d98::t_6a4a949eca5fda 1082,1091-1099,1121,1136-1138,1140-1142,1143,1145
+  s_d8117ef277ed3e::t_4ae6ba3b5f4de7 1195-1202,1225-1228
+tests/driveItemConvert.test.ts
+  s_c7970f70270c76::t_a93cc6898b93e0 1-4,7,10-103,120-160,187-227,869
+  s_ed741c418eb3a5::t_ebed225ba904d0 228-229,236,238-239,241-242
+  s_ed741c418eb3a5::t_056e0c318f2bb7 230-235,237,240
+  s_ed741c418eb3a5::t_9fab011128d92b 104
+  s_ed741c418eb3a5::t_76e23905648b3b 243-260
+  s_ed741c418eb3a5::t_b30095060bb760 262-362
+  s_ed741c418eb3a5::t_18bba40967eb34 9
+  s_c3a5dd2fc4646e::t_565777367e5850 161-186
+  s_b6b178d6ca96e3::t_53e4ed7cfc6ea8 5,8
+  s_b6b178d6ca96e3::t_05c25f8fadd954 363-816
+  s_082e756d7b8900::t_aa6ca3e137d632 107-121
+  s_5894ef5b2d2789::t_437e9909b92a25 6
+  s_5894ef5b2d2789::t_56ccc0590e2347 817-868
+  s_5894ef5b2d2789::t_7aed9c25afe121 869
+scripts/deploy.mjs
+  s_5184619653c832::t_09924cc0e83014 145,147
+  s_5184619653c832::t_c61d241b7f37d8 26-30,37,39-41,50,52-57
+  s_5184619653c832::t_f69f0e97a62e4e 15
+  s_c7970f70270c76::t_0bed75e56cc7ee 31-36,38,42-49,51
+  h_b8e9e22b7b320f 23
+esbuild.config.mjs
+  s_5184619653c832::t_a8f3c45c2e09ea 59-63,70,72-74,83,85-88
+  s_5184619653c832::t_f69f0e97a62e4e 2
+  s_5184619653c832::t_7c30b5b4843dcd 89-90
+  s_c7970f70270c76::t_9438ac282f4328 64-69,71,75-82,84
+  h_b8e9e22b7b320f 20-27,50,127
+AGENTS.md
+  s_75c508855e23ea::t_1feb6b89b2cde2 48
+  s_75c508855e23ea::t_a71e357032665f 60
+  h_b8e9e22b7b320f 3,20
+docs/lessons/onedrive-delta-parentreference-path.md
+  s_75c508855e23ea::t_e66b0a059daaff 1-94
+  s_c3a5dd2fc4646e::t_2329ad3d315324 95-132
+  s_ddd35ba0bb0d98::t_3b7a1d31111bb2 133-153
+src/syncOptimize.ts
+  s_c7970f70270c76::t_8d897add857a29 220-223
+  s_c7970f70270c76::t_cc651d4d10c198 126-156
+  s_c7970f70270c76::t_c2d31425d0a756 3
+  s_c7970f70270c76::t_3724822f38b0ba 157-173
+  s_ed741c418eb3a5::t_d0ddea971472e5 7-12,15
+tests/conflictLogicFull.test.ts
+  s_c7970f70270c76::t_8d897add857a29 134-139,153-158,310-313
+  s_ed741c418eb3a5::t_5bde77fe3a087d 9
+tests/miscCoverage.test.ts
+  s_c7970f70270c76::t_8d897add857a29 15
+src/fsEncrypt.ts
+  s_c7970f70270c76::t_8d897add857a29 380-382,384-386,390-392
+  s_ed741c418eb3a5::t_675f56330d47b8 328-329
+  s_ed741c418eb3a5::t_41b1c0a14fc5b3 307-308
+  s_ed741c418eb3a5::t_9a8d80be42b70a 338-339
+  s_2d8720350674f7::t_6014fa7ae5c242 428
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 453,455
+  s_2d8720350674f7::t_12964dd8d6873c 1-7
+  s_2d8720350674f7::t_d5b8f526a2ca14 450
+  s_2d8720350674f7::t_9499691e5c96fb 454,456-484
+  s_2d8720350674f7::t_8028f22b5620c7 451-452
+src/fsAll.ts
+  s_c7970f70270c76::t_8d897add857a29 60-62
+  s_ed741c418eb3a5::t_eeb5b572e17ebd 50-51
+  s_2d8720350674f7::t_a1746df2bd538b 3-8
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 67,71
+  s_2d8720350674f7::t_cbfa0f10d0ec91 68-70,72-85
+tests/obsidianSyncFilter.test.ts
+  s_c7970f70270c76::t_8d897add857a29 206,209,212,215,218
+  h_b8e9e22b7b320f 5
+tests/metadataOnRemote.test.ts
+  s_c7970f70270c76::t_8d897add857a29 5
+tests/bugfixRegression.test.ts
+  s_c7970f70270c76::t_8d897add857a29 7,105-106,116,137,152,161-162,193
+tests/syncOptimize.test.ts
+  s_c7970f70270c76::t_8d897add857a29 4,7,15
+  s_c7970f70270c76::t_73999621078795 373-403
+  s_c7970f70270c76::t_d9dc27f2d62dab 6,404
+  s_c7970f70270c76::t_af26e8968ed7d8 10
+  s_c7970f70270c76::t_c9bcb746769dad 9
+  s_c7970f70270c76::t_c7819629f19abf 405-430
+src/baseTypes.ts
+  s_c7970f70270c76::t_86e387e65c1663 54-56,66-73
+  s_ed741c418eb3a5::t_242907913b0708 225-228
+  s_082e756d7b8900::t_795d599fcdcbe3 258-263
+  s_2d8720350674f7::t_a7715c4c6522d1 266-275
+  s_082e756d7b8900::t_a676b90e1efc10 254-257
+  s_2d8720350674f7::t_9241e1a1ac0db1 264,276-290
+  s_082e756d7b8900::t_e91d00a9f6f128 199-202
+  s_082e756d7b8900::t_6c8f4d0b75fab8 197-198
+  s_2d8720350674f7::t_680d42ce0bbcf8 265
+  s_0760e3d980da5c::t_b9cbcfe1cb8963 77-78
+src/langs/zh_tw.json
+  s_c7970f70270c76::t_7553629cd11ac5 130-132
+  s_ed741c418eb3a5::t_efe09794d51587 362-363
+  s_082e756d7b8900::t_2680963d16d480 273-274
+  s_fa74a4695fe891::t_42b07ea088bdfd 347-353
+  s_fa74a4695fe891::t_8c4f66ea310915 276
+src/langs/zh_cn.json
+  s_c7970f70270c76::t_02f3abc66d95ec 130-132
+  s_ed741c418eb3a5::t_e5984758bf975b 362-363
+  s_082e756d7b8900::t_c83d7eae0a1010 273-274
+  s_fa74a4695fe891::t_5e02b319652c4b 276
+  s_fa74a4695fe891::t_5ccd2fdbd8960a 347-353
+src/syncSettings.ts
+  s_c7970f70270c76::t_9adb15047a8a11 33
+  s_0760e3d980da5c::t_54e1c8c40a8137 34
+src/settings.ts
+  s_c7970f70270c76::t_742cc0235efae1 1062-1065,1067,1069,1071-1072,1081-1090,1092-1093,1097
+  s_c7970f70270c76::t_d9dc27f2d62dab 1066,1091
+  s_c7970f70270c76::t_11e90067293778 25
+  s_c7970f70270c76::t_6e0ec6bf25589e 1073-1078
+  s_082e756d7b8900::t_a8405a5ab3699a 1734-1754
+  s_082e756d7b8900::t_507022d49299b9 1755
+  s_d8117ef277ed3e::t_f2b8e5a1b326da 1650-1653
+  s_d8117ef277ed3e::t_d44d1ad9af75aa 1965-1968
+  s_d8117ef277ed3e::t_529cf7c0bb4617 2169-2172
+  s_d8117ef277ed3e::t_418330abeced23 1804-1807
+  s_515b8eaa5e6008::t_ed0f8ae99440de 1864-1865,1867-1868
+  s_515b8eaa5e6008::t_26c9a0db708944 1785
+  s_515b8eaa5e6008::t_935c1bd767b81a 1729-1730,1732-1733
+  s_d8117ef277ed3e::t_873815c87be89b 1758
+  s_d8117ef277ed3e::t_1149b392993965 1866
+  s_515b8eaa5e6008::t_60200153440b23 433
+  s_515b8eaa5e6008::t_89766e9a7e77de 1654
+  s_0760e3d980da5c::t_50ce4ebd6fbbab 1099,1102,1108-1118
+  s_515b8eaa5e6008::t_1e2036416ae040 2173
+  s_d8117ef277ed3e::t_90e2c2b125311c 1731
+  s_515b8eaa5e6008::t_a8d31d4ed22e27 1969
+  s_515b8eaa5e6008::t_8d084ae2762f18 1756-1757,1759,1761,1764-1768,1770
+src/main.ts
+  s_c7970f70270c76::t_ce6ad625dc3bbe 1973-1984,1986-1988,1990-1991,1999-2000,2002,2022-2029,2032-2049,2065-2079,2081
+  s_c7970f70270c76::t_d9dc27f2d62dab 81,84-85
+  s_c7970f70270c76::t_1b73e3308167fa 1345-1346,1354
+  s_c7970f70270c76::t_2dd75b72fbce81 80
+  s_c7970f70270c76::t_df95068c29112a 1347-1353
+  s_c7970f70270c76::t_8eda854b942808 205-213
+  s_c7970f70270c76::t_c9b95e6a0cfe8e 214
+  s_c7970f70270c76::t_e9ccd3d4dfd44d 102-106
+  s_c7970f70270c76::t_41ff88f98ad4e1 83
+  s_c7970f70270c76::t_f3a94f96986ada 553-555
+  s_c7970f70270c76::t_314c5a2a679844 1992-1998,2001,2003-2021,2030-2031
+  s_ed741c418eb3a5::t_8cd5d068dff3f1 39
+  s_ed741c418eb3a5::t_1c19598bc9ee18 651-661,663-673
+  s_ed741c418eb3a5::t_64e46c9ed66393 624
+  s_ed741c418eb3a5::t_f6079ef16dccc1 662
+  s_082e756d7b8900::t_e4fc898101957d 1393-1396
+  s_082e756d7b8900::t_9afbfd03352b22 137
+  s_ea70ea38b45b2d::t_5995cab8b79e0f 228-249,251,257,259-277
+  s_ea70ea38b45b2d::t_7e9bee23fbae17 644-649
+  s_ea70ea38b45b2d::t_dfe9dd5d1381df 4,8-9,12-13,20,22
+  s_ea70ea38b45b2d::t_449f085d45ce99 109,110
+  s_ea70ea38b45b2d::t_8218512008a957 893,895-910
+  s_ea70ea38b45b2d::t_c33a79a1afff58 1258-1272
+  s_ea70ea38b45b2d::t_36656442bd2fad 606
+  s_ea70ea38b45b2d::t_2812abe3e5a6ed 719-861
+  s_ea70ea38b45b2d::t_e3925ab31062a5 599-605,607-608
+  h_b8e9e22b7b320f 934
+src/langs/en.json
+  s_c7970f70270c76::t_924fa9e1dd5886 130-132
+  s_ed741c418eb3a5::t_6e071999b24858 362-363
+  s_082e756d7b8900::t_c7b9f0cc9de4b9 273-274
+  s_fa74a4695fe891::t_2de0823c16fee3 347-353
+  s_fa74a4695fe891::t_da31ae7e73d5df 276
+tests/onedriveHttpError.test.ts
+  s_ed741c418eb3a5::t_5fbbc80982c085 9,30,42
+  s_ed741c418eb3a5::t_078666733b3911 3,8,17-26,31-33,38-41,43-45,54-61
+  s_ed741c418eb3a5::t_e3435af19c1cb2 1-2,7,12,27-29,34-37,46-53
+  s_ed741c418eb3a5::t_6a76fccb1dec0b 4-6,10,15-16
+src/fsLocal.ts
+  s_ed741c418eb3a5::t_9df450be792844 176-177
+  s_2d8720350674f7::t_8c9e3db311b0df 190
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 1,3-5
+src/copyLogic.ts
+  s_ed741c418eb3a5::t_c82bfe70ce5231 64-65,70
+  s_ed741c418eb3a5::t_65a49afa062e52 54-55
+  s_ed741c418eb3a5::t_b53c15c0ed5fc4 15-20
+tests/onedrivePutRequest.test.ts
+  s_ed741c418eb3a5::t_cc3b503f213a9d 1-24
+tests/_obsidianStub.ts
+  s_ed741c418eb3a5::t_3f26af6ea4d589 1-51
+tests/onedriveUploadSessionRequest.test.ts
+  s_ed741c418eb3a5::t_df61ae82574c45 1-30
+tests/syncDispatchIfMatch.test.ts
+  s_ed741c418eb3a5::t_c60fa8c60720d0 1-184
+  s_ed741c418eb3a5::t_d500b272326656 229
+  s_ed741c418eb3a5::t_11b9941d463520 185-228,230-232
+src/sync.ts
+  s_ed741c418eb3a5::t_5491a966f963f3 2079-2119,2139-2140
+  s_ed741c418eb3a5::t_b60e0e3b22a760 2256-2261,2265
+  s_ed741c418eb3a5::t_87b96ef0d3cff5 1845-1858,1862,1898-1966
+  s_ed741c418eb3a5::t_069fad8a0fce66 2126-2138
+  s_ed741c418eb3a5::t_41d31114e15cc6 2926
+  s_ed741c418eb3a5::t_398bf83e5b70eb 2965-2966
+  s_ed741c418eb3a5::t_54413c251e583f 288-291
+  s_ed741c418eb3a5::t_2cfe2520ebb66c 2757-2761
+  s_ed741c418eb3a5::t_d1aa69fb3519a7 1974
+  s_ed741c418eb3a5::t_a530a2b67d46f8 2377
+  s_ed741c418eb3a5::t_9d9e083ba21c28 18
+  s_ed741c418eb3a5::t_4e6a7aa478d52e 2661
+  s_ed741c418eb3a5::t_559a2e361632d1 2523
+  s_082e756d7b8900::t_bb8760aae9ec85 1575,1579,1585-1590
+  s_082e756d7b8900::t_4b658f5b9b9276 1813
+  s_082e756d7b8900::t_f6b54e0c5adc46 2304-2305,2307-2313,2317-2323,2328-2335
+  s_082e756d7b8900::t_66e7ffdef2a9a7 2300-2303,2306,2324-2327,2336-2357
+  s_082e756d7b8900::t_c6c3815a74ba74 2314-2316
+  s_082e756d7b8900::t_997b5d0df876c6 2869-2876
+  s_082e756d7b8900::t_4762d207f9b068 2877-2880
+  s_2d8720350674f7::t_f3549287f6c0f8 8
+  s_2d8720350674f7::t_a66e8d37b57a0c 2565,2567
+  s_082e756d7b8900::t_b40fe0d5621c9b 1787-1788,1790-1792,1794,1796
+  s_082e756d7b8900::t_4d5132e05a7b80 2446,2453-2455
+  s_2d8720350674f7::t_a4e42c4189db04 2559-2564,2566,2568-2579
+  s_082e756d7b8900::t_8b5fc6543a675b 630-637
+  s_2d8720350674f7::t_4db4b6e3a6674e 2555-2558,2582-2601,2604-2630,2632
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 56,1393-1394,1548,2580-2581,2602-2603
+  s_082e756d7b8900::t_127e76fa335ac2 1541,1556
+  s_082e756d7b8900::t_ff2ba1a5bdb430 1320-1344,1351-1388,1396-1403,1525-1540,1542-1547,1549-1555,1557-1574,1576-1578,1591-1595,1643
+  s_082e756d7b8900::t_00a32fa95f4caf 1389-1392,1395
+  s_082e756d7b8900::t_9f9ede77be1333 1404-1436,1439-1524
+  s_082e756d7b8900::t_56f67bcb3004ea 2388
+  s_082e756d7b8900::t_95b8a9bc78a2b1 2491,2493
+  s_082e756d7b8900::t_19d26e7fd473bd 1596-1642
+  s_082e756d7b8900::t_819c9858c89036 1580-1584
+  s_082e756d7b8900::t_ca27ddc7f48111 1765-1771,1782-1785
+  s_082e756d7b8900::t_187045dc438dfb 1772-1781,1786,1789,1793,1795,1797-1799
+  s_082e756d7b8900::t_af58fe047eb7a1 1345-1350
+  s_082e756d7b8900::t_ff6cc79f144303 1649
+  s_ddd35ba0bb0d98::t_84c84e76e0207c 1437-1438
+  s_ddd35ba0bb0d98::t_1567361f36886b 1270-1276
+  s_bc0d3140c70231::t_fdcac2a1263d18 2927-2928
+  s_bc0d3140c70231::t_3f71ecf4102847 1975-1976
+  s_bc0d3140c70231::t_bad83a7162960f 2763-2769
+  s_bc0d3140c70231::t_607b5e75a66c59 1859-1860,1863-1872,1875-1897
+  s_bc0d3140c70231::t_57d1a27cfca47b 19-25
+  s_bc0d3140c70231::t_f4907bdc0431b0 2524-2525
+  s_bc0d3140c70231::t_04cc54e1560f96 2378-2379
+  s_bc0d3140c70231::t_433032cfbd0af4 1861,1873-1874,1977,2124,2159-2160,2264,2380,2526,2664,2770,2929
+  s_bc0d3140c70231::t_5c5461a90fd5ec 2122-2123
+  s_bc0d3140c70231::t_6e7789397c0c17 2213-2233
+  s_bc0d3140c70231::t_62a7e2c7ca4ecc 2662-2663
+  s_bc0d3140c70231::t_a17a31e5e77a91 2745-2750
+  s_bc0d3140c70231::t_acbd7238a45c3c 2771
+  s_bc0d3140c70231::t_4d21b9eab370e9 2150-2158,2161-2166
+  s_bc0d3140c70231::t_11c06ed1b99609 2262-2263
+tests/_fsMock.ts
+  s_ed741c418eb3a5::t_a3ea8bf98a0acf 1-19,21-42,46-91,94-95,97-120
+  s_ed741c418eb3a5::t_f68a7882b08c98 43-45,92-93,96
+tests/localdb.test.ts
+  s_ed741c418eb3a5::t_56f39a8ebe54e9 52,54
+tests/_dbMock.ts
+  s_ed741c418eb3a5::t_5cbd2256ec8d26 1-77
+src/conflictLog.ts
+  s_ed741c418eb3a5::t_292d66384d2830 1-17,19-51,53-57
+  s_ed741c418eb3a5::t_75c0689e0ea904 52
+tests/conflictLog.test.ts
+  s_ed741c418eb3a5::t_476c92ee170962 1-45,47-48
+docs/remote_services/onedrive/concurrency.md
+  s_ed741c418eb3a5::t_ad86d67a9978a7 1-75,77-104,112-140
+  s_ed741c418eb3a5::t_f654469ee91959 105-111
+docs/remote_services/onedrive/README.md
+  s_ed741c418eb3a5::t_fbd4815d0f0731 31
+docs/superpowers/plans/2026-09-20-onedrive-if-match-concurrency-guard.md
+  s_c3a5dd2fc4646e::t_ab1bfa4f7684af 1-608,610-649,651-723,725-857
+docs/superpowers/specs/2026-09-20-onedrive-if-match-concurrency-guard-design.md
+  s_c3a5dd2fc4646e::t_aa8a45a5553c13 180-184
+  s_c3a5dd2fc4646e::t_05bb0e463eb7d2 1-179,185-214,216-217,219-294,296
+  s_c3a5dd2fc4646e::t_a8365a00563c5a 295,297-299
+docs/superpowers/specs/2026-09-21-onedrive-delta-id-fallback-design.md
+  s_c3a5dd2fc4646e::t_4cf33e15d62ea9 1-113
+docs/superpowers/plans/2026-09-21-onedrive-delta-id-fallback.md
+  s_c3a5dd2fc4646e::t_a981fc54cee916 1-810
+docs/superpowers/plans/2026-09-22-onedrive-delta-parent-id-chain.md
+  s_6c33a6da580b5e::t_1e9ef72338b72f 1-195
+docs/notes/esbuild-bundler.md
+  s_5184619653c832::t_07628333183936 1-39
+docs/notes/microsoft-graph-delta-api.md
+  s_c3a5dd2fc4646e::t_57e242a006c01c 1-73
+docs/superpowers/specs/2026-09-23-onedrive-fullenum-fallback-design.md
+  s_ddd35ba0bb0d98::t_6419b02df58b08 1-77,79-108,114-119,128-136,139-221
+  s_ddd35ba0bb0d98::t_e46c40bdd3a7d4 109-113,120-122
+  s_ddd35ba0bb0d98::t_4c59cf734e6e5f 78
+  s_ddd35ba0bb0d98::t_e8b2caebf8effe 137-138
+  s_ddd35ba0bb0d98::t_6a72c988a80e99 123-127
+src/quickXorHash.ts
+  s_81f9e62a09f960::t_5d66186182e5c5 32-35
+  s_81f9e62a09f960::t_3a504351ecb56a 1-31,36-147
+tests/detectMoves.test.ts
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 39-43,68-72,90-94,112-116,206-210
+  s_082e756d7b8900::t_7f482fe43d7139 1-14,16-38,44-67,73-89,95-111,117-205,211-224
+  s_082e756d7b8900::t_9633dfc4e84fed 225-237,243-286,292-299,301-329,335-352,354-371,377-390,396-410,412-419
+  s_ddd35ba0bb0d98::t_84c84e76e0207c 15,238-242,287-291,300,330-334,353,372-376,391-395,411
+tests/onedriveRenameRequest.test.ts
+  s_8ec9f58513b0c9::t_b29bc5363cc950 1-11,13,16,18,21,23-27,31-33,38-40,43-44
+  s_082e756d7b8900::t_f4f70da8f5bbd0 12,14-15,17,19-20,22,28-30,41-42
+docs/notes/obsidian-cli-plugin-dev-cycle.md
+  s_5184619653c832::t_98b9623fbe92c7 1-32
+docs/CONVENTIONS.md
+  s_c3a5dd2fc4646e::t_d5c6fed8c62a94 2-19
+  s_6c33a6da580b5e::t_5304e2e1e5151f 20,29-36
+  s_5184619653c832::t_0c508b24445ee1 21-22,24-28
+  h_b8e9e22b7b320f 1,23
+docs/notes/obsidian-cli-plugin-reload.md
+  s_6c33a6da580b5e::t_a91391b0ed90b2 1-39
+docs/superpowers/plans/2026-09-23-onedrive-fullenum-fallback.md
+  s_ddd35ba0bb0d98::t_1ae7f042bbb2d2 1-663
+tests/quickXorHash.test.ts
+  s_81f9e62a09f960::t_0f6567edef8fa3 1-68,75-115
+  s_81f9e62a09f960::t_ae74728e646e0e 69-74
+docs/notes/api-call-mode-contract-audit.md
+  s_c3a5dd2fc4646e::t_51880e567775d2 1-36
+tests/syncDispatchMove.test.ts
+  s_082e756d7b8900::t_014e22b927f033 1-14,16-25,32-37,44-51,56,58-61,63-156
+  s_082e756d7b8900::t_b0ee6236c25338 15
+  s_082e756d7b8900::t_eb499450b65697 55,62
+  s_2d8720350674f7::t_c21bbbb1a0d6a7 26-31,38-43
+  s_082e756d7b8900::t_8b814c86908a22 52-54,57
+  s_082e756d7b8900::t_f3ebb20092cf1f 157-234,239-364
+  s_ddd35ba0bb0d98::t_84c84e76e0207c 235-238
+docs/aar/onedrive-delta-parent-id-chain.md
+  s_6c33a6da580b5e::t_d6aa477eea0467 1-52,54-66
+docs/aar/deploy-and-auto-reload.md
+  s_5184619653c832::t_e467fc04ac7fa7 1-27,29-37
+src/conflictLogic.ts
+  s_bc0d3140c70231::t_d26049b1c22c30 367-371,389-399
+  s_bc0d3140c70231::t_24f65b00fe0630 428-522
+  s_bc0d3140c70231::t_90058c1fcf4b06 113-120,125,156-181
+  s_bc0d3140c70231::t_904c7099c2d28a 182
+src/importExport.ts
+  s_515b8eaa5e6008::t_1e80cb721f3f20 56
+.env.example.txt
+  h_b8e9e22b7b320f 1-5
+README.md
+  h_b8e9e22b7b320f 1,27-35
+README.zh-cn.md
+  h_b8e9e22b7b320f 1,27-35
+manifest-beta.json
+  h_b8e9e22b7b320f 2-3
+manifest.json
+  h_b8e9e22b7b320f 2-3
+package.json
+  h_b8e9e22b7b320f 2
+tests/obsFolderLister.test.ts
+  h_b8e9e22b7b320f 5
+tests/sync.test.ts
+  h_b8e9e22b7b320f 36
+tests/syncDiagnose.test.ts
+  h_b8e9e22b7b320f 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.29.1408",
+  "base_commit_sha": "47b29d12524a9ecc28c029efbddc375cde952c5c",
+  "prompts": {},
+  "humans": {
+    "h_b8e9e22b7b320f": {
+      "author": "chenyude <chenyude@h-partners.com>"
+    }
+  },
+  "sessions": {
+    "s_0760e3d980da5c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31953f5fffep4XEuQuBNBFL5R",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 52,
+      "total_deletions": 3,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_50ce4ebd6fbbab": "qwen3.8-max",
+        "t_54e1c8c40a8137": "qwen3.8-max",
+        "t_b9cbcfe1cb8963": "qwen3.8-max",
+        "t_edb5e2b8cd19bd": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 52,
+          "deletions": 3
+        }
+      }
+    },
+    "s_082e756d7b8900": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f390c405effeBCcg010qMeYhU8",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 79,
+      "overridden_lines": 0
+    },
+    "s_146c66c66e0640": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f33f76733ffeKBtB3yEryxcmTu",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 123,
+      "overridden_lines": 0
+    },
+    "s_2d8720350674f7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3785439fffeP0Iiwm4snWrRWh",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 151,
+      "overridden_lines": 0
+    },
+    "s_515b8eaa5e6008": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31c20e60ffe95QzfXzdu7YziT",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 31,
+      "total_deletions": 50,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_1e2036416ae040": "qwen3.8-max",
+        "t_1e80cb721f3f20": "qwen3.8-max",
+        "t_26c9a0db708944": "qwen3.8-max",
+        "t_3bdfcd72f30e0a": "qwen3.8-max",
+        "t_5027cc1a93df06": "qwen3.8-max",
+        "t_60200153440b23": "qwen3.8-max",
+        "t_79cb1fd4ac5456": "qwen3.8-max",
+        "t_821354d928cd06": "qwen3.8-max",
+        "t_83d2867385c4ac": "qwen3.8-max",
+        "t_89766e9a7e77de": "qwen3.8-max",
+        "t_8d084ae2762f18": "qwen3.8-max",
+        "t_935c1bd767b81a": "qwen3.8-max",
+        "t_a8d31d4ed22e27": "qwen3.8-max",
+        "t_ed0f8ae99440de": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 31,
+          "deletions": 50
+        }
+      }
+    },
+    "s_5184619653c832": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dc1031fffea3e1IORrDpfNGZ",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 4,
+      "overridden_lines": 0
+    },
+    "s_5894ef5b2d2789": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3401587affexUIA3y46ozy3P2",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 58,
+      "overridden_lines": 0
+    },
+    "s_6c33a6da580b5e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3908f426ffeM12wlOZA5AXn9v",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "overridden_lines": 0
+    },
+    "s_75c508855e23ea": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4db947caffeifP7Rng19Ouco6",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "overridden_lines": 0
+    },
+    "s_81f9e62a09f960": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f387c533cffeN0FipfPQxTRBFY",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 5,
+      "overridden_lines": 0
+    },
+    "s_8ec9f58513b0c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f387ccc39ffe0N3WwfiZig7R3M",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 15,
+      "overridden_lines": 0
+    },
+    "s_b6b178d6ca96e3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f38fe757fffe2fY6R43O33vRpe",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 62,
+      "overridden_lines": 0
+    },
+    "s_bc0d3140c70231": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3194ef2cffegtpRyCWbk0kuPX",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 283,
+      "total_deletions": 47,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_04cc54e1560f96": "qwen3.8-max",
+        "t_11c06ed1b99609": "qwen3.8-max",
+        "t_24f65b00fe0630": "qwen3.8-max",
+        "t_3f71ecf4102847": "qwen3.8-max",
+        "t_433032cfbd0af4": "qwen3.8-max",
+        "t_4d21b9eab370e9": "qwen3.8-max",
+        "t_57d1a27cfca47b": "qwen3.8-max",
+        "t_5c5461a90fd5ec": "qwen3.8-max",
+        "t_607b5e75a66c59": "qwen3.8-max",
+        "t_62a7e2c7ca4ecc": "qwen3.8-max",
+        "t_6e7789397c0c17": "qwen3.8-max",
+        "t_90058c1fcf4b06": "qwen3.8-max",
+        "t_a17a31e5e77a91": "qwen3.8-max",
+        "t_acbd7238a45c3c": "qwen3.8-max",
+        "t_bad83a7162960f": "qwen3.8-max",
+        "t_d26049b1c22c30": "qwen3.8-max",
+        "t_f4907bdc0431b0": "qwen3.8-max",
+        "t_fdcac2a1263d18": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 283,
+          "deletions": 47
+        }
+      }
+    },
+    "s_c3a5dd2fc4646e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f438738e3ffesMua1EPM1pZRLs",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 10,
+      "overridden_lines": 0
+    },
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 535,
+      "overridden_lines": 0
+    },
+    "s_d8117ef277ed3e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31e46d6effegG96ZPIlPEv9ti",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 31,
+      "total_deletions": 10,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_1149b392993965": "glm-5.2",
+        "t_418330abeced23": "glm-5.2",
+        "t_4ae6ba3b5f4de7": "glm-5.2",
+        "t_529cf7c0bb4617": "glm-5.2",
+        "t_873815c87be89b": "glm-5.2",
+        "t_90e2c2b125311c": "glm-5.2",
+        "t_d44d1ad9af75aa": "glm-5.2",
+        "t_f2b8e5a1b326da": "glm-5.2"
+      },
+      "model_totals": {
+        "glm-5.2": {
+          "additions": 31,
+          "deletions": 10
+        }
+      }
+    },
+    "s_ddd35ba0bb0d98": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f365e2bcdffe5Z5OJJiN6URl07",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 7,
+      "overridden_lines": 0
+    },
+    "s_ea70ea38b45b2d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f317a27b9ffe4iPem3qp7rklE0",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 256,
+      "total_deletions": 5,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_2812abe3e5a6ed": "qwen3.8-max",
+        "t_36656442bd2fad": "qwen3.8-max",
+        "t_449f085d45ce99": "qwen3.8-max",
+        "t_5995cab8b79e0f": "qwen3.8-max",
+        "t_7e9bee23fbae17": "qwen3.8-max",
+        "t_8218512008a957": "qwen3.8-max",
+        "t_c33a79a1afff58": "qwen3.8-max",
+        "t_dfe9dd5d1381df": "qwen3.8-max",
+        "t_e3925ab31062a5": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 256,
+          "deletions": 5
+        }
+      }
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 7,
+      "overridden_lines": 0
+    },
+    "s_fa74a4695fe891": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31c289d3ffev3Z4QYHHHloosR",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 33,
+      "total_deletions": 37,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_08547ceff79e5b": "qwen3.8-max",
+        "t_08b9a5ea156533": "qwen3.8-max",
+        "t_19dfaff75f66b4": "qwen3.8-max",
+        "t_20c1af52a1ec86": "qwen3.8-max",
+        "t_25663c27711386": "qwen3.8-max",
+        "t_2602c9ac3d144b": "qwen3.8-max",
+        "t_2de0823c16fee3": "qwen3.8-max",
+        "t_37f469d4832653": "qwen3.8-max",
+        "t_42b07ea088bdfd": "qwen3.8-max",
+        "t_5ccd2fdbd8960a": "qwen3.8-max",
+        "t_5e02b319652c4b": "qwen3.8-max",
+        "t_5f96fa0c5a39bb": "qwen3.8-max",
+        "t_62fcf2c14c34cc": "qwen3.8-max",
+        "t_6777ba9a06d238": "qwen3.8-max",
+        "t_706eabe706d7fe": "qwen3.8-max",
+        "t_763300829b7616": "qwen3.8-max",
+        "t_8047eae0c72790": "qwen3.8-max",
+        "t_85564351d199c6": "qwen3.8-max",
+        "t_8c4f66ea310915": "qwen3.8-max",
+        "t_9db4ee54df9664": "qwen3.8-max",
+        "t_9e5221a5d00f90": "qwen3.8-max",
+        "t_bd710caa9b65bf": "qwen3.8-max",
+        "t_bdb8eba57dc715": "qwen3.8-max",
+        "t_cb2fe0ae72f3bf": "qwen3.8-max",
+        "t_cbc6612eb0d40b": "qwen3.8-max",
+        "t_da31ae7e73d5df": "qwen3.8-max",
+        "t_e9964a566518b3": "qwen3.8-max",
+        "t_ff68b241f93561": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 33,
+          "deletions": 37
+        }
+      }
+    }
+  }
+}
