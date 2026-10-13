@@ -1,0 +1,40 @@
+AGENTS.md
+  h_b8e9e22b7b320f 3,20
+README.md
+  h_b8e9e22b7b320f 1,27-35
+README.zh-cn.md
+  h_b8e9e22b7b320f 1,27-35
+docs/CONVENTIONS.md
+  h_b8e9e22b7b320f 1,23
+esbuild.config.mjs
+  h_b8e9e22b7b320f 50,127
+manifest-beta.json
+  h_b8e9e22b7b320f 2-3
+manifest.json
+  h_b8e9e22b7b320f 2-3
+package.json
+  h_b8e9e22b7b320f 2
+scripts/deploy.mjs
+  h_b8e9e22b7b320f 23
+src/main.ts
+  h_b8e9e22b7b320f 934
+tests/obsFolderLister.test.ts
+  h_b8e9e22b7b320f 5
+tests/obsidianSyncFilter.test.ts
+  h_b8e9e22b7b320f 5
+tests/sync.test.ts
+  h_b8e9e22b7b320f 36
+tests/syncDiagnose.test.ts
+  h_b8e9e22b7b320f 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "076f4676d516229b567795d3c685db38901602b6",
+  "prompts": {},
+  "humans": {
+    "h_b8e9e22b7b320f": {
+      "author": "chenyude <chenyude@h-partners.com>"
+    }
+  }
+}
