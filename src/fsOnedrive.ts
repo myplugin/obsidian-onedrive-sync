@@ -104,6 +104,18 @@ function extractHttpStatus(e: any): number | undefined {
  * 'Failed to fetch' / NetworkError. extractHttpStatus() returns undefined for
  * these (there is no status code), so without this they bypass
  * _retryOnTransientError and abort the whole sync.
+ *
+ * Timeouts (net::ERR_TIMED_OUT, ERR_CONNECTION_TIMED_OUT, ...) are EXCLUDED:
+ * they fire only after the full request-timeout window has elapsed and usually
+ * persist for as long as the network condition lasts, so retrying one 3×
+ * multiplies that window into a multi-minute stall instead of recovering.
+ * Worse, the deltaLink query is wrapped in this retry — one timeout turned the
+ * graceful "fall back to full enumeration" path into a minutes-long hang
+ * (regression in the commit that introduced this predicate's `net::ERR_`
+ * catch-all). Letting timeouts throw immediately restores the fast fallback;
+ * the download path simply surfaces the error to the next sync, matching
+ * pre-retry behavior. The `net::ERR_` catch-all below still matches other
+ * transient net errors; the guard above it defangs it for timeouts.
  */
 export function isTransientNetworkError(e: any): boolean {
   const msg =
@@ -113,6 +125,8 @@ export function isTransientNetworkError(e: any): boolean {
         ? e
         : "";
   if (msg === "") return false;
+  // Timeouts are slow-to-fire and persistent; do NOT retry them (see above).
+  if (/TIMED_OUT/i.test(msg)) return false;
   return /ERR_HTTP2|ERR_QUIC|ERR_CONNECTION_(RESET|CLOSED|ABORTED|REFUSED)|ERR_NETWORK_CHANGED|ERR_SOCKET_NOT_CONNECTED|net::ERR_|Failed to fetch|NetworkError/i.test(
     msg
   );

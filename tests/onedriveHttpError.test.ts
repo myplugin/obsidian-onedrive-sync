@@ -107,6 +107,25 @@ describe("isTransientNetworkError", () => {
   it("does not treat undefined as a network error", () => {
     assert.strictEqual(isTransientNetworkError(undefined), false);
   });
+
+  // Regression: the `net::ERR_` catch-all used to match net::ERR_TIMED_OUT,
+  // so _retryOnTransientError retried the deltaLink query 3× — each attempt
+  // waiting the full timeout window — turning the graceful full-enumeration
+  // fallback into a multi-minute hang. Timeouts must NOT be retried.
+  it("does NOT treat a timeout as transient (slow to fire, fall back fast)", () => {
+    assert.strictEqual(
+      isTransientNetworkError(new Error("net::ERR_TIMED_OUT")),
+      false
+    );
+    assert.strictEqual(
+      isTransientNetworkError(new Error("net::ERR_CONNECTION_TIMED_OUT")),
+      false
+    );
+    assert.strictEqual(
+      isTransientNetworkError(new Error("ERR_TIMED_OUT")),
+      false
+    );
+  });
 });
 
 describe("_retryOnTransientError retries statusless network errors", () => {
@@ -138,6 +157,25 @@ describe("_retryOnTransientError does not retry a 412 precondition", () => {
         throw remoteEtagMismatchError("Lab/.obsidian/plugins/copilot/data.json");
       }),
       /Remote etag mismatch/
+    );
+    assert.strictEqual(calls, 1);
+  });
+});
+
+describe("_retryOnTransientError does not retry a timeout", () => {
+  it("rethrows net::ERR_TIMED_OUT immediately (single attempt, no backoff)", async () => {
+    // Regression guard: before the fix, net::ERR_TIMED_OUT matched the
+    // `net::ERR_` catch-all and was retried 3×, each attempt waiting the
+    // full timeout window. walk()'s deltaLink query then stalled for minutes
+    // before the full-enumeration fallback. It must now throw after one call.
+    const fs = Object.create(FakeFsOnedrive.prototype) as any;
+    let calls = 0;
+    await assert.rejects(
+      fs._retryOnTransientError(async () => {
+        calls += 1;
+        throw new Error("net::ERR_TIMED_OUT");
+      }),
+      /ERR_TIMED_OUT/
     );
     assert.strictEqual(calls, 1);
   });
