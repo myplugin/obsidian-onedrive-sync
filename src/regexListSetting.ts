@@ -107,7 +107,7 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
   const caretEl = toggleBtnEl.createEl("span", {
     cls: "rs-regex-collapse-caret",
   });
-  caretEl.innerHTML = createElement(ChevronRight).outerHTML;
+  caretEl.appendChild(createElement(ChevronRight));
 
   // collapsible panel — holds the add row (low-frequency),
   // collapsed by default; the toggle above reveals it.

@@ -117,6 +117,63 @@ function nodeUrlStubPlugin() {
   };
 }
 
+// localforage's dist UMD inlines `lie` -> `immediate` (a macrotask scheduler for
+// its Promise polyfill). `immediate` tries MutationObserver -> setImmediate/
+// MessageChannel -> `document.createElement('script')` (IE6-8 onreadystatechange
+// fallback) -> setTimeout. Obsidian runs on Electron/Chromium (desktop + mobile),
+// which always has MutationObserver, so the script-injection branch is DEAD code
+// that never executes — but the Obsidian community-directory "code obfuscation"
+// check flags its mere presence in main.js. Strip that dead else-if branch at
+// onLoad (readable source, not minified output) so the scan target has no
+// `createElement('script')`. Deterministic string-replace on version-pinned dist
+// bytes => byte-for-byte build-verification stays green. The assertion fails the
+// build LOUDLY if a future localforage upgrade reshapes the dist (re-audit then).
+// Long-term: migrate localdb.ts off localforage to `idb` (separate refactor).
+function localforageScriptStubPlugin() {
+  const DEAD_BRANCH = `  } else if ('document' in global && 'onreadystatechange' in global.document.createElement('script')) {
+    scheduleDrain = function () {
+
+      // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
+      // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
+      var scriptEl = global.document.createElement('script');
+      scriptEl.onreadystatechange = function () {
+        nextTick();
+
+        scriptEl.onreadystatechange = null;
+        scriptEl.parentNode.removeChild(scriptEl);
+        scriptEl = null;
+      };
+      global.document.documentElement.appendChild(scriptEl);
+    };
+  } else {`;
+  const REPLACEMENT = `  } else {`;
+  return {
+    name: "localforage-script-stub",
+    setup(build) {
+      build.onLoad(
+        { filter: /[\\/]node_modules[\\/]localforage[\\/]dist[\\/]localforage\.js$/ },
+        async (args) => {
+          let src = await fs.promises.readFile(args.path, "utf8");
+          const before = src;
+          src = src.replace(DEAD_BRANCH, REPLACEMENT);
+          if (src === before) {
+            throw new Error(
+              `[localforage-script-stub] expected dead createElement('script') branch NOT found in ${args.path}. ` +
+                `localforage dist changed — re-audit node_modules/localforage/dist/localforage.js and update DEAD_BRANCH.`
+            );
+          }
+          if (/createElement\(['"]script['"]\)/.test(src)) {
+            throw new Error(
+              `[localforage-script-stub] createElement('script') still present after patch in ${args.path}.`
+            );
+          }
+          return { contents: src, loader: "js" };
+        }
+      );
+    },
+  };
+}
+
 const vaultPath = process.env.VAULT_PATH;
 const deployPlugins = [];
 if (vaultPath) {
@@ -172,7 +229,12 @@ esbuild
       // https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-util/src/checkEnvironment.ts
       "globalThis.process.versions": `undefined`,
     },
-    plugins: [inlineWorkerPlugin(), nodeUrlStubPlugin(), ...deployPlugins],
+    plugins: [
+      inlineWorkerPlugin(),
+      nodeUrlStubPlugin(),
+      localforageScriptStubPlugin(),
+      ...deployPlugins,
+    ],
   })
   .then((context) => {
     if (process.argv.includes("--watch")) {

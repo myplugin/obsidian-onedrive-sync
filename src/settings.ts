@@ -552,23 +552,14 @@ class ExportSettingsQrCodeModal extends Modal {
   }
 }
 
-const getEyesElements = () => {
-  const eyeEl = createElement(Eye);
-  const eyeOffEl = createElement(EyeOff);
-  return {
-    eye: eyeEl.outerHTML,
-    eyeOff: eyeOffEl.outerHTML,
-  };
-};
-
 export const wrapTextWithPasswordHide = (text: TextComponent) => {
-  const { eye, eyeOff } = getEyesElements();
   const hider = text.inputEl.insertAdjacentElement("afterend", createSpan())!;
   // the init type of hider is "hidden" === eyeOff === password
-  hider.innerHTML = eyeOff;
+  hider.appendChild(createElement(EyeOff));
   hider.addEventListener("click", (e) => {
     const isText = text.inputEl.getAttribute("type") === "text";
-    hider.innerHTML = isText ? eyeOff : eye;
+    hider.empty();
+    hider.appendChild(createElement(isText ? EyeOff : Eye));
     text.inputEl.setAttribute("type", isText ? "password" : "text");
     text.inputEl.focus();
   });
@@ -588,9 +579,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
   display(): void {
     const { containerEl } = this;
-    containerEl.style.setProperty("overflow-wrap", "break-word");
+    containerEl.setCssProps({ "overflow-wrap": "break-word" });
     containerEl.empty();
-    containerEl.createEl("h1", { text: "OneDrive Sync" });
+    new Setting(containerEl).setName("OneDrive Sync").setHeading();
 
     const t = (x: TransItemType, vars?: any) => {
       return this.plugin.i18n.t(x, vars);
@@ -641,15 +632,13 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     this.generateAccountSection(accountPanel);
     this.generateSyncOptionsSection(syncPanel);
 
-    safetyPanel.createEl("h3", {
-      text: t("settings_section_conflict"),
-      cls: "rs-subheading",
-    });
+    new Setting(safetyPanel)
+      .setName(t("settings_section_conflict"))
+      .setHeading();
     this.generateConflictSection(safetyPanel);
-    safetyPanel.createEl("h3", {
-      text: t("settings_section_encryption"),
-      cls: "rs-subheading",
-    });
+    new Setting(safetyPanel)
+      .setName(t("settings_section_encryption"))
+      .setHeading();
     this.generateEncryptionSection(safetyPanel);
 
     this.generateAdvancedSection(advancedPanel);
@@ -681,7 +670,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     const header = disclaimerDiv.createDiv({ cls: "rs-disclaimer-header" });
     const chevron = header.createSpan({ cls: "rs-disclaimer-chevron" });
-    chevron.innerHTML = createElement(ChevronRight).outerHTML;
+    chevron.appendChild(createElement(ChevronRight));
     header.createSpan({
       cls: "rs-disclaimer-title",
       text: t("settings_disclaimer_title"),
@@ -693,19 +682,21 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     const body = disclaimerDiv.createDiv({ cls: "rs-disclaimer-body" });
 
-    const warnIcon = createElement(AlertTriangle).outerHTML;
     for (const c of [
       t("settings_onedrive_disclaimer1"),
       t("settings_onedrive_disclaimer2"),
     ]) {
       const p = body.createEl("p", { cls: "rs-disclaimer-warn" });
-      p.createSpan({ cls: "rs-disclaimer-icon" }).innerHTML = warnIcon;
+      p.createSpan({ cls: "rs-disclaimer-icon" }).appendChild(
+        createElement(AlertTriangle)
+      );
       p.createSpan({ text: c });
     }
 
     const folderP = body.createEl("p", { cls: "rs-disclaimer-info" });
-    folderP.createSpan({ cls: "rs-disclaimer-icon" }).innerHTML =
-      createElement(Info).outerHTML;
+    folderP
+      .createSpan({ cls: "rs-disclaimer-icon" })
+      .appendChild(createElement(Info));
     folderP.createSpan({
       text: t("settings_onedrive_folder", {
         pluginID: this.plugin.manifest.id,
@@ -716,8 +707,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     });
 
     const nobizP = body.createEl("p", { cls: "rs-disclaimer-info" });
-    nobizP.createSpan({ cls: "rs-disclaimer-icon" }).innerHTML =
-      createElement(Info).outerHTML;
+    nobizP
+      .createSpan({ cls: "rs-disclaimer-icon" })
+      .appendChild(createElement(Info));
     nobizP.createSpan({ text: t("settings_onedrive_nobiz") });
 
     header.addEventListener("click", () => {
@@ -923,10 +915,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    containerEl.createEl("h3", {
-      text: t("settings_section_sync_direction"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_section_sync_direction"))
+      .setHeading();
 
     new Setting(containerEl)
       .setName(t("setting_syncdirection"))
@@ -982,10 +973,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", {
-      text: t("settings_section_sync_automatic"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_section_sync_automatic"))
+      .setHeading();
 
     const autoRunSetting = new Setting(containerEl)
       .setName(t("settings_autorun"))
@@ -1116,10 +1106,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     addSyncToggle(deferIdleSetting, "deferSyncIdleMs", this.plugin, t);
 
-    containerEl.createEl("h3", {
-      text: t("settings_section_obsidian_sync"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_section_obsidian_sync"))
+      .setHeading();
 
     // Blacklist notice
     containerEl.createEl("p", {
@@ -1284,10 +1273,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", {
-      text: t("settings_section_regex"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl).setName(t("settings_section_regex")).setHeading();
 
     const ignorePathsSetting = new Setting(containerEl)
       .setName(t("settings_ignorepaths"))
@@ -1441,10 +1427,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       }
     });
 
-    containerEl.createEl("h3", {
-      text: t("settings_section_sync_protection"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_section_sync_protection"))
+      .setHeading();
 
     new Setting(containerEl)
       .setName(t("settings_deletetowhere"))
@@ -1647,10 +1632,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       return this.plugin.i18n.t(x, vars);
     };
 
-    containerEl.createEl("h3", {
-      text: t("settings_adv_group_statusbar"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_adv_group_statusbar"))
+      .setHeading();
 
     // custom status bar items is not supported on mobile
     if (!Platform.isMobileApp) {
@@ -1726,10 +1710,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
     }
 
-    containerEl.createEl("h3", {
-      text: t("settings_adv_group_renametracking"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_adv_group_renametracking"))
+      .setHeading();
 
     new Setting(containerEl)
       .setName(t("settings_trackrenames"))
@@ -1753,10 +1736,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", {
-      text: t("settings_adv_group_importexport"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_adv_group_importexport"))
+      .setHeading();
 
     const exportSetting = new Setting(containerEl)
       .setName(t("settings_export"))
@@ -1801,10 +1783,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    containerEl.createEl("h3", {
-      text: t("settings_adv_group_logging"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_adv_group_logging"))
+      .setHeading();
 
     new Setting(containerEl)
       .setName(t("settings_debuglevel"))
@@ -1861,10 +1842,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setName(t("settings_viewconsolelog"))
       .setDesc(stringToFragment(t("settings_viewconsolelog_desc")));
 
-    containerEl.createEl("h3", {
-      text: t("settings_adv_group_syncdiagnostics"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_adv_group_syncdiagnostics"))
+      .setHeading();
 
     const debugDivExportSyncPlans = new Setting(containerEl)
       .setName(t("settings_syncplans"))
@@ -1962,10 +1942,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         });
       });
 
-    containerEl.createEl("h3", {
-      text: t("settings_adv_group_profiler"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_adv_group_profiler"))
+      .setHeading();
 
     new Setting(containerEl)
       .setName(t("settings_profiler_results"))
@@ -2039,10 +2018,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           });
       });
 
-    containerEl.createEl("h3", {
-      text: t("settings_section_diag"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl).setName(t("settings_section_diag")).setHeading();
 
     // Interactive path diagnosis — enter one path and learn whether it would
     // be synced and, if not, the dominant reason. Reuses the exact same
@@ -2166,10 +2142,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       }
     });
 
-    containerEl.createEl("h3", {
-      text: t("settings_adv_group_dangerzone"),
-      cls: "rs-subheading",
-    });
+    new Setting(containerEl)
+      .setName(t("settings_adv_group_dangerzone"))
+      .setHeading();
 
     new Setting(containerEl)
       .setName(t("settings_outputbasepathvaultid"))

@@ -523,9 +523,8 @@ export const compareVersion = (x: string | null, y: string | null) => {
  * @returns
  */
 export const stringToFragment = (string: string) => {
-  const wrapper = document.createElement("template");
-  wrapper.innerHTML = string;
-  return wrapper.content;
+  const range = document.createRange();
+  return range.createContextualFragment(string);
 };
 
 /**
@@ -578,8 +577,10 @@ export const changeMobileStatusBar = (
               .getComputedStyle(k as Element)
               .getPropertyValue("height");
 
-            statusbar.style.setProperty("display", "flex");
-            statusbar.style.setProperty("margin-bottom", height);
+            statusbar.setCssProps({
+              display: "flex",
+              "margin-bottom": height,
+            });
           }
         }
       }
@@ -599,8 +600,7 @@ export const changeMobileStatusBar = (
       )[0] as HTMLElement;
       // thanks to community's solution
       const height = window.getComputedStyle(navBar).getPropertyValue("height");
-      statusbar.style.setProperty("display", "flex");
-      statusbar.style.setProperty("margin-bottom", height);
+      statusbar.setCssProps({ display: "flex", "margin-bottom": height });
     } catch (e) {
       // skip
     }
