@@ -25,6 +25,9 @@ coverage_output.txt
 .*
 # ...except the line-ending rules for the byte-exact openssl test fixtures
 !/.gitattributes
+# ...and the GitHub Actions workflows (CI config must be tracked, not ignored)
+!.github
+!.github/**
 
 # local AI agent docs (not published)
 CLEANROOM_PROGRESS.md

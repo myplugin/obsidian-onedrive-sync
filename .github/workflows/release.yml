@@ -1,0 +1,92 @@
+# Builds the plugin and publishes a GitHub Release carrying the installable
+# files (main.js, manifest.json, styles.css) whenever a semver tag (x.y.z) is
+# pushed. The Obsidian community directory downloads installable files from
+# this release — the tag must equal manifest.json `version` exactly.
+#
+# To cut a release:
+#   git tag 0.6.6
+#   git push pycv 0.6.6
+# The workflow builds, verifies the version matches, attests provenance, and
+# creates the release. No OneDrive secrets are needed — the client ID is
+# hardcoded in esbuild.config.mjs, so a clean clone builds a working main.js.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (x.y.z) — must match manifest.json"
+        required: true
+
+permissions:
+  contents: write      # create the release + tag
+  id-token: write      # OIDC token for build-provenance attestation
+  attestations: write  # write attestations
+
+concurrency:
+  group: release-${{ github.event.inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build plugin (typecheck + esbuild production)
+        run: npm run build
+
+      - name: Verify manifest version matches the release tag
+        # Catches the most common Obsidian review error: a release whose tag
+        # differs from manifest.json `version`. The directory keys releases to
+        # the manifest version, so a mismatch means the installable files never
+        # surface to users.
+        run: |
+          set -eu
+          MANIFEST_VERSION="$(jq -r '.version' manifest.json)"
+          TAG_VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          echo "manifest.json version: $MANIFEST_VERSION"
+          echo "release tag version:   $TAG_VERSION"
+          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::manifest.json version ($MANIFEST_VERSION) != release tag ($TAG_VERSION). Bump manifest.json (+ manifest-beta.json + versions.json) to $TAG_VERSION, commit, then push the tag."
+            exit 1
+          fi
+
+      - name: Attest build provenance
+        # Recommended by the Obsidian community directory — ties the build
+        # outputs to this workflow run via a signed attestation. Non-fatal:
+        # if attestation is unavailable on the repo, the release still proceeds.
+        continue-on-error: true
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          name: ${{ github.event.inputs.version || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            main.js
+            manifest.json
+            styles.css
+          fail_on_unmatched_files: true
