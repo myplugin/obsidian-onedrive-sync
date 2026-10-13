@@ -6,7 +6,7 @@ An unofficial community sync plugin for Obsidian that syncs your vault to Micros
 
 ## Origin
 
-OneDrive Sync started from the [remotely-save](https://github.com/remotely-save/remotely-save) v0.5.25 codebase, but has since been substantially rewritten. The original multi-cloud architecture was stripped down to OneDrive only, and the sync core and OneDrive integration were reworked around a **self-owned app registration** and the Graph App Folder API.
+OneDrive Vault Sync is forked from [remotely-save](https://github.com/remotely-save/remotely-save) v0.5.25 and adapted to OneDrive only. The original multi-cloud architecture was stripped down to OneDrive, and the OneDrive integration was reworked around a **self-owned app registration** and the Graph App Folder API. The sync-core files (`sync.ts`, `conflictLogic.ts`, `clearDupFiles.ts`, `settingsClearDupFiles.ts`) retain upstream code under the **same PolyForm Strict License 1.0.0** as the source project; only `fileContentHistory.ts` is new to this fork.
 
 It is **not** the official [Obsidian Sync](https://obsidian.md/sync) service, and not a Microsoft / OneDrive product — it only talks to OneDrive through Microsoft's public Graph API.
 

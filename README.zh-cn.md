@@ -6,7 +6,7 @@
 
 ## 来源
 
-OneDrive Sync 以 [remotely-save](https://github.com/remotely-save/remotely-save) v0.5.25 代码库为起点，但此后已大幅重构。原有的多云盘架构被裁剪为仅保留 OneDrive，同步核心与 OneDrive 集成围绕**自有的 App 注册**和 Graph App Folder API 重新实现。
+OneDrive Vault Sync 自 [remotely-save](https://github.com/remotely-save/remotely-save) v0.5.25 分支而来，并适配为仅支持 OneDrive。原有的多云盘架构被裁剪为仅保留 OneDrive，OneDrive 集成围绕**自有的 App 注册**和 Graph App Folder API 重新实现。同步核心文件（`sync.ts`、`conflictLogic.ts`、`clearDupFiles.ts`、`settingsClearDupFiles.ts`）保留了上游代码，沿用与原项目**相同的 PolyForm Strict License 1.0.0**；仅 `fileContentHistory.ts` 为本分支新增。
 
 它**不是** [Obsidian Sync](https://obsidian.md/sync) 官方同步服务，也不是微软 / OneDrive 官方产品——仅通过微软公开的 Graph API 访问 OneDrive。
 
