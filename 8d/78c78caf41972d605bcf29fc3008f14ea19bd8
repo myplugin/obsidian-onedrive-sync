@@ -1,0 +1,16 @@
+src/fsOnedrive.ts
+  h_77bd96c5a60e28 107-118,128-129
+tests/onedriveHttpError.test.ts
+  h_77bd96c5a60e28 110-128,165-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "8d78c78caf41972d605bcf29fc3008f14ea19bd8",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
