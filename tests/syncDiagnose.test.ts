@@ -20,7 +20,7 @@ const makeSettings = (): RemotelySavePluginSettings =>
   }) as any;
 
 const CONFIG_DIR = ".obsidian";
-const SELF_PLUGIN_ID = "obsidian-onedrive-sync";
+const SELF_PLUGIN_ID = "onedrive-vault-sync";
 
 describe("diagnoseSyncSkip debug folder", () => {
   it("should skip the current debug export folder with DEBUG_FOLDER", () => {

@@ -1,4 +1,4 @@
-# OneDrive Sync
+# OneDrive Vault Sync
 
 [English](./README.md) | 中文
 
@@ -24,3 +24,12 @@ OneDrive Sync 以 [remotely-save](https://github.com/remotely-save/remotely-save
 - **多设备同步。** 用你现有的 OneDrive 账户作为中介，在手机、平板和多台电脑间保持同一个 vault 同步。
 - **Obsidian Sync 的免费替代。** 使用 OneDrive 个人版免费额度，无需付费订阅同步服务。
 - **注重隐私的 vault。** 可选的端到端加密让文件内容对云端不可见，即使你不完全信任存储方。
+
+## 许可证
+
+本插件采用混合许可证——完整声明见 [`LICENSE`](./LICENSE)：
+
+- 代码库的绝大部分（`src/`、`tests/`、`docs/`、`assets/`）为 **Apache License 2.0**（开源）。
+- 同步核心文件（`src/sync.ts`、`src/conflictLogic.ts`、`src/fileContentHistory.ts`、`src/clearDupFiles.ts`、`src/settingsClearDupFiles.ts`）为 **PolyForm Strict License 1.0.0**（source-available：允许个人与非商业用途，对这些文件的重分发有限制）。
+
+插件本身可免费使用。同步核心的 source-available 许可证不影响插件的个人使用。

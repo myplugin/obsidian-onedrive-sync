@@ -1,4 +1,4 @@
-# OneDrive Sync
+# OneDrive Vault Sync
 
 English | [中文](./README.zh-cn.md)
 
@@ -24,3 +24,12 @@ It is **not** the official [Obsidian Sync](https://obsidian.md/sync) service, an
 - **Multi-device sync.** Keep one vault in sync across your phone, tablet, and multiple desktops, using your existing OneDrive account as the broker.
 - **Free alternative to Obsidian Sync.** Runs on the OneDrive personal free tier instead of a paid sync subscription.
 - **Privacy-sensitive vaults.** Optional end-to-end encryption keeps file contents opaque to the cloud, even if you don't fully trust the storage.
+
+## License
+
+This plugin uses a split license — see [`LICENSE`](./LICENSE) for the full statement:
+
+- Most of the codebase (`src/`, `tests/`, `docs/`, `assets/`) is **Apache License 2.0** (open source).
+- The sync-core files (`src/sync.ts`, `src/conflictLogic.ts`, `src/fileContentHistory.ts`, `src/clearDupFiles.ts`, `src/settingsClearDupFiles.ts`) are **PolyForm Strict License 1.0.0** (source-available: personal and noncommercial use is permitted; redistribution of these files is restricted).
+
+The plugin is free to use. The source-available PolyForm license on the sync core does not affect personal use of the plugin.

@@ -33,7 +33,7 @@ function callSkip(
     opts.syncBookmarks ?? false,
     opts.syncThirdPartyPlugins ?? false,
     opts.syncSelfPlugin ?? false,
-    opts.selfPluginId ?? "obsidian-onedrive-sync"
+    opts.selfPluginId ?? "onedrive-vault-sync"
   ).finalIsIgnored;
 }
 

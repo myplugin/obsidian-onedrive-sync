@@ -47,7 +47,7 @@ function deployPlugin(pluginDir) {
           console.log(
             `[deploy] main.js + manifest.json + styles.css -> ${pluginDir}`
           );
-          reloadPlugin("obsidian-onedrive-sync");
+          reloadPlugin("onedrive-vault-sync");
         } catch (e) {
           console.error(`[deploy] failed: ${e.message}`);
         }
@@ -124,7 +124,7 @@ if (vaultPath) {
     vaultPath,
     ".obsidian",
     "plugins",
-    "obsidian-onedrive-sync"
+    "onedrive-vault-sync"
   );
   deployPlugins.push(deployPlugin(pluginDir));
 }

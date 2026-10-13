@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-onedrive-sync",
+  "name": "onedrive-vault-sync",
   "version": "0.6.6",
   "description": "Sync your Obsidian vault with OneDrive (personal, App Folder).",
   "scripts": {

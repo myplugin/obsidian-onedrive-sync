@@ -931,7 +931,7 @@ export default class RemotelySavePlugin extends Plugin {
         }
       }
     } catch (e) {
-      console.warn("obsidian-onedrive-sync: migration shim skipped", e);
+      console.warn("onedrive-vault-sync: migration shim skipped", e);
     }
 
     await this.loadSettings();
