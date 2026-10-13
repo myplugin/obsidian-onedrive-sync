@@ -31,6 +31,7 @@ import {
   fromDriveItemToEntityWithChainFallback,
 } from "./driveItemConvert";
 import { FakeFs } from "./fsAll";
+import { bufferToArrayBuffer } from "./misc";
 import { buildDeltaStartUrl } from "./syncOptimize";
 
 const SCOPES = ["User.Read", "Files.ReadWrite.AppFolder", "offline_access"];
@@ -49,6 +50,88 @@ export const DEFAULT_ONEDRIVE_CONFIG: OnedriveConfig = {
   emptyFile: "skip",
   kind: "onedrive",
 };
+
+////////////////////////////////////////////////////////////////////////////////
+// Graph HTTP transport: Obsidian requestUrl facade
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * A fetch-`Response`-like facade over Obsidian's `requestUrl`, so the Graph
+ * call sites read exactly like the old fetch-based code (`res.ok` /
+ * `res.status` / `res.headers.get(...)` / `await res.text()` /
+ * `await res.json()` / `await res.arrayBuffer()`) while the request goes
+ * through Obsidian's native layer (CORS-free; no renderer `fetch`, which
+ * the Obsidian plugin guidelines restrict).
+ */
+export interface GraphResponse {
+  status: number;
+  ok: boolean;
+  headers: {
+    get(name: string): string | null;
+    // Lowercased header names are also exposed as flat properties, so
+    // _retryOnTransientError's `(e.headers as any)["retry-after"]` lookup
+    // works on raw {status, headers} 429 throws.
+    [key: string]: any;
+  };
+  text(): Promise<string>;
+  json(): Promise<any>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+/**
+ * Perform a Graph API (or pre-authenticated download URL) request via
+ * Obsidian's `requestUrl` and return a `GraphResponse` facade.
+ *
+ * `requestUrl` FORBIDS `Content-Length` and `Content-Type` as headers:
+ * Content-Type is passed through its dedicated `contentType` param, and
+ * Content-Length is dropped (it is derived from the body). `throw: false`
+ * makes non-2xx statuses RETURN like fetch does, so the call sites' status
+ * classification (404/412/429/!ok branches) is preserved unchanged;
+ * network-level failures still throw, feeding `_retryOnTransientError`'s
+ * transient-network retry exactly as a failed fetch did.
+ */
+export async function graphRequest(
+  url: string,
+  init: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string | ArrayBuffer | Uint8Array;
+  }
+): Promise<GraphResponse> {
+  const {
+    "Content-Type": ct,
+    "Content-Length": _cl,
+    ...rest
+  } = init.headers ?? {};
+  const body =
+    init.body instanceof Uint8Array
+      ? bufferToArrayBuffer(init.body)
+      : (init.body as string | ArrayBuffer | undefined);
+  const res = await requestUrl({
+    url,
+    method: init.method ?? "GET",
+    headers: rest,
+    body,
+    contentType: ct,
+    throw: false,
+  });
+  // requestUrl response header keys are already lowercased; expose both a
+  // case-insensitive .get() (Headers-style) and the flat lowercased record
+  // (so _retryOnTransientError's headers["retry-after"] lookup works).
+  const lower = res.headers;
+  return {
+    status: res.status,
+    ok: res.status >= 200 && res.status < 300,
+    headers: {
+      get: (name: string) => lower[name.toLowerCase()] ?? null,
+      ...lower,
+    },
+    text: () => Promise.resolve(res.text),
+    json: () =>
+      Promise.resolve(res.json ?? (res.text ? JSON.parse(res.text) : null)),
+    arrayBuffer: () => Promise.resolve(res.arrayBuffer),
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Onedrive authorization using PKCE
@@ -782,7 +865,7 @@ export class FakeFsOnedrive extends FakeFs {
     console.debug(`postJson, theUrl=${theUrl}`);
     return await this._retryOnTransientError(async () => {
       const accessToken = await this.authGetter.getAccessToken();
-      const res = await fetch(theUrl, {
+      const res = await graphRequest(theUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -825,7 +908,7 @@ export class FakeFsOnedrive extends FakeFs {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`patchJson, theUrl=${theUrl}`);
     return await this._retryOnTransientError(async () => {
-      const res = await fetch(theUrl, {
+      const res = await graphRequest(theUrl, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -883,7 +966,7 @@ export class FakeFsOnedrive extends FakeFs {
           throw e;
         }
       } else {
-        const res = await fetch(theUrl, {
+        const res = await graphRequest(theUrl, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
@@ -920,19 +1003,29 @@ export class FakeFsOnedrive extends FakeFs {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`putArrayBuffer, theUrl=${theUrl}`);
     return await this._retryOnTransientError(async () => {
-      // TODO:
-      // 20220401: On Android, requestUrl has issue that text becomes base64.
-      // Use fetch everywhere instead!
       // _buildPutRequest is the unit-tested header builder (adds If-Match
       // only when ifMatch is a non-empty string); Authorization is filled
       // here with a fresh token on every (re)attempt.
       const req = _buildPutRequest(theUrl, payload, ifMatch);
       req.headers.Authorization = `Bearer ${await this.authGetter.getAccessToken()}`;
-      const res = await fetch(theUrl, {
-        method: "PUT",
-        body: payload,
-        headers: req.headers,
-      });
+      let res: GraphResponse | Response;
+      if (VALID_REQURL) {
+        // requestUrl-based upload: VALID_REQURL guarantees desktop >=0.13.26
+        // / Android >=0.14.6, where binary bodies are transmitted correctly.
+        res = await graphRequest(theUrl, {
+          method: "PUT",
+          body: payload,
+          headers: req.headers,
+        });
+      } else {
+        // requestUrl binary-upload unverified on Android <0.14.6 (base64
+        // bug); see VALID_REQURL gate. fetch kept as the safe fallback.
+        res = await fetch(theUrl, {
+          method: "PUT",
+          body: payload,
+          headers: req.headers,
+        });
+      }
       if (res.status === 429) {
         throw { status: 429, headers: res.headers } as any;
       }
@@ -977,22 +1070,36 @@ export class FakeFsOnedrive extends FakeFs {
     );
     return await this._retryOnTransientError(async () => {
       // NO AUTH HEADER here!
-      // TODO:
-      // 20220401: On Android, requestUrl has issue that text becomes base64.
-      // Use fetch everywhere instead!
-      const res = await fetch(theUrl, {
-        method: "PUT",
-        body: payload.subarray(
-          rangeStart,
-          rangeEnd
-        ) as Uint8Array<ArrayBuffer>,
-        headers: {
-          "Content-Length": `${rangeEnd - rangeStart}`,
-          "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
-          "Content-Type": DEFAULT_CONTENT_TYPE,
-          /* "Cache-Control": "no-cache", not allowed here!!! */
-        },
-      });
+      const rangeHeaders = {
+        "Content-Length": `${rangeEnd - rangeStart}`,
+        "Content-Range": `bytes ${rangeStart}-${rangeEnd - 1}/${size}`,
+        "Content-Type": DEFAULT_CONTENT_TYPE,
+        /* "Cache-Control": "no-cache", not allowed here!!! */
+      };
+      const rangeBody = payload.subarray(
+        rangeStart,
+        rangeEnd
+      ) as Uint8Array<ArrayBuffer>;
+      let res: GraphResponse | Response;
+      if (VALID_REQURL) {
+        // requestUrl-based chunk upload: graphRequest drops Content-Length
+        // (forbidden as a requestUrl header; derived from the body), routes
+        // Content-Type through the contentType param, and converts the
+        // Uint8Array subarray to an ArrayBuffer copy internally.
+        res = await graphRequest(theUrl, {
+          method: "PUT",
+          body: rangeBody,
+          headers: rangeHeaders,
+        });
+      } else {
+        // requestUrl binary-upload unverified on Android <0.14.6 (base64
+        // bug); see VALID_REQURL gate. fetch kept as the safe fallback.
+        res = await fetch(theUrl, {
+          method: "PUT",
+          body: rangeBody,
+          headers: rangeHeaders,
+        });
+      }
       if (res.status === 429) {
         throw { status: 429, headers: res.headers } as any;
       }
@@ -1709,29 +1816,18 @@ export class FakeFsOnedrive extends FakeFs {
   }
 
   /**
-   * Download file content by its pre-authenticated `download.aspx` URL.
-   * Tries the renderer fetch first (deliberately WITHOUT Authorization or
-   * Cache-Control headers — adding one triggers a CORS failure), then falls
-   * back to Obsidian's CORS-free requestUrl. Errors propagate so the caller's
+   * Download file content by its pre-authenticated `download.aspx` URL via
+   * Obsidian's CORS-free requestUrl (graphRequest facade). The URL is
+   * pre-authenticated, so NO headers are sent: the old renderer-fetch path
+   * failed CORS when Authorization or Cache-Control was added, and
+   * requestUrl needs neither. Non-2xx resolves with the error body (as the
+   * old fetch path did); transport failures throw so the caller's
    * _retryOnTransientError wrapper can retry them.
    */
   private async _downloadByPreAuthUrl(
     downloadUrl: string
   ): Promise<ArrayBuffer> {
-    try {
-      // cannot set no-cache here, will have cors error
-      return await (
-        await fetch(downloadUrl, { cache: "no-store" })
-      ).arrayBuffer();
-    } catch {
-      // let's try again to bypass the CORS
-      return (
-        await requestUrl({
-          url: downloadUrl,
-          headers: { "Cache-Control": "no-cache" },
-        })
-      ).arrayBuffer;
-    }
+    return await (await graphRequest(downloadUrl, {})).arrayBuffer();
   }
 
   async _readFileFromRoot(key: string): Promise<ArrayBuffer> {
@@ -1745,7 +1841,7 @@ export class FakeFsOnedrive extends FakeFs {
       // (not reliably returned for OneDrive App Folder), use the standard
       // /content endpoint which returns a 302 redirect to the download URL.
       return await this._retryOnTransientError(async () => {
-        const res = await fetch(this._buildUrl(`${key}:/content`), {
+        const res = await graphRequest(this._buildUrl(`${key}:/content`), {
           headers: {
             Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
           },
