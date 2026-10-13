@@ -74,7 +74,7 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
 
   // chip list (with a row-end collapse toggle) + collapsible add
   // panel, rendered into the Setting's controlEl.
-  const blockEl = containerEl.createEl("div", { cls: "rs-regex-block" });
+  const blockEl = containerEl.createDiv({ cls: "rs-regex-block" });
   // On mobile, render chips as stacked full-width rows (one regex per line,
   // full text visible) instead of the PC chip capsule — the flex-wrap chip
   // layout is fragile on narrow viewports. See the .rs-regex-mobile CSS.
@@ -88,7 +88,7 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
   // footprint as a chip's × delete). renderChips swaps only chip
   // children, never the toggle, so it survives every re-render and stays
   // at the row end.
-  const chipsEl = blockEl.createEl("div", { cls: "rs-regex-list" });
+  const chipsEl = blockEl.createDiv({ cls: "rs-regex-list" });
 
   // collapse toggle — Add is low-frequency, so it is
   // collapsed by default and revealed on demand via this small icon at
@@ -104,19 +104,19 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
       title: t("settings_regex_manage_aria"),
     },
   });
-  const caretEl = toggleBtnEl.createEl("span", {
+  const caretEl = toggleBtnEl.createSpan({
     cls: "rs-regex-collapse-caret",
   });
   caretEl.appendChild(createElement(ChevronRight));
 
   // collapsible panel — holds the add row (low-frequency),
   // collapsed by default; the toggle above reveals it.
-  const panelEl = blockEl.createEl("div", {
+  const panelEl = blockEl.createDiv({
     cls: "rs-regex-panel rs-is-collapsed",
   });
 
   // add row
-  const addRow = panelEl.createEl("div", { cls: "rs-regex-add-row" });
+  const addRow = panelEl.createDiv({ cls: "rs-regex-add-row" });
   const addInputEl = addRow.createEl("input", {
     type: "text",
     attr: { placeholder: placeholder ?? "", spellcheck: "false" },
@@ -133,7 +133,7 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
     chipsEl.querySelectorAll(".rs-regex-chip").forEach((c) => c.remove());
     const values = getValues();
     values.forEach((value, index) => {
-      const chip = chipsEl.createEl("span", { cls: "rs-regex-chip" });
+      const chip = chipsEl.createSpan({ cls: "rs-regex-chip" });
 
       const validation = validateRegex(value);
       if (!validation.ok) {
@@ -141,14 +141,14 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
         const tip = t("settings_regex_invalid_tooltip", {
           error: validation.error,
         });
-        chip.createEl("span", {
+        chip.createSpan({
           cls: "rs-regex-chip-warning",
           text: "\u26a0",
           attr: { title: tip, "aria-label": tip },
         });
       }
 
-      chip.createEl("span", { cls: "rs-regex-chip-text", text: value });
+      chip.createSpan({ cls: "rs-regex-chip-text", text: value });
 
       const delBtn = chip.createEl("button", {
         cls: "rs-regex-chip-delete",

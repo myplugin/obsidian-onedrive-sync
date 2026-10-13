@@ -1120,7 +1120,7 @@ export default class RemotelySavePlugin extends Plugin {
       this.settings.enableStatusBarInfo === true
     ) {
       const statusBarItem = this.addStatusBarItem();
-      this.statusBarElement = statusBarItem.createEl("span");
+      this.statusBarElement = statusBarItem.createSpan();
       this.statusBarElement.setAttribute("data-tooltip-position", "top");
 
       if (!this.isSyncing) {

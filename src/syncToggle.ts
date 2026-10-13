@@ -22,7 +22,7 @@ export function addSyncToggle(
   const initiallyOn = (plugin.settings.syncedSettingFields ?? []).includes(
     fieldName
   );
-  const iconEl = setting.nameEl.createEl("span", {
+  const iconEl = setting.nameEl.createSpan({
     cls: "rs-sync-toggle-icon",
     attr: {
       role: "button",

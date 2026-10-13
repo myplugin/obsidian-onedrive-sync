@@ -11,8 +11,8 @@ declare global {
   var DEFAULT_ONEDRIVE_AUTHORITY: string;
 }
 
-export const ONEDRIVE_CLIENT_ID = global.DEFAULT_ONEDRIVE_CLIENT_ID;
-export const ONEDRIVE_AUTHORITY = global.DEFAULT_ONEDRIVE_AUTHORITY;
+export const ONEDRIVE_CLIENT_ID = window.DEFAULT_ONEDRIVE_CLIENT_ID;
+export const ONEDRIVE_AUTHORITY = window.DEFAULT_ONEDRIVE_AUTHORITY;
 
 export const DEFAULT_CONTENT_TYPE = "application/octet-stream";
 

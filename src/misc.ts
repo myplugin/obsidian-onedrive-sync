@@ -522,7 +522,7 @@ export const compareVersion = (x: string | null, y: string | null) => {
  * @returns
  */
 export const delay = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+  new Promise((resolve) => window.setTimeout(resolve, ms));
 
 /**
  * https://forum.obsidian.md/t/css-to-show-status-bar-on-mobile-devices/77185

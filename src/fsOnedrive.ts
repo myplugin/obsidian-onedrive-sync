@@ -750,7 +750,7 @@ export class FakeFsOnedrive extends FakeFs {
             status !== undefined ? `status ${status}` : "network"
           }), waiting ${retryAfterSec}s (attempt ${attempt + 1}/${maxRetries})`
         );
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        await new Promise((resolve) => window.setTimeout(resolve, waitMs));
       }
     }
     throw lastError;

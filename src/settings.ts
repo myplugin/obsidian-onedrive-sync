@@ -664,7 +664,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
     // ── collapsible disclaimer callout ──
     const initiallyOpen = this.plugin.settings.disclaimerAcknowledged !== true;
-    const disclaimerDiv = containerEl.createEl("div", {
+    const disclaimerDiv = containerEl.createDiv({
       cls: initiallyOpen ? "rs-disclaimer rs-disclaimer-open" : "rs-disclaimer",
     });
 
@@ -1319,10 +1319,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     // Setting's controlEl, which would lay the result out beside the
     // button and crimp the input width. Mirrors how the chip-list
     // settings above wrap their contents in .rs-regex-block.
-    const regexTestBlock = regexTestSetting.controlEl.createEl("div", {
+    const regexTestBlock = regexTestSetting.controlEl.createDiv({
       cls: "rs-regex-test-block",
     });
-    const regexTestRow = regexTestBlock.createEl("div", {
+    const regexTestRow = regexTestBlock.createDiv({
       cls: "rs-regex-test-row",
     });
     const regexTestInputEl = regexTestRow.createEl("input", {
@@ -1337,7 +1337,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       text: t("settings_regex_test_button"),
       cls: "rs-regex-test-button",
     });
-    const regexTestResultEl = regexTestBlock.createEl("div", {
+    const regexTestResultEl = regexTestBlock.createDiv({
       cls: "rs-regex-test-result",
     });
 
@@ -1349,10 +1349,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       values: string[],
       path: string
     ) => {
-      const row = regexTestResultEl.createEl("div", {
+      const row = regexTestResultEl.createDiv({
         cls: "rs-regex-test-result-row",
       });
-      row.createEl("span", {
+      row.createSpan({
         cls: "rs-regex-test-result-label",
         text: label,
       });
@@ -1361,10 +1361,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         path
       );
       if (matched) {
-        const matchEl = row.createEl("span", {
+        const matchEl = row.createSpan({
           cls: "rs-regex-test-result-match",
         });
-        matchEl.createEl("span", { text: "\u2713 " });
+        matchEl.createSpan({ text: "\u2713 " });
         matchEl.appendText(t("settings_regex_test_match", { regexes: "" }));
         for (const re of matchedRegexes) {
           matchEl.createEl("code", {
@@ -1374,7 +1374,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           matchEl.appendText(" ");
         }
       } else {
-        row.createEl("span", {
+        row.createSpan({
           cls: "rs-regex-test-result-nomatch",
           text: `\u2717 ${t("settings_regex_test_nomatch")}`,
         });
@@ -1391,7 +1391,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       const ignoreValues = this.plugin.settings.ignorePaths ?? [];
       const allowValues = this.plugin.settings.onlyAllowPaths ?? [];
       if (ignoreValues.length === 0 && allowValues.length === 0) {
-        regexTestResultEl.createEl("span", {
+        regexTestResultEl.createSpan({
           cls: "rs-regex-test-result-nomatch",
           text: t("settings_regex_test_empty_list"),
         });
@@ -2028,10 +2028,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setName(t("settings_diag_name"))
       .setDesc(t("settings_diag_desc"));
     diagSetting.settingEl.addClass("rs-regex-setting");
-    const diagBlock = diagSetting.controlEl.createEl("div", {
+    const diagBlock = diagSetting.controlEl.createDiv({
       cls: "rs-regex-test-block",
     });
-    const diagRow = diagBlock.createEl("div", {
+    const diagRow = diagBlock.createDiv({
       cls: "rs-regex-test-row",
     });
     const diagInputEl = diagRow.createEl("input", {
@@ -2046,7 +2046,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       text: t("settings_diag_button"),
       cls: "rs-regex-test-button",
     });
-    const diagResultEl = diagBlock.createEl("div", {
+    const diagResultEl = diagBlock.createDiv({
       cls: "rs-regex-test-result",
     });
 
@@ -2081,13 +2081,13 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         this.plugin.manifest.id
       );
       if (!diagnosis.skipped) {
-        diagResultEl.createEl("span", {
+        diagResultEl.createSpan({
           cls: "rs-regex-test-result-match",
           text: `\u2713 ${t("settings_diag_will_sync")}`,
         });
         return;
       }
-      const nomatchEl = diagResultEl.createEl("span", {
+      const nomatchEl = diagResultEl.createSpan({
         cls: "rs-regex-test-result-nomatch",
       });
       nomatchEl.appendText(`\u2717 ${t("settings_diag_wont_sync")} \u2014 `);
