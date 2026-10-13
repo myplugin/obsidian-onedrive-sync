@@ -15,14 +15,13 @@ Guidance for AI agents working in `onedrive-vault-sync` — a OneDrive-only fork
 
 ## Build environment
 
-- `.env` is gitignored (`.gitignore` ignores `.*`). Copy from `.env.example.txt` and fill the OneDrive client ID.
-- The OneDrive OAuth values are injected at build time as `global.DEFAULT_*` constants — `DEFAULT_ONEDRIVE_CLIENT_ID` and `DEFAULT_ONEDRIVE_AUTHORITY` (see `esbuild.config.mjs` `define`). Empty values build fine, but OneDrive can't connect.
+- `.env` is gitignored. The OneDrive client ID + authority are baked into `esbuild.config.mjs` as working defaults (`DEFAULT_ONEDRIVE_CLIENT_ID` / `DEFAULT_ONEDRIVE_AUTHORITY` via esbuild `define`), so a clean clone builds and authenticates with **no `.env`**. Copy `.env.example.txt` → `.env` only to override (e.g. test a different app registration).
 - `VAULT_PATH` in `.env` enables auto-deploy: on `dev` (watch) and `build`, an esbuild `onEnd` plugin copies `main.js` + `manifest.json` + `styles.css` to `<vault>/.obsidian/plugins/onedrive-vault-sync/` (mirrors `scripts/deploy.mjs`, which `npm run deploy` invokes directly).
 - Obsidian loads `main.js` + `manifest.json` + `styles.css`. Both `main.js` and `data.json` (runtime plugin data) are gitignored.
 
 ## Architecture
 
-- Entry point `src/main.ts` (~1.2k lines) — the Obsidian `Plugin` subclass, the only stateful file / only place with side effects.
+- Entry point `src/main.ts` (~2.3k lines) — the Obsidian `Plugin` subclass, the only stateful file / only place with side effects.
 - **No `pro/` directory** — it has been dissolved. All code lives in flat `src/`.
 - **License split within `src/`**: most of `src/` is Apache-2.0 (`src/LICENSE`). Five files are **PolyForm Strict 1.0.0** (source-available, see root `LICENSE.pro`): `src/sync.ts`, `src/conflictLogic.ts`, `src/fileContentHistory.ts`, `src/clearDupFiles.ts`, `src/settingsClearDupFiles.ts` (each carries a `// License: PolyForm Strict` header). Personal use is fine; distribution must respect the PolyForm terms. Never copy these into Apache-licensed derived works without honoring the license.
 - Per-cloud filesystem modules follow the `fs*.ts` pattern, all in `src/`:
@@ -39,7 +38,7 @@ Guidance for AI agents working in `onedrive-vault-sync` — a OneDrive-only fork
 
 ## Conventions
 
-- Keep functions pure except inside `main.ts`; pass state via parameters. (see `docs/code_design.md`)
+- Keep functions pure except inside `main.ts`; pass state via parameters. (see `docs/architecture/code_design.md`)
 - `src/misc.ts` must not depend on any other internal module.
 - Storage modules (`fs*.ts`) must not import `sync.ts`.
 - Folders are always represented by strings ending with `/`.
@@ -49,11 +48,11 @@ Guidance for AI agents working in `onedrive-vault-sync` — a OneDrive-only fork
 
 ## Contributing
 
-- A signed CLA is required for **all** PRs — sign by commenting `I have read the CLA Document and I hereby sign the CLA` on the PR. No corporate contributions accepted. See `CONTRIBUTING.md` / `CLA.md`.
+- This is a personal project. Pull requests are welcome; there is **no CLA**. Respect the split license in `LICENSE` / `LICENSE.pro` — the five sync-core files are PolyForm Strict (source-available; personal/noncommercial use; redistribution of those files is restricted).
 
 ## Key docs
 
-- `docs/code_design.md` — code organization rules (purity, deps, folder strings).
+- `docs/architecture/code_design.md` — code organization rules (purity, deps, folder strings).
 - `docs/sync_algorithm/v3/` — sync algorithm design (`intro.md`, `design.md`).
 - `docs/remote_services/onedrive/` — OneDrive setup notes and CORS/quirks (the only service).
 - `docs/how_to_debug/` — debugging flows (logs, sync plans export, console/vconsole).

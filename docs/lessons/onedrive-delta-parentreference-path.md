@@ -9,7 +9,7 @@
 ```
 classifyDeltaItems: skipping added/modified item (parse failed)
 x.parentReference.path is undefinded or null
-{"id":"...!s354...","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"...!sc6a..."}}
+{"id":"<folderId6>","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"<folderId7>"}}
 ```
 
 （另有一条 `504` 重试，是独立的瞬时网关错误，已被重试逻辑处理，与此无关。）
@@ -135,7 +135,7 @@ if (DELTA_LINK_KEY in res) { this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY]
 
 ## 后续（2026-09-23）：全量分支 fallback + 越界丢弃（第三次复发修复）
 
-前两次修复（`134aac9` 根文件夹特例、2026-09-21 id+parent-chain fallback）**只补了增量分支**。本次复盘里"全量 delta 必带 path"的论断是经验性概括——**被自动定期同步的复现证伪**：同一个稳定父文件夹 `!sc4ea15a...` 的子项在每次增量 delta 都不带 path，deltaLink 作废后全量重枚举**仍然** warn-skip 它们（全量 `/delta` 不带 token 也是 delta 调用，path 省略对"涉文件夹操作的条目"同样发生）→ 永不进 prevRemoteEntities → 增量 fallback 依赖 prev → 循环依赖，死循环。
+前两次修复（`134aac9` 根文件夹特例、2026-09-21 id+parent-chain fallback）**只补了增量分支**。本次复盘里"全量 delta 必带 path"的论断是经验性概括——**被自动定期同步的复现证伪**：同一个稳定父文件夹 `<rootItemId>` 的子项在每次增量 delta 都不带 path，deltaLink 作废后全量重枚举**仍然** warn-skip 它们（全量 `/delta` 不带 token 也是 delta 调用，path 省略对"涉文件夹操作的条目"同样发生）→ 永不进 prevRemoteEntities → 增量 fallback 依赖 prev → 循环依赖，死循环。
 
 ### 根因（三层）
 1. **全量分支用裸 `fromDriveItemToEntity`（无 fallback）**：path-missing 条目 warn-skip 后永不入 prevRemoteEntities，增量 fallback（依赖 prev）无法自愈。

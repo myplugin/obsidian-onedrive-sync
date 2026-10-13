@@ -9,8 +9,8 @@
 ```
 classifyDeltaItems: skipping added/modified item (parse failed)
 x.parentReference.path is undefinded or null
-{"id":"...!se6cfd1...","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"...!sc4ea15..."}}   ← 非根文件夹 A
-{"id":"...!sc8816884...","size":0,"parentReference":{...,"id":"...!se6cfd1..."}}                                     ← 非根文件夹 B，父=A
+{"id":"<folderId1>","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"<rootItemId>"}}   ← 非根文件夹 A
+{"id":"<folderId2>","size":0,"parentReference":{...,"id":"<folderId1>"}}                                     ← 非根文件夹 B，父=A
 walk: 2 added/modified delta item(s) could not be parsed — invalidating deltaLink; next sync will do a full re-enumeration.
 ```
 
@@ -48,10 +48,10 @@ walk: 2 added/modified delta item(s) could not be parsed — invalidating deltaL
 ## 旁支：部署/重载诊断（非本次修复范围）
 
 修完代码后 build 自动重载失败（"obsidian CLI did not confirm reload"）。诊断链：
-- `where obsidian` → `D:\Obsidian\Obsidian.com` + `.exe`（Obsidian 自带 CLI，PATHEXT 解析 `.com` 优先）。
+- `where obsidian` → `Obsidian.com` + `.exe`（Obsidian 自带 CLI，PATHEXT 解析 `.com` 优先）。
 - `obsidian version` → `1.13.7`（CLI 连上了某个 Obsidian 实例）。
 - `obsidian plugin:reload id=obsidian-onedrive-sync` → `Error: Plugin "..." is not enabled.`（spawnSync shell:false / shell:true / 显式 .com 三种方式都同此结果）。
-- 真因：部署目标 vault（`VAULT_PATH=...\Obsidian\Lab`）的 `community-plugins.json` 只有 `["lazy-plugins"]`——**Lab vault 没启用本插件**。Obsidian 插件启用是 per-vault 的；用户启用的是另一个 vault。
+- 真因：部署目标 vault（`VAULT_PATH=<vault>`）的 `community-plugins.json` 只有 `["lazy-plugins"]`——**Lab vault 没启用本插件**。Obsidian 插件启用是 per-vault 的；用户启用的是另一个 vault。
 - **工具链坑**：`esbuild.config.mjs` 的 `reloadPlugin`（行 57-83）失败时只打通用 warn（"did not confirm reload"），**吞了 CLI 的真实 stdout**（`Error: ... is not enabled`），逼得手动 spawnSync 才看到真相。改进点（未做）：失败时透传 CLI 真实 stdout/stderr，让这类原因立即可见。
 
 ## commit hash 重写异常（再印证）

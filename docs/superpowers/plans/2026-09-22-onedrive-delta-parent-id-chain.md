@@ -16,8 +16,8 @@ spec §7 当时明确**延期**了两件事：
 ```
 classifyDeltaItems: skipping added/modified item (parse failed)
 x.parentReference.path is undefinded or null
-{"id":"...!se6cfd1...","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"...!sc4ea15..."}}  ← 非根文件夹A
-{"id":"...!sc8816884...","size":0,"parentReference":{...,"id":"...!se6cfd1..."}}  ← 非根文件夹B，父=A
+{"id":"<folderId1>","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"<rootItemId>"}}  ← 非根文件夹A
+{"id":"<folderId2>","size":0,"parentReference":{...,"id":"<folderId1>"}}  ← 非根文件夹B，父=A
 walk: 2 added/modified delta item(s) could not be parsed — invalidating deltaLink; next sync will do a full re-enumeration.
 ```
 
@@ -150,10 +150,10 @@ const converter = (item, dir, req) =>
 ### 6.2 `tests/deltaMerge.test.ts`（新增 describe「parent-id-chain fallback」）
 fixture（**告警数据的精确形态**）：
 ```ts
-const ROOT_ID = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
-const folderA = { id:"...!se6cfd1caee354d3397d371a784f58eb9", name:"A", size:0, folder:{},
+const ROOT_ID = "<rootItemId>";
+const folderA = { id:"<folderId1>", name:"A", size:0, folder:{},
   parentReference:{ driveType:"personal", driveId:"...", id: ROOT_ID } }; // 无 path
-const folderB = { id:"...!sc8816884e3404b5b8f812fbd896415e8", name:"B", size:0, folder:{},
+const folderB = { id:"<folderId2>", name:"B", size:0, folder:{},
   parentReference:{ driveType:"personal", driveId:"...", id: folderA.id } }; // 无 path, 父=A
 ```
 - `[folderA, folderB]` + `approotRootId=ROOT_ID` + 空 prev map → 两条全解析，`keyRaw` 为 `A/` 与 `A/B/`，`skippedAddedOrModified===0`，无 warn。

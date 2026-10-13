@@ -34,14 +34,14 @@ describe("isApprootRootDriveItem", () => {
   // The exact shape from the reported warning (personal OneDrive,
   // special-folder !s IDs, no parentReference.path).
   const approotRootItem = {
-    id: "473340CC2449AD6B!s354ed46c2d9e4b1b87770b08aa0888a8",
+    id: "00000000FACE0000!00000000000000000000000000000006",
     name: "MyVault",
     size: 0,
     folder: {},
     parentReference: {
       driveType: "personal",
-      driveId: "473340CC2449AD6B",
-      id: "473340CC2449AD6B!sc6a1176cde5a4a7ba20f8f5078b6cc63",
+      driveId: "00000000FACE0000",
+      id: "00000000FACE0000!00000000000000000000000000000007",
     },
   };
 
@@ -372,8 +372,8 @@ describe("fromDriveItemToEntityWithIdFallback", () => {
 
 // The exact ids from the reported warning data (personal OneDrive,
 // new non-root folders with no parentReference.path).
-const CHAIN_ROOT_ID = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
-const CHAIN_PARENT_ID = "473340CC2449AD6B!se6cfd1caee354d3397d371a784f58eb9";
+const CHAIN_ROOT_ID = "00000000FACE0000!00000000000000000000000000000001";
+const CHAIN_PARENT_ID = "00000000FACE0000!00000000000000000000000000000002";
 
 describe("deriveKeyFromParentChain", () => {
   it("baseline: parent is the approot root + folder -> name + '/'", () => {
@@ -612,7 +612,7 @@ describe("fromDriveItemToEntityWithChainFallback", () => {
       },
       parentReference: {
         driveType: "personal",
-        driveId: "473340CC2449AD6B",
+        driveId: "00000000FACE0000",
         id: CHAIN_ROOT_ID,
       }, // no path
     };
@@ -632,7 +632,7 @@ describe("fromDriveItemToEntityWithChainFallback", () => {
     // Warning-data case 2: new folder whose parent (folder A) was
     // resolved earlier in the same delta batch.
     const folderB = {
-      id: "473340CC2449AD6B!sc8816884e3404b5b8f812fbd896415e8",
+      id: "00000000FACE0000!00000000000000000000000000000003",
       name: "B",
       size: 0,
       folder: {},
@@ -642,7 +642,7 @@ describe("fromDriveItemToEntityWithChainFallback", () => {
       },
       parentReference: {
         driveType: "personal",
-        driveId: "473340CC2449AD6B",
+        driveId: "00000000FACE0000",
         id: CHAIN_PARENT_ID, // parent = folder A
       }, // no path
     };

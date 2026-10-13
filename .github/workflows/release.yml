@@ -5,7 +5,7 @@
 #
 # To cut a release:
 #   git tag 0.6.6
-#   git push pycv 0.6.6
+#   git push origin 0.6.6
 # The workflow builds, verifies the version matches, attests provenance, and
 # creates the release. No OneDrive secrets are needed — the client ID is
 # hardcoded in esbuild.config.mjs, so a clean clone builds a working main.js.

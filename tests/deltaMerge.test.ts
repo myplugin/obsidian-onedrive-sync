@@ -1,4 +1,4 @@
-﻿// License: Apache-2.0 (see src/LICENSE)
+// License: Apache-2.0 (see src/LICENSE)
 
 import { strict as assert } from "assert";
 import type { Entity } from "../src/baseTypes";
@@ -760,11 +760,11 @@ describe("classifyDeltaItems with idToKeyMap (real converter)", () => {
 // ----------------------------------------------------------------
 describe("classifyDeltaItems: parent-id-chain fallback", () => {
   const MTIME = "2024-01-01T00:00:00Z";
-  const ROOT_ID = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
-  const DRIVE_ID = "473340CC2449AD6B";
+  const ROOT_ID = "00000000FACE0000!00000000000000000000000000000001";
+  const DRIVE_ID = "00000000FACE0000";
   // Non-root folder A: direct child of the vault root, NO path.
   const folderA = {
-    id: "473340CC2449AD6B!se6cfd1caee354d3397d371a784f58eb9",
+    id: "00000000FACE0000!00000000000000000000000000000002",
     name: "A",
     size: 0,
     folder: {},
@@ -777,7 +777,7 @@ describe("classifyDeltaItems: parent-id-chain fallback", () => {
   };
   // Non-root folder B: child of A (parent id = A's id), NO path.
   const folderB = {
-    id: "473340CC2449AD6B!sc8816884e3404b5b8f812fbd896415e8",
+    id: "00000000FACE0000!00000000000000000000000000000003",
     name: "B",
     size: 0,
     folder: {},
@@ -856,7 +856,7 @@ describe("classifyDeltaItems: parent-id-chain fallback", () => {
     // c.md (child of B) cannot resolve until B and A have resolved on the
     // rescan passes - proves the rescan repeats until no progress.
     const fileC = {
-      id: "473340CC2449AD6B!sc000000000000000000000000000c",
+      id: "00000000FACE0000!sc000000000000000000000000000c",
       name: "c.md",
       size: 5,
       file: {},
@@ -908,7 +908,7 @@ describe("classifyDeltaItems: parent-id-chain fallback", () => {
 
   it("deleted path-missing item with root parent -> deletedKeys (no phantom)", () => {
     const deletedFolder = {
-      id: "473340CC2449AD6B!sdel00000000000000000000000000",
+      id: "00000000FACE0000!sdel00000000000000000000000000",
       name: "Old",
       size: 0,
       folder: {},
@@ -981,7 +981,7 @@ describe("full-enum fallback (empty lookupMap + approotRootId anchor)", () => {
   // direct child of the vault root and MUST resolve via the baseline branch
   // of deriveKeyFromParentChain (key = name, folder -> trailing "/").
   it("resolves a path-missing direct child of the vault root via the anchor", () => {
-    const approotRootId = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
+    const approotRootId = "00000000FACE0000!00000000000000000000000000000001";
     const lookupMap = new Map<string, string>();
     lookupMap.set(approotRootId, "/");
     const converter = (item: any, dir: string, requireMtime?: boolean) =>
@@ -993,13 +993,13 @@ describe("full-enum fallback (empty lookupMap + approotRootId anchor)", () => {
         requireMtime
       );
     const child = {
-      id: "473340CC2449AD6B!s51622b9692a7443c8becccb73884cb7e",
+      id: "00000000FACE0000!00000000000000000000000000000005",
       name: "sub",
       size: 0,
       folder: {},
       parentReference: {
         driveType: "personal",
-        driveId: "473340CC2449AD6B",
+        driveId: "00000000FACE0000",
         id: approotRootId,
       },
       fileSystemInfo: {

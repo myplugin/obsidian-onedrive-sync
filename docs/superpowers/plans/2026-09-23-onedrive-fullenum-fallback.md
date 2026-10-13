@@ -209,7 +209,7 @@ describe("full-enum fallback (empty lookupMap + approotRootId anchor)", () => {
   // direct child of the vault root and MUST resolve via the baseline branch
   // of deriveKeyFromParentChain (key = name, folder -> trailing "/").
   it("resolves a path-missing direct child of the vault root via the anchor", () => {
-    const approotRootId = "473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a";
+    const approotRootId = "<rootItemId>";
     const lookupMap = new Map<string, string>();
     lookupMap.set(approotRootId, "/");
     const converter = (item: any, dir: string, requireMtime?: boolean) =>
@@ -221,13 +221,13 @@ describe("full-enum fallback (empty lookupMap + approotRootId anchor)", () => {
         requireMtime
       );
     const child = {
-      id: "473340CC2449AD6B!s51622b9692a7443c8becccb73884cb7e",
+      id: "<folderId5>",
       name: "sub",
       size: 0,
       folder: {},
       parentReference: {
         driveType: "personal",
-        driveId: "473340CC2449AD6B",
+        driveId: "<driveId>",
         id: approotRootId,
       },
       fileSystemInfo: {
@@ -535,7 +535,7 @@ Expected: `main.js` produced; typecheck (run as part of build) clean.
 - [ ] **Step 8: Manual sync verification**
 
 Deploy to the vault (if `VAULT_PATH` is set in `.env`, `npm run build` auto-deploys; otherwise copy `main.js` + `manifest.json`). In Obsidian, trigger an automatic sync. Confirm in the console:
-- The `classifyDeltaItems: skipping added/modified item (parse failed) / x.parentReference.path is undefinded or null` warnings for the `!sc4ea15a...` family are GONE or replaced by `walk: stat-retry dropped out-of-scope item` debug logs.
+- The `classifyDeltaItems: skipping added/modified item (parse failed) / x.parentReference.path is undefinded or null` warnings for the `<rootItemId>` family are GONE or replaced by `walk: stat-retry dropped out-of-scope item` debug logs.
 - The `invalidating deltaLink` message no longer recurs on consecutive automatic syncs.
 
 - [ ] **Step 9: Commit**
@@ -617,7 +617,7 @@ Append to `docs/lessons/onedrive-delta-parentreference-path.md`:
 
 ## 后续（2026-09-23）：全量分支 fallback + 越界丢弃（第三次复发修复）
 
-前两次修复（134aac9 根文件夹特例、2026-09-21 id+parent-chain fallback）**只补了增量分支**。本次复盘里"全量 delta 必带 path"的论断是经验性概括——**被自动定期同步的复现证伪**：同一个稳定父文件夹 `!sc4ea15a...` 的子项在每次增量 delta 都不带 path，deltaLink 作废后全量重枚举**仍然** warn-skip 它们（全量 `/delta` 不带 token 也是 delta 调用，path 省略对"涉文件夹操作的条目"同样发生）→ 永不进 prevRemoteEntities → 增量 fallback 依赖 prev → 循环依赖，死循环。
+前两次修复（134aac9 根文件夹特例、2026-09-21 id+parent-chain fallback）**只补了增量分支**。本次复盘里"全量 delta 必带 path"的论断是经验性概括——**被自动定期同步的复现证伪**：同一个稳定父文件夹 `<rootItemId>` 的子项在每次增量 delta 都不带 path，deltaLink 作废后全量重枚举**仍然** warn-skip 它们（全量 `/delta` 不带 token 也是 delta 调用，path 省略对"涉文件夹操作的条目"同样发生）→ 永不进 prevRemoteEntities → 增量 fallback 依赖 prev → 循环依赖，死循环。
 
 ### 根因（三层）
 1. **全量分支用裸 `fromDriveItemToEntity`（无 fallback）**：path-missing 条目 warn-skip 后永不入 prevRemoteEntities，增量 fallback（依赖 prev）无法自愈。
@@ -653,7 +653,7 @@ git commit -m "docs(lessons): third follow-up — full-enum fallback + out-of-sc
 - §4.2 component: shared method body (requireMtime=false, OUT_OF_SCOPE drop, invalidate flag) → Task 2 step 3. ✓
 - §4.3 data flow (full-enum + incremental + mkdir) → Task 2 steps 4-5, Task 3. ✓
 - §4.4 error-handling table → Task 2 step 3 (the catch branches). ✓
-- §5 testing (driveItemConvert OUT_OF_SCOPE, full-enum anchor characterization, 8-item chain fixture) → Task 1 (OUT_OF_SCOPE), Task 2 step 1 (anchor + in-batch + OUT_OF_SCOPE re-throw). The 8-item chain fixture is covered by the in-batch parent→child test (Task 2 step 1 spec 2) which exercises the same rescan mechanism; the `!sc4ea15a...` exact ids appear in spec 1. mkdir tracking test → deferred to manual (fsOnedrive untestable, documented in Task 2/3 notes). ✓ (with documented deviation)
+- §5 testing (driveItemConvert OUT_OF_SCOPE, full-enum anchor characterization, 8-item chain fixture) → Task 1 (OUT_OF_SCOPE), Task 2 step 1 (anchor + in-batch + OUT_OF_SCOPE re-throw). The 8-item chain fixture is covered by the in-batch parent→child test (Task 2 step 1 spec 2) which exercises the same rescan mechanism; the `<rootItemId>` exact ids appear in spec 1. mkdir tracking test → deferred to manual (fsOnedrive untestable, documented in Task 2/3 notes). ✓ (with documented deviation)
 - §6 documentation (lesson correction) → Task 4. ✓
 
 **Placeholder scan:** No TBD/TODO/"handle edge cases". All code steps show actual code. ✓

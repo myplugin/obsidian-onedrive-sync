@@ -4,7 +4,7 @@ Project-independent reference knowledge, gathered 2026-09-22.
 
 ## Obsidian CLI basics
 
-Obsidian 1.x ships a CLI. On Windows, `where obsidian` resolves to `D:\Obsidian\Obsidian.com` (CLI shim) and `D:\Obsidian\Obsidian.exe` (the GUI app). Windows PATHEXT lists `.COM` before `.EXE`, so bare `obsidian` invokes the CLI shim, not the app.
+Obsidian 1.x ships a CLI. On Windows, `where obsidian` resolves to `Obsidian.com` (CLI shim) and `Obsidian.exe` (the GUI app). Windows PATHEXT lists `.COM` before `.EXE`, so bare `obsidian` invokes the CLI shim, not the app.
 
 - `obsidian version` → prints `1.13.7 (installer 1.13.7)`. Note: the CLI uses **subcommands** (`version`), NOT flags (`--version` → `Error: Command "--version" not found. Did you mean: version?`).
 - `obsidian plugin:reload id=<plugin-id>` → reloads a plugin in the running Obsidian. On success prints `Reloaded: <plugin-id>` to stdout. This exact string is the honest success signal — a bare exit-0 is NOT enough (the app can launch and exit 0 without reloading; see Node `shell:true` caveat below).
@@ -23,7 +23,7 @@ Three equivalent ways to call the CLI from Node, all behave identically here:
 ```js
 spawnSync("obsidian", ["plugin:reload", `id=${id}`], { shell: false, ... });  // preferred
 spawnSync("obsidian", ["plugin:reload", `id=${id}`], { shell: true,  ... });
-spawnSync("D:\\Obsidian\\Obsidian.com", ["plugin:reload", `id=${id}`], { shell: false, ... });
+spawnSync("Obsidian.com", ["plugin:reload", `id=${id}`], { shell: false, ... });
 ```
 
 - **`shell: false` is correct and safe.** Node resolves `obsidian` through PATHEXT itself (picks `.com`). Args pass cleanly.

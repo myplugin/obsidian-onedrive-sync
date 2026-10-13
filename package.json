@@ -64,7 +64,6 @@
     "@fyears/tsqueue": "^1.0.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@sanity/diff-match-patch": "^3.1.1",
-    "acorn": "^8.12.1",
     "aggregate-error": "^5.0.0",
     "assert": "^2.1.0",
     "buffer": "^6.0.3",

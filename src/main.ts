@@ -1134,13 +1134,19 @@ export default class RemotelySavePlugin extends Plugin {
       // update statusbar text every 30 seconds
       this.registerInterval(
         window.setInterval(async () => {
-          if (!this.isSyncing) {
-            this.updateLastSyncMsg(
-              undefined,
-              "not_syncing",
-              await getLastSuccessSyncTimeByVault(this.db, this.vaultRandomID),
-              await getLastFailedSyncTimeByVault(this.db, this.vaultRandomID)
-            );
+          // best-effort: a transient DB error must not become an unhandled
+          // rejection that surfaces as a console error every 30 s.
+          try {
+            if (!this.isSyncing) {
+              this.updateLastSyncMsg(
+                undefined,
+                "not_syncing",
+                await getLastSuccessSyncTimeByVault(this.db, this.vaultRandomID),
+                await getLastFailedSyncTimeByVault(this.db, this.vaultRandomID)
+              );
+            }
+          } catch {
+            // ignore — status-bar refresh will retry next interval
           }
         }, 1000 * 30)
       );
@@ -2265,9 +2271,14 @@ export default class RemotelySavePlugin extends Plugin {
 
     try {
       if (!ignoreFileExists) {
-        // not exists, directly create
-        // no need to await
-        this.app.vault.adapter.write(ignoreFile, contentText);
+        // not exists, directly create.
+        // fire-and-forget, but swallow the rejection so it can never become
+        // an unhandled rejection (the outer try/catch cannot catch async).
+        void this.app.vault.adapter
+          .write(ignoreFile, contentText)
+          .catch(() => {
+            // just skip
+          });
       }
     } catch (error) {
       // just skip

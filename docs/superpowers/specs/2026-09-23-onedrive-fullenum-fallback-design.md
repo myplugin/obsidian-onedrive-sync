@@ -10,20 +10,20 @@
 
 This is the **third recurrence** of the OneDrive delta `parentReference.path`-missing warning. The two prior fixes (`134aac9` approot-root special-case; the 2026-09-21 id+parent-chain fallback) **only equipped the incremental branch** of `walk()`. The full-enumeration branch was left on the plain `fromDriveItemToEntity` converter, on the empirical assumption — stated as Non-goal #3 in the prior spec — that "full-walk empirically has path."
 
-That assumption is **falsified by recurrence**: the warning now fires on **automatic periodic syncs** (not tied to any delete action), with the same stable parent folder id `473340CC2449AD6B!sc4ea15a708a54f5a800ec64efca9de7a` recurring across independent sync events. After each `deltaLink` invalidation the next sync full-walks — and the same items are warn-skipped again, never entering `prevRemoteEntities`, so the incremental fallback (which depends on `prevRemoteEntities`) can never recover them. The cycle never breaks.
+That assumption is **falsified by recurrence**: the warning now fires on **automatic periodic syncs** (not tied to any delete action), with the same stable parent folder id `<rootItemId>` recurring across independent sync events. After each `deltaLink` invalidation the next sync full-walks — and the same items are warn-skipped again, never entering `prevRemoteEntities`, so the incremental fallback (which depends on `prevRemoteEntities`) can never recover them. The cycle never breaks.
 
 ### Symptoms (across two independent sync events)
 
 ```
 classifyDeltaItems: skipping added/modified item (parse failed)
   x.parentReference.path is undefinded or null
-  {"id":"...!s0a673a98...","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"...!sc4ea15a...","si...
+  {"id":"<folderId3>","size":0,"parentReference":{"driveType":"personal","driveId":"...","id":"<rootItemId>","si...
 walk: 8 delta item(s) had no parentReference.path — retrying via stat-by-id
 walk: 8 added/modified delta item(s) could not be parsed even after stat retry
   — invalidating deltaLink; next sync will do a full re-enumeration.
 ```
 
-The 8 items form a parent chain `!sc4ea15a...` (grandparent, only referenced) → `!s5295aaecb...` (parent) → 7 children. The chain-top `!sc4ea15a...` is **neither the `approotRootId`** (the baseline branch would resolve direct children) **nor in `prevRemoteEntities`** — confirmed because `approotRootId` is captured on every sync's first `_init()` (`vaultFolderExists` starts `false`, constructor line 554), and the rescan passes fail to bootstrap the chain.
+The 8 items form a parent chain `<rootItemId>` (grandparent, only referenced) → `<folderId4>` (parent) → 7 children. The chain-top `<rootItemId>` is **neither the `approotRootId`** (the baseline branch would resolve direct children) **nor in `prevRemoteEntities`** — confirmed because `approotRootId` is captured on every sync's first `_init()` (`vaultFolderExists` starts `false`, constructor line 554), and the rescan passes fail to bootstrap the chain.
 
 ## 2. Root Cause (systematic-debugging Phase 1)
 
@@ -198,7 +198,7 @@ Key invariant: **out-of-scope items never count toward `unresolved` and never in
 
 - **`tests/driveItemConvert.test.ts`:** `deriveKeyFromPath` throws `ONEDRIVE_PATH_OUT_OF_SCOPE` (assert `.code`) for: (a) no known prefix, (b) `/drive/items/` prefix but path not under `remoteBaseDir`, (c) no `name` on a `/drive/items/` item.
 - **New full-enum fallback test:** empty `lookupMap` + `approotRootId` anchor → a direct child of vault root (parentRef.id === approotRootId, no path) resolves to `key = name`; a deeper child whose parent resolves in-batch resolves on rescan; an out-of-scope stat path → dropped (not in result, not counted).
-- **`tests/deltaMerge.test.ts`:** the exact 8-item chain fixture from the user's log (`!sc4ea15a...` → `!s5295aaecb...` → 7 children) — verify the full-enum+stat path either resolves in-scope children or correctly drops out-of-scope, with **zero `deltaLink` invalidation** in the full-enum case.
+- **`tests/deltaMerge.test.ts`:** the exact 8-item chain fixture from the user's log (`<rootItemId>` → `<folderId4>` → 7 children) — verify the full-enum+stat path either resolves in-scope children or correctly drops out-of-scope, with **zero `deltaLink` invalidation** in the full-enum case.
 - **mkdir tracking test:** `_mkdirFromRoot` success → `uploadedEntities` contains the entity with `remoteId` set.
 
 ## 6. Documentation
@@ -211,7 +211,7 @@ Key invariant: **out-of-scope items never count toward `unresolved` and never in
 - `npm run typecheck` (tsc -noEmit -skipLibCheck) green.
 - `npm test` — all existing + new tests green.
 - `npm run build` produces `main.js`.
-- Manual: trigger an automatic sync; confirm the `classifyDeltaItems: skipping added/modified item` warning and the `invalidating deltaLink` message no longer recur for the stable `!sc4ea15a...` family.
+- Manual: trigger an automatic sync; confirm the `classifyDeltaItems: skipping added/modified item` warning and the `invalidating deltaLink` message no longer recur for the stable `<rootItemId>` family.
 
 ## 8. References
 
