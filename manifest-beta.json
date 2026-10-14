@@ -1,7 +1,7 @@
 {
   "id": "onedrive-vault-sync",
   "name": "OneDrive Vault Sync",
-  "version": "0.6.27",
+  "version": "0.6.28",
   "minAppVersion": "1.13.1",
   "description": "Sync your vault with OneDrive (personal, App Folder).",
   "author": "pef",

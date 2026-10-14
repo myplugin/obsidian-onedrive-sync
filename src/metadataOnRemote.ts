@@ -1,5 +1,5 @@
 import { base64url } from "rfc4648";
-import { deepEqual, reverseString } from "./misc";
+import { BufferAllocUnsafeFactory, deepEqual, reverseString } from "./misc";
 
 const DEFAULT_README_FOR_METADATAONREMOTE =
   "Do NOT edit or delete the file manually. This file is for the plugin remotely-save to store some necessary meta data on the remote services. Its content is slightly obfuscated.";
@@ -88,9 +88,7 @@ export const deserializeMetadataOnRemote = (x: string | ArrayBuffer) => {
   try {
     y3 = (
       base64url.parse(reverseString(y2["d"] as string), {
-        out: Buffer.allocUnsafe as unknown as (new (size: number) => {
-          [index: number]: number;
-        }),
+        out: BufferAllocUnsafeFactory,
         loose: true,
       }) as Buffer
     ).toString("utf-8");

@@ -1203,3 +1203,14 @@ export const throttle = <Args extends unknown[], R>(
     maxWait: wait,
     trailing: options?.trailing ?? true,
   });
+
+/**
+ * Constructor-shaped wrapper for Buffer.allocUnsafe — the rfc4648 parse
+ * `out` option expects `new (size) => { [index]: number }`, but passing
+ * Buffer.allocUnsafe bare triggers @typescript-eslint/unbound-method.
+ * This wrapper calls Buffer.allocUnsafe(size) (no bare reference) and is
+ * cast to the constructor type `out` expects.
+ */
+export const BufferAllocUnsafeFactory = function (this: unknown, size: number) {
+  return Buffer.allocUnsafe(size);
+} as unknown as new (size: number) => { [index: number]: number };

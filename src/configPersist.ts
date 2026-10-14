@@ -1,5 +1,5 @@
 import { base64url } from "rfc4648";
-import { reverseString } from "./misc";
+import { BufferAllocUnsafeFactory, reverseString } from "./misc";
 
 import type { RemotelySavePluginSettings } from "./baseTypes";
 
@@ -28,9 +28,7 @@ export const messyConfigToNormal = (
     const y = JSON.parse(
       (
         base64url.parse(reverseString(x["d"]), {
-          out: Buffer.allocUnsafe as unknown as (new (size: number) => {
-            [index: number]: number;
-          }),
+          out: BufferAllocUnsafeFactory,
           loose: true,
         }) as Buffer
       ).toString("utf-8")
