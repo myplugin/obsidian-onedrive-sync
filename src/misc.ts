@@ -969,7 +969,7 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
     // Primitives (or a primitive/object mix) already failed === above; the
     // only remaining equal case is NaN vs NaN. Functions: reference-equal
     // only, same as lodash.
-    return a !== a && b !== b;
+    return typeof a === "number" && typeof b === "number" && Number.isNaN(a) && Number.isNaN(b);
   }
   if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
     return false;
@@ -993,7 +993,7 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
   }
   if (ArrayBuffer.isView(a)) {
     // TypedArray / DataView / Buffer: byte-wise (prototypes already match)
-    const va = a as ArrayBufferView;
+    const va = a;
     const vb = b as ArrayBufferView;
     if (va.byteLength !== vb.byteLength) {
       return false;
@@ -1048,13 +1048,14 @@ export interface DebounceSettings {
   maxWait?: number;
 }
 
-export interface DebouncedFunc<T extends (...args: any[]) => any> {
-  (...args: Parameters<T>): ReturnType<T> | undefined;
+export type DebouncedFunc<Args extends unknown[], R> = ((
+  ...args: Args
+) => R | undefined) & {
   /** Cancel the delayed invocation (lodash `DebouncedFunc.cancel`). */
   cancel: () => void;
   /** Immediately invoke any pending delayed call (lodash `.flush`). */
-  flush: () => ReturnType<T> | undefined;
-}
+  flush: () => R | undefined;
+};
 
 /**
  * Faithful port of lodash `debounce` (the subset this repo relies on):
@@ -1062,29 +1063,29 @@ export interface DebouncedFunc<T extends (...args: any[]) => any> {
  * recent args, and `cancel()` / `flush()` methods. Uses bare setTimeout so it
  * works in both the browser and Node (tests).
  */
-export const debounce = <T extends (...args: any[]) => any>(
-  fn: T,
+export const debounce = <Args extends unknown[], R>(
+  fn: (...args: Args) => R,
   wait: number,
   options?: DebounceSettings
-): DebouncedFunc<T> => {
+): DebouncedFunc<Args, R> => {
   const leading = options?.leading ?? false;
   const trailing = options?.trailing ?? true;
   const optMaxWait = options?.maxWait;
   const maxing = optMaxWait !== undefined;
   const maxWait = maxing ? Math.max(optMaxWait, wait) : 0;
 
-  let lastArgs: Parameters<T> | undefined = undefined;
+  let lastArgs: Args | undefined = undefined;
   let lastCallTime: number | undefined = undefined;
   let lastInvokeTime = 0;
-  let lastResult: ReturnType<T> | undefined = undefined;
-  let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
+  let lastResult: R | undefined = undefined;
+  let timerId: number | undefined = undefined;
 
   const invokeFunc = (time: number) => {
     const args = lastArgs;
     lastArgs = undefined;
     lastInvokeTime = time;
     if (args !== undefined) {
-      lastResult = fn(...args) as ReturnType<T>;
+      lastResult = fn(...args);
     }
     return lastResult;
   };
@@ -1126,20 +1127,20 @@ export const debounce = <T extends (...args: any[]) => any>(
       trailingEdge(time);
       return;
     }
-    timerId = setTimeout(timerExpired, remainingWait(time));
+    timerId = window.setTimeout(timerExpired, remainingWait(time));
   };
 
   const leadingEdge = (time: number) => {
     // Mark the leading edge time even when not invoking (matches lodash;
     // maxWait timing depends on it).
     lastInvokeTime = time;
-    timerId = setTimeout(timerExpired, wait);
+    timerId = window.setTimeout(timerExpired, wait);
     if (leading) {
       invokeFunc(time);
     }
   };
 
-  const debounced = (...args: Parameters<T>): ReturnType<T> | undefined => {
+  const debounced = (...args: Args): R | undefined => {
     const time = Date.now();
     const isInvoking = shouldInvoke(time);
 
@@ -1153,20 +1154,20 @@ export const debounce = <T extends (...args: any[]) => any>(
       }
       if (maxing) {
         // Handle invocations in a tight loop.
-        clearTimeout(timerId);
-        timerId = setTimeout(timerExpired, wait);
+        window.clearTimeout(timerId);
+        timerId = window.setTimeout(timerExpired, wait);
         return invokeFunc(time);
       }
     }
     if (timerId === undefined) {
-      timerId = setTimeout(timerExpired, wait);
+      timerId = window.setTimeout(timerExpired, wait);
     }
     return lastResult;
   };
 
   const cancel = () => {
     if (timerId !== undefined) {
-      clearTimeout(timerId);
+      window.clearTimeout(timerId);
     }
     lastInvokeTime = 0;
     lastArgs = undefined;
@@ -1174,7 +1175,7 @@ export const debounce = <T extends (...args: any[]) => any>(
     timerId = undefined;
   };
 
-  const flush = (): ReturnType<T> | undefined => {
+  const flush = (): R | undefined => {
     return timerId === undefined ? lastResult : trailingEdge(Date.now());
   };
 
@@ -1192,11 +1193,11 @@ export interface ThrottleSettings {
  * Faithful port of lodash `throttle`: implemented exactly like lodash, as
  * `debounce` with `maxWait = wait` (so leading/trailing semantics match).
  */
-export const throttle = <T extends (...args: any[]) => any>(
-  fn: T,
+export const throttle = <Args extends unknown[], R>(
+  fn: (...args: Args) => R,
   wait: number,
   options?: ThrottleSettings
-): DebouncedFunc<T> =>
+): DebouncedFunc<Args, R> =>
   debounce(fn, wait, {
     leading: options?.leading ?? true,
     maxWait: wait,
