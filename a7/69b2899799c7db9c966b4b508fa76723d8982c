@@ -1,0 +1,22 @@
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package.json
+  h_77bd96c5a60e28 3
+src/settings.ts
+  h_77bd96c5a60e28 85,163,211,235,263,314,378,404,440,585,660,815,864-866,886-887,915,1527,1575,1632,1815-1819,2091
+versions.json
+  h_77bd96c5a60e28 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "a769b2899799c7db9c966b4b508fa76723d8982c",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
