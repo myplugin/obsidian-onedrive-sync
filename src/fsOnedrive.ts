@@ -1095,7 +1095,7 @@ export class FakeFsOnedrive extends FakeFs {
       } else {
         // requestUrl binary-upload unverified on Android <0.14.6 (base64
         // bug); see VALID_REQURL gate. fetch kept as the safe fallback.
-        res = await fetch(theUrl, {
+        res = await window.fetch(theUrl, {
           method: "PUT",
           body: payload,
           headers: req.headers,
@@ -1170,7 +1170,7 @@ export class FakeFsOnedrive extends FakeFs {
       } else {
         // requestUrl binary-upload unverified on Android <0.14.6 (base64
         // bug); see VALID_REQURL gate. fetch kept as the safe fallback.
-        res = await fetch(theUrl, {
+        res = await window.fetch(theUrl, {
           method: "PUT",
           body: rangeBody,
           headers: rangeHeaders,
