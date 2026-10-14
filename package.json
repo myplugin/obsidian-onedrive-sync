@@ -8,7 +8,7 @@
     "typecheck": "tsc -noEmit -skipLibCheck",
     "deploy": "node scripts/deploy.mjs",
     "format": "npx @biomejs/biome check --write .",
-    "clean": "npx rimraf main.js",
+    "clean": "node -e \"require('fs').rmSync('main.js',{force:true})\"",
     "test": "mocha --import=tsx 'tests/**/*.ts'"
   },
   "browser": {
@@ -47,7 +47,6 @@
     "@types/node": "^20.14.12",
     "@types/qrcode": "^1.5.5",
     "c8": "^12.0.0",
-    "dotenv": "^16.4.5",
     "esbuild": "^0.23.0",
     "esbuild-plugin-inline-worker": "^0.1.1",
     "eslint": "^10.12.0",
@@ -73,7 +72,6 @@
     "assert": "^2.1.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.0",
-    "emoji-regex": "^10.3.0",
     "http-status-codes": "^2.3.0",
     "localforage": "^1.10.0",
     "localforage-getitems": "^1.4.2",
@@ -90,7 +88,6 @@
     "process": "^0.11.10",
     "qrcode": "^1.5.3",
     "rfc4648": "^1.5.3",
-    "rimraf": "^6.0.1",
     "stream-browserify": "^3.0.0",
     "url": "^0.11.4",
     "util": "^0.12.5",

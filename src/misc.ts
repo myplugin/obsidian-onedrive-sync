@@ -1,7 +1,8 @@
-import * as path from "path";
 import type { Vault } from "obsidian";
+// Node's "path" is not available on mobile; the polyfill is mapped via the
+// package.json `browser` field (see src/path-browserify.d.ts for types).
+import * as path from "path-browserify";
 
-import emojiRegex from "emoji-regex";
 import { base32 } from "rfc4648";
 import XRegExp from "xregexp";
 
@@ -75,7 +76,10 @@ export const mkdirpInVault = async (thePath: string, vault: Vault) => {
     const r = await vault.adapter.exists(folder);
     // console.info(r);
     if (!r) {
-      console.info(`mkdir ${folder}`);
+      // console.debug is one of the console methods the Obsidian scanner
+      // rules allow; misc.ts must stay free of internal imports (AGENTS.md),
+      // so it cannot use the gated logger from src/logger.ts.
+      console.debug(`mkdir ${folder}`);
       await vault.adapter.mkdir(folder);
     }
   }
@@ -168,15 +172,7 @@ export const isVaildText = (a: string) => {
   );
 };
 
-/**
- * Use regex to detect a text contains emoji or not.
- * @param a
- * @returns
- */
-export const hasEmojiInText = (a: string) => {
-  const regex = emojiRegex();
-  return regex.test(a);
-};
+
 
 /**
  * Convert the headers to a normal object.
@@ -630,7 +626,9 @@ export const fixEntityListCasesInplace = (entities: { keyRaw: string }[]) => {
     const segs = e.keyRaw.split("/");
     if (e.keyRaw.endsWith("/")) {
       // folder
-      if (Object.prototype.hasOwnProperty.call(caseMapping, parentFolderLower)) {
+      if (
+        Object.prototype.hasOwnProperty.call(caseMapping, parentFolderLower)
+      ) {
         const newKeyRaw = `${caseMapping[parentFolderLower]}${segs
           .slice(-2)
           .join("/")}`;
@@ -642,7 +640,9 @@ export const fixEntityListCasesInplace = (entities: { keyRaw: string }[]) => {
       }
     } else {
       // file
-      if (Object.prototype.hasOwnProperty.call(caseMapping, parentFolderLower)) {
+      if (
+        Object.prototype.hasOwnProperty.call(caseMapping, parentFolderLower)
+      ) {
         const newKeyRaw = `${caseMapping[parentFolderLower]}${segs
           .slice(-1)
           .join("/")}`;

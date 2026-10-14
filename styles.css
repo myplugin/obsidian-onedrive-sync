@@ -159,12 +159,10 @@
 }
 
 /* Sensitive (credentials) section: warning border + left accent bar + a
-   subtle warm tint. The tint degrades to plain secondary background if
-   color-mix isn't available in the running theme. */
+   subtle warm tint (color-mix over the primary background). */
 .qrcode-section--sensitive {
   border-color: var(--text-warning);
   border-left: 4px solid var(--text-warning);
-  background-color: var(--background-secondary);
   background-color: color-mix(
     in srgb,
     var(--text-warning) 6%,
@@ -199,7 +197,6 @@
   font-weight: 600;
   font-size: var(--font-ui-small);
   line-height: 1.5;
-  background-color: var(--background-secondary);
   background-color: color-mix(in srgb, var(--text-warning) 12%, transparent);
 }
 

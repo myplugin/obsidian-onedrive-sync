@@ -31,6 +31,7 @@ import {
   fromDriveItemToEntityWithChainFallback,
 } from "./driveItemConvert";
 import { FakeFs } from "./fsAll";
+import { debugInfo } from "./logger";
 import { bufferToArrayBuffer } from "./misc";
 import { buildDeltaStartUrl } from "./syncOptimize";
 
@@ -201,11 +202,7 @@ function extractHttpStatus(e: any): number | undefined {
  */
 export function isTransientNetworkError(e: any): boolean {
   const msg =
-    typeof e?.message === "string"
-      ? e.message
-      : typeof e === "string"
-        ? e
-        : "";
+    typeof e?.message === "string" ? e.message : typeof e === "string" ? e : "";
   if (msg === "") return false;
   // Timeouts are slow-to-fire and persistent; do NOT retry them (see above).
   if (/TIMED_OUT/i.test(msg)) return false;
@@ -521,7 +518,7 @@ export const setConfigBySuccessfullAuthInplace = async (
   authRes: AccessCodeResponseSuccessfulType,
   saveUpdatedConfigFunc: () => Promise<any> | undefined
 ) => {
-  console.info("start updating local info of OneDrive token");
+  debugInfo("start updating local info of OneDrive token");
   config.accessToken = authRes.access_token;
   config.accessTokenExpiresAtTime =
     Date.now() + authRes.expires_in - 5 * 60 * 1000;
@@ -536,7 +533,7 @@ export const setConfigBySuccessfullAuthInplace = async (
     await saveUpdatedConfigFunc();
   }
 
-  console.info("finish updating local info of Onedrive token");
+  debugInfo("finish updating local info of Onedrive token");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,7 +627,7 @@ class MyAuthProvider implements AuthenticationProvider {
     this.onedriveConfig.accessTokenExpiresAtTime =
       currentTs + r2.expires_in * 1000 - 60 * 2 * 1000;
     await this.saveUpdatedConfigFunc();
-    console.info("Onedrive accessToken updated");
+    debugInfo("Onedrive accessToken updated");
     return this.onedriveConfig.accessToken;
   }
 }
@@ -740,7 +737,7 @@ export class FakeFsOnedrive extends FakeFs {
         this.approotRootId = rootMatches[0].id;
       }
       if (!this.vaultFolderExists) {
-        console.info(`remote does not have folder /${this.remoteBaseDir}`);
+        debugInfo(`remote does not have folder /${this.remoteBaseDir}`);
         await this._postJson("/me/drive/special/approot/children", {
           name: `${this.remoteBaseDir}`,
           folder: {},
@@ -750,7 +747,7 @@ export class FakeFsOnedrive extends FakeFs {
           // POST /special/approot/children. Omitting it succeeds (the GET
           // above already confirmed the folder doesn't exist, so no conflict).
         });
-        console.info(`remote folder /${this.remoteBaseDir} created`);
+        debugInfo(`remote folder /${this.remoteBaseDir} created`);
         this.vaultFolderExists = true;
       } else {
         // console.info(`remote folder /${this.remoteBaseDir} exists`);
@@ -1038,9 +1035,7 @@ export class FakeFsOnedrive extends FakeFs {
       }
       if (!res.ok) {
         const body = await res.text().catch(() => "");
-        throw new Error(
-          `OneDrive PUT failed: ${res.status} ${theUrl} ${body}`
-        );
+        throw new Error(`OneDrive PUT failed: ${res.status} ${theUrl} ${body}`);
       }
       return (await res.json()) as DriveItem | UploadSession;
     });
@@ -1165,7 +1160,7 @@ export class FakeFsOnedrive extends FakeFs {
     let unresolvedCount = skippedAddedOrModified;
 
     if (skippedItems.length > 0) {
-      console.info(
+      debugInfo(
         `walk: ${skippedItems.length} delta item(s) had no parentReference.path — retrying via stat-by-id`
       );
       const stat404Items: any[] = [];
@@ -1368,7 +1363,7 @@ export class FakeFsOnedrive extends FakeFs {
     } catch (e) {
       if (canIncremental) {
         // deltaLink may have expired 鈥?fall back to full enumeration
-        console.info(
+        debugInfo(
           "deltaLink query failed, falling back to full enumeration",
           e
         );
@@ -1410,14 +1405,12 @@ export class FakeFsOnedrive extends FakeFs {
       // root anchor is seeded inside classifyDeltaItems (idempotent).
       const lookupMap = new Map(idToKeyMap);
 
-      const {
-        entities: deltaEntities,
-        deletedKeys,
-      } = await this._classifyAndStatRetry(
-        driveItems,
-        lookupMap,
-        /* invalidateOnUnresolved */ true
-      );
+      const { entities: deltaEntities, deletedKeys } =
+        await this._classifyAndStatRetry(
+          driveItems,
+          lookupMap,
+          /* invalidateOnUnresolved */ true
+        );
 
       const merged = mergeDeltaWithPrevState(
         this.prevRemoteEntities,
@@ -1834,8 +1827,7 @@ export class FakeFsOnedrive extends FakeFs {
     const rsp = await this._getJson(
       `${key}?$select=@microsoft.graph.downloadUrl`
     );
-    const downloadUrl: string | undefined =
-      rsp["@microsoft.graph.downloadUrl"];
+    const downloadUrl: string | undefined = rsp["@microsoft.graph.downloadUrl"];
     if (!downloadUrl) {
       // Fallback: when the pre-auth download URL annotation is absent
       // (not reliably returned for OneDrive App Folder), use the standard

@@ -1,3 +1,4 @@
+import obsidianmd from "eslint-plugin-obsidianmd";
 // ESLint config mirroring the Obsidian community-directory scanner, but TUNED
 // to this repo's conventions (AGENTS.md): `any`, non-null assertions, type
 // assertions, and the derived `unsafe-*` are ACCEPTED here. The default
@@ -15,7 +16,6 @@
 // Biome (npm run format) stays the formatter; ESLint here is for Obsidian-specific
 // + security rules only.
 import { defineConfig } from "eslint/config";
-import obsidianmd from "eslint-plugin-obsidianmd";
 
 export default defineConfig([
   ...obsidianmd.configs.recommended,

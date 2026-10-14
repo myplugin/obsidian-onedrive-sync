@@ -70,6 +70,7 @@ import {
   upsertOnedriveAuthByVault,
   upsertPluginVersionByVault,
 } from "./localdb";
+import { debugInfo, setDebugEnabled } from "./logger";
 import { changeMobileStatusBar } from "./misc";
 import { DEFAULT_PROFILER_CONFIG, Profiler } from "./profiler";
 import { RemotelySaveSettingTab } from "./settings";
@@ -463,7 +464,7 @@ export default class RemotelySavePlugin extends Plugin {
           }
           this.settings.onedrive.deltaLink = "";
           await this.saveSettings();
-          console.info(
+          debugInfo(
             "Self-heal: cleared prevRemoteEntities + deltaLink after " +
               "REMOTE_NOT_FOUND. Next sync will do full enumeration."
           );
@@ -857,8 +858,6 @@ export default class RemotelySavePlugin extends Plugin {
   };
 
   async onload() {
-    console.info(`loading plugin ${this.manifest.id}`);
-
     const { iconSvgSyncWait, iconSvgSyncRunning, iconSvgLogs } = getIconSvg();
 
     addIcon(iconNameSyncWait, iconSvgSyncWait);
@@ -936,6 +935,11 @@ export default class RemotelySavePlugin extends Plugin {
     }
 
     await this.loadSettings();
+
+    // Debug-gated console logger: only emit debug output when the logging
+    // level setting is "debug" (the settings UI keeps it in sync onChange).
+    setDebugEnabled(this.settings.currLogLevel === "debug");
+    debugInfo(`loading plugin ${this.manifest.id}`);
 
     // MUST after loadSettings and before prepareDB
     const profileID: string = this.getCurrProfileID();
@@ -1268,7 +1272,7 @@ export default class RemotelySavePlugin extends Plugin {
   }
 
   onunload() {
-    console.info(`unloading plugin ${this.manifest.id}`);
+    debugInfo(`unloading plugin ${this.manifest.id}`);
     // Cancel any pending deferred-sync timers so they can't fire runSync
     // against a torn-down plugin.
     this.clearDeferTimers();
@@ -2286,11 +2290,9 @@ export default class RemotelySavePlugin extends Plugin {
         // not exists, directly create.
         // fire-and-forget, but swallow the rejection so it can never become
         // an unhandled rejection (the outer try/catch cannot catch async).
-        void this.app.vault.adapter
-          .write(ignoreFile, contentText)
-          .catch(() => {
-            // just skip
-          });
+        void this.app.vault.adapter.write(ignoreFile, contentText).catch(() => {
+          // just skip
+        });
       }
     } catch {
       // just skip

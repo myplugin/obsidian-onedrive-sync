@@ -119,19 +119,10 @@ export interface RemotelySavePluginSettings {
    */
   agreeToUploadExtraMetadata?: boolean;
 
-  /**
-   * @deprecated
-   */
   vaultRandomID?: string;
 
-  /**
-   * @deprecated
-   */
   logToDB?: boolean;
 
-  /**
-   * @deprecated
-   */
   howToCleanEmptyFolder?: EmptyFolderCleanType;
 }
 

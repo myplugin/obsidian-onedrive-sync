@@ -7,6 +7,7 @@ export type LocalForage = typeof localforage;
 import { nanoid } from "nanoid";
 
 import type { Entity, SUPPORTED_SERVICES_TYPE } from "./baseTypes";
+import { debugInfo } from "./logger";
 import { unixTimeToStr } from "./misc";
 import type { SyncPlanType } from "./sync";
 
@@ -21,17 +22,10 @@ export const DEFAULT_TBL_PREV_SYNC_RECORDS = "prevsyncrecords";
 export const DEFAULT_TBL_PROFILER_RESULTS = "profilerresults";
 export const DEFAULT_TBL_FILE_CONTENT_HISTORY = "filecontenthistory";
 
-/**
- * @deprecated
- */
 export const DEFAULT_TBL_FILE_HISTORY = "filefolderoperationhistory";
-/**
- * @deprecated
- */
 export const DEFAULT_TBL_SYNC_MAPPING = "syncmetadatahistory";
 
 /**
- * @deprecated
  * But we cannot remove it. Because we want to migrate the old data.
  */
 interface SyncMetaMappingRecord {
@@ -65,13 +59,11 @@ export interface InternalDBs {
   fileContentHistoryTbl: LocalForage;
 
   /**
-   * @deprecated
    * But we cannot remove it. Because we want to migrate the old data.
    */
   fileHistoryTbl: LocalForage;
 
   /**
-   * @deprecated
    * But we cannot remove it. Because we want to migrate the old data.
    */
   syncMappingTbl: LocalForage;
@@ -286,7 +278,7 @@ export const prepareDBs = async (
     );
   }
 
-  console.info("db connected");
+  debugInfo("db connected");
   return {
     db: db,
     vaultRandomID: vaultRandomID,
@@ -300,7 +292,7 @@ export const destroyDBs = async () => {
   // console.info("db deleted");
   const req = indexedDB.deleteDatabase(DEFAULT_DB_NAME);
   req.onsuccess = (event) => {
-    console.info("db deleted");
+    debugInfo("db deleted");
   };
   req.onblocked = (event) => {
     console.warn("trying to delete db but it was blocked");
@@ -327,7 +319,7 @@ export const clearFileHistoryOfEverythingByVault = async (
 };
 
 /**
- * @deprecated But we cannot remove it. Because we want to migrate the old data.
+ * But we cannot remove it. Because we want to migrate the old data.
  * @param db
  * @param vaultRandomID
  * @returns

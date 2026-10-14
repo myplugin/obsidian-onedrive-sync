@@ -37,6 +37,7 @@ import {
   insertSyncPlanRecordByVault,
   upsertPrevSyncRecordByVaultAndProfile,
 } from "./localdb";
+import { debugInfo } from "./logger";
 import {
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE,
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE2,
@@ -2734,7 +2735,7 @@ export async function syncer(
   // and behavior is unchanged.
   isFileDirtyOpen?: (path: string) => boolean
 ) {
-  console.info(`starting sync.`);
+  debugInfo(`starting sync.`);
   markIsSyncingFunc(true);
 
   let everythingOk = true;
@@ -2819,7 +2820,7 @@ export async function syncer(
       prevSyncEntityList
     );
     if (skipSync) {
-      console.info(
+      debugInfo(
         "No changes detected (remote delta=0, local mtime all match). Skipping sync plan and execution."
       );
       profiler?.insert(
@@ -2939,7 +2940,7 @@ export async function syncer(
     await ribboonFunc?.(triggerSource, step);
     await statusBarFunc?.(triggerSource, step, everythingOk);
 
-    console.info(`ending sync.`);
+    debugInfo(`ending sync.`);
     // Always clear the in-progress flag in `finally` so a throw anywhere in
     // error handling (errNotifyFunc) or the final status update can never
     // leave isSyncing stuck true. A stuck flag would make every subsequent

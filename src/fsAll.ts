@@ -6,6 +6,7 @@ import type {
   Entity,
   RenameOpts,
 } from "./baseTypes";
+import { debugInfo } from "./logger";
 
 export abstract class FakeFs {
   abstract kind: string;
@@ -89,21 +90,21 @@ export abstract class FakeFs {
     const folderName = `rs-test-folder-${nanoid()}/`;
     const filename = `${folderName}rs-test-file-${nanoid()}`;
     try {
-      console.info(`check connect: create folder`);
+      debugInfo(`check connect: create folder`);
       await this.mkdir(folderName);
 
-      console.info(`check connect: upload file`);
+      debugInfo(`check connect: upload file`);
       const ctime = Date.now();
       const mtime1 = Date.now();
       const content1 = new ArrayBuffer(100);
       await this.writeFile(filename, content1, mtime1, ctime);
 
-      console.info(`check connect: overwrite file`);
+      debugInfo(`check connect: overwrite file`);
       const mtime2 = Date.now();
       const content2 = new ArrayBuffer(200);
       await this.writeFile(filename, content2, mtime2, ctime);
 
-      console.info(`check connect: download file`);
+      debugInfo(`check connect: download file`);
       const content3 = await this.readFile(filename);
       if (!isEqual(content2, content3)) {
         throw Error(`downloaded file is not equal with uploaded file!`);
@@ -117,17 +118,21 @@ export abstract class FakeFs {
     } finally {
       // 兜底清理：无论检查成功或失败，都删除测试文件与文件夹，避免远程残留。
       // 清理自身的错误不掩盖真正的检查结果，仅记录日志。
-      console.info(`check connect: cleanup file`);
+      debugInfo(`check connect: cleanup file`);
       try {
         await this.rm(filename);
       } catch (e) {
-        console.warn(`check connect: cleanup file failed (ignored): ${String(e)}`);
+        console.warn(
+          `check connect: cleanup file failed (ignored): ${String(e)}`
+        );
       }
-      console.info(`check connect: cleanup folder`);
+      debugInfo(`check connect: cleanup folder`);
       try {
         await this.rm(folderName);
       } catch (e) {
-        console.warn(`check connect: cleanup folder failed (ignored): ${String(e)}`);
+        console.warn(
+          `check connect: cleanup folder failed (ignored): ${String(e)}`
+        );
       }
     }
   }

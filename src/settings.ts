@@ -50,6 +50,7 @@ import {
   upsertLastSuccessCheckTimeByVault,
   upsertLastSuccessSyncTimeByVault,
 } from "./localdb";
+import { debugInfo, setDebugEnabled } from "./logger";
 import type RemotelySavePlugin from "./main"; // unavoidable
 import {
   changeMobileStatusBar,
@@ -579,7 +580,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.addClass("rs-overflow-wrap");
     containerEl.empty();
-    new Setting(containerEl).setName("OneDrive Sync").setHeading();
+    new Setting(containerEl).setName("OneDrive sync").setHeading();
 
     const t = (x: TransItemType, vars?: any) => {
       return this.plugin.i18n.t(x, vars);
@@ -957,7 +958,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         dropdown.addOption("1", "1");
         dropdown.addOption("2", "2");
         dropdown.addOption("3", "3");
-        dropdown.addOption("5", "5 (default)");
+        dropdown.addOption("5", "5 (Default)");
         dropdown.addOption("10", "10");
         dropdown.addOption("15", "15");
         dropdown.addOption("20", "20");
@@ -1004,7 +1005,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
               realVal > 0
             ) {
               const intervalID = window.setInterval(() => {
-                console.info("auto run from settings.ts");
+                debugInfo("auto run from settings.ts");
                 void this.plugin.syncRun("auto").catch(console.error);
               }, realVal);
               this.plugin.autoRunIntervalID = intervalID;
@@ -1755,7 +1756,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setDesc(t("settings_import_desc"))
       .addText((text) =>
         text
-          .setPlaceholder("obsidian://onedrive-sync?func=...&...")
+          .setPlaceholder("Obsidian://OneDrive-sync?func=...&...")
           .setValue("")
           .onChange((val) => {
             importSettingVal = val;
@@ -1789,14 +1790,17 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .setName(t("settings_debuglevel"))
       .setDesc(t("settings_debuglevel_desc"))
       .addDropdown(async (dropdown) => {
-        dropdown.addOption("info", "info");
-        dropdown.addOption("debug", "debug");
+        dropdown.addOption("info", "Info");
+        dropdown.addOption("debug", "Debug");
         dropdown
           .setValue(this.plugin.settings.currLogLevel ?? "info")
           .onChange(async (val: string) => {
             this.plugin.settings.currLogLevel = val;
             await this.plugin.saveSettings();
-            console.info(`the log level is changed to ${val}`);
+            // Keep the debug-gated logger in sync with the new level (set
+            // first so switching TO debug logs its own confirmation).
+            setDebugEnabled(val === "debug");
+            debugInfo(`the log level is changed to ${val}`);
           });
       });
 
@@ -1807,7 +1811,10 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
         button.setButtonText(t("settings_outputsettingsconsole_button"));
         button.onClick(async () => {
           const c = messyConfigToNormal(await this.plugin.loadData());
-          console.info(c);
+          // User explicitly clicked "output settings to console": must fire
+          // regardless of the debug level. console.debug is one of the
+          // scanner-allowed methods (shows at DevTools "Verbose" level).
+          console.debug(c);
           new Notice(t("settings_outputsettingsconsole_notice"));
         });
       });

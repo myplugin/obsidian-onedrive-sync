@@ -1,4 +1,12 @@
-import "dotenv/config";
+// Inline .env loader (replaces the dotenv dep — es-tooling module-replacements).
+// Loads .env from cwd if present; silently no-ops otherwise (the build works
+// without .env — client ID is hardcoded below as the fallback).
+if (fs.existsSync(path.join(process.cwd(), ".env"))) {
+  for (const line of fs.readFileSync(path.join(process.cwd(), ".env"), "utf8").split("\n")) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+  }
+}
 import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";

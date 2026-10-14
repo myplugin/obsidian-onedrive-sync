@@ -1,5 +1,6 @@
 import { type App, Modal, sanitizeHTMLToDom } from "obsidian";
 import type { TransItemType } from "./i18n";
+import { debugInfo } from "./logger";
 import type RemotelySavePlugin from "./main"; // unavoidable
 
 export class SyncAlgoV3Modal extends Modal {
@@ -113,13 +114,13 @@ export class SyncAlgoV3Modal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     if (this.agree) {
-      console.info("agree to use the new algorithm");
+      debugInfo("agree to use the new algorithm");
       void this.plugin.saveAgreeToUseNewSyncAlgorithm().catch(console.error);
       this.plugin.enableAutoSyncIfSet();
       this.plugin.enableInitSyncIfSet();
       this.plugin.toggleSyncOnSaveIfSet();
     } else {
-      console.info("do not agree to use the new algorithm");
+      debugInfo("do not agree to use the new algorithm");
       this.plugin.unload();
     }
   }

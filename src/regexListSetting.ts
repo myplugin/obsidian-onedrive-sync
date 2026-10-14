@@ -153,7 +153,7 @@ export function renderRegexListSetting(opts: RegexListSettingOptions): void {
       const delBtn = chip.createEl("button", {
         cls: "rs-regex-chip-delete",
         text: "\u00d7",
-        attr: { "aria-label": "remove" },
+        attr: { "aria-label": "Remove" },
       });
       const idx = index;
       const handleDelete = async () => {
