@@ -924,3 +924,281 @@ export function testPathAgainstRegexList(
   }
   return { matched: matchedRegexes.length > 0, matchedRegexes };
 }
+
+/**
+ * Split an array into groups of at most `size` elements (native replacement
+ * for lodash `chunk`). Fractional sizes are truncated; size < 1 returns an
+ * empty array, matching lodash's behavior.
+ */
+export const chunkArray = <T>(arr: T[], size: number): T[][] => {
+  const s = Math.floor(size);
+  if (!(s >= 1)) {
+    return [];
+  }
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += s) {
+    out.push(arr.slice(i, i + s));
+  }
+  return out;
+};
+
+/**
+ * Deep structural equality (native replacement for the lodash `isEqual`
+ * subset used in this repo).
+ *
+ * Handles: primitives (SameValueZero — NaN equals NaN, +0 equals -0),
+ * plain objects (own enumerable keys, order-insensitive), arrays, Date,
+ * ArrayBuffer and typed-array views (Uint8Array/Buffer/DataView...,
+ * compared byte-wise), functions by reference only. Objects with different
+ * prototypes never compare equal.
+ *
+ * Limitations vs lodash isEqual: Map/Set/RegExp/Error are not deep-compared,
+ * symbol keys are ignored, and circular references are not tracked. All call
+ * sites pass acyclic JSON-like data or binary buffers.
+ */
+export const deepEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) {
+    return true;
+  }
+  if (
+    a === null ||
+    b === null ||
+    typeof a !== "object" ||
+    typeof b !== "object"
+  ) {
+    // Primitives (or a primitive/object mix) already failed === above; the
+    // only remaining equal case is NaN vs NaN. Functions: reference-equal
+    // only, same as lodash.
+    return a !== a && b !== b;
+  }
+  if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
+    return false;
+  }
+  if (a instanceof Date) {
+    return a.getTime() === (b as Date).getTime();
+  }
+  if (a instanceof ArrayBuffer) {
+    const bb = b as ArrayBuffer;
+    if (a.byteLength !== bb.byteLength) {
+      return false;
+    }
+    const ua = new Uint8Array(a);
+    const ub = new Uint8Array(bb);
+    for (let i = 0; i < ua.length; i++) {
+      if (ua[i] !== ub[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (ArrayBuffer.isView(a)) {
+    // TypedArray / DataView / Buffer: byte-wise (prototypes already match)
+    const va = a as ArrayBufferView;
+    const vb = b as ArrayBufferView;
+    if (va.byteLength !== vb.byteLength) {
+      return false;
+    }
+    const ua = new Uint8Array(va.buffer, va.byteOffset, va.byteLength);
+    const ub = new Uint8Array(vb.buffer, vb.byteOffset, vb.byteLength);
+    for (let i = 0; i < ua.length; i++) {
+      if (ua[i] !== ub[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (Array.isArray(a)) {
+    const bb = b as unknown[];
+    if (a.length !== bb.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], bb[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  // Plain objects: same set of own enumerable keys, recursively equal
+  // (key insertion order does not matter, matching lodash).
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  if (ka.length !== kb.length) {
+    return false;
+  }
+  const ra = a as Record<string, unknown>;
+  const rb = b as Record<string, unknown>;
+  for (const k of ka) {
+    if (
+      !Object.prototype.hasOwnProperty.call(rb, k) ||
+      !deepEqual(ra[k], rb[k])
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+export interface DebounceSettings {
+  /** Invoke on the leading edge of the timeout. Default false. */
+  leading?: boolean;
+  /** Invoke on the trailing edge of the timeout. Default true. */
+  trailing?: boolean;
+  /** Max time `fn` is allowed to be delayed (enables throttle behavior). */
+  maxWait?: number;
+}
+
+export interface DebouncedFunc<T extends (...args: any[]) => any> {
+  (...args: Parameters<T>): ReturnType<T> | undefined;
+  /** Cancel the delayed invocation (lodash `DebouncedFunc.cancel`). */
+  cancel: () => void;
+  /** Immediately invoke any pending delayed call (lodash `.flush`). */
+  flush: () => ReturnType<T> | undefined;
+}
+
+/**
+ * Faithful port of lodash `debounce` (the subset this repo relies on):
+ * leading/trailing/maxWait options, trailing-edge invocation with the most
+ * recent args, and `cancel()` / `flush()` methods. Uses bare setTimeout so it
+ * works in both the browser and Node (tests).
+ */
+export const debounce = <T extends (...args: any[]) => any>(
+  fn: T,
+  wait: number,
+  options?: DebounceSettings
+): DebouncedFunc<T> => {
+  const leading = options?.leading ?? false;
+  const trailing = options?.trailing ?? true;
+  const optMaxWait = options?.maxWait;
+  const maxing = optMaxWait !== undefined;
+  const maxWait = maxing ? Math.max(optMaxWait, wait) : 0;
+
+  let lastArgs: Parameters<T> | undefined = undefined;
+  let lastCallTime: number | undefined = undefined;
+  let lastInvokeTime = 0;
+  let lastResult: ReturnType<T> | undefined = undefined;
+  let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
+
+  const invokeFunc = (time: number) => {
+    const args = lastArgs;
+    lastArgs = undefined;
+    lastInvokeTime = time;
+    if (args !== undefined) {
+      lastResult = fn(...args) as ReturnType<T>;
+    }
+    return lastResult;
+  };
+
+  const shouldInvoke = (time: number) => {
+    const timeSinceLastInvoke = time - lastInvokeTime;
+    if (lastCallTime === undefined) {
+      return true;
+    }
+    const timeSinceLastCall = time - lastCallTime;
+    return (
+      timeSinceLastCall >= wait ||
+      timeSinceLastCall < 0 ||
+      (maxing && timeSinceLastInvoke >= maxWait)
+    );
+  };
+
+  const remainingWait = (time: number) => {
+    const timeSinceLastCall = time - (lastCallTime as number);
+    const timeSinceLastInvoke = time - lastInvokeTime;
+    const timeWaiting = wait - timeSinceLastCall;
+    return maxing
+      ? Math.min(timeWaiting, maxWait - timeSinceLastInvoke)
+      : timeWaiting;
+  };
+
+  const trailingEdge = (time: number) => {
+    timerId = undefined;
+    if (trailing && lastArgs !== undefined) {
+      return invokeFunc(time);
+    }
+    lastArgs = undefined;
+    return lastResult;
+  };
+
+  const timerExpired = () => {
+    const time = Date.now();
+    if (shouldInvoke(time)) {
+      trailingEdge(time);
+      return;
+    }
+    timerId = setTimeout(timerExpired, remainingWait(time));
+  };
+
+  const leadingEdge = (time: number) => {
+    // Mark the leading edge time even when not invoking (matches lodash;
+    // maxWait timing depends on it).
+    lastInvokeTime = time;
+    timerId = setTimeout(timerExpired, wait);
+    if (leading) {
+      invokeFunc(time);
+    }
+  };
+
+  const debounced = (...args: Parameters<T>): ReturnType<T> | undefined => {
+    const time = Date.now();
+    const isInvoking = shouldInvoke(time);
+
+    lastArgs = args;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timerId === undefined) {
+        leadingEdge(time);
+        return lastResult;
+      }
+      if (maxing) {
+        // Handle invocations in a tight loop.
+        clearTimeout(timerId);
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(time);
+      }
+    }
+    if (timerId === undefined) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return lastResult;
+  };
+
+  const cancel = () => {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = undefined;
+    lastCallTime = undefined;
+    timerId = undefined;
+  };
+
+  const flush = (): ReturnType<T> | undefined => {
+    return timerId === undefined ? lastResult : trailingEdge(Date.now());
+  };
+
+  return Object.assign(debounced, { cancel, flush });
+};
+
+export interface ThrottleSettings {
+  /** Invoke on the leading edge of the timeout. Default true. */
+  leading?: boolean;
+  /** Invoke on the trailing edge of the timeout. Default true. */
+  trailing?: boolean;
+}
+
+/**
+ * Faithful port of lodash `throttle`: implemented exactly like lodash, as
+ * `debounce` with `maxWait = wait` (so leading/trailing semantics match).
+ */
+export const throttle = <T extends (...args: any[]) => any>(
+  fn: T,
+  wait: number,
+  options?: ThrottleSettings
+): DebouncedFunc<T> =>
+  debounce(fn, wait, {
+    leading: options?.leading ?? true,
+    maxWait: wait,
+    trailing: options?.trailing ?? true,
+  });

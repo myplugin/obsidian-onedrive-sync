@@ -2,9 +2,7 @@ import type { ListedFiles, Vault } from "obsidian";
 import type { Entity } from "./baseTypes";
 
 import { Queue } from "@fyears/tsqueue";
-import chunk from "lodash/chunk";
-import flatten from "lodash/flatten";
-import { isSpecialFolderNameToSkip, statFix } from "./misc";
+import { chunkArray, isSpecialFolderNameToSkip, statFix } from "./misc";
 
 const isPluginDirItself = (x: string, pluginId: string) => {
   return (
@@ -134,7 +132,7 @@ export const listFilesInObsFolder = async (
       itemsToFetch.push(q.pop()!);
     }
 
-    const itemsToFetchChunks = chunk(itemsToFetch, CHUNK_SIZE);
+    const itemsToFetchChunks = chunkArray(itemsToFetch, CHUNK_SIZE);
     for (const singleChunk of itemsToFetchChunks) {
       const r = singleChunk.map(async (x) => {
         const statRes = await statFix(vault, x);
@@ -171,7 +169,7 @@ export const listFilesInObsFolder = async (
           children: children,
         };
       });
-      const r2 = flatten(await Promise.all(r));
+      const r2 = (await Promise.all(r)).flat();
 
       for (const iter of r2) {
         contents.push(iter.itself);

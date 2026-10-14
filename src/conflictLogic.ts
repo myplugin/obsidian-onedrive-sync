@@ -1,6 +1,5 @@
 // License: PolyForm Strict 1.0.0 (source-available). See LICENSE.pro.
 
-import isEqual from "lodash/isEqual";
 // import {
 //   makePatches,
 //   applyPatches,
@@ -11,6 +10,7 @@ import { type ILCSResult, LCS, mergeDigIn } from "node-diff3";
 import type { Entity } from "./baseTypes";
 import { copyFile } from "./copyLogic";
 import type { FakeFs } from "./fsAll";
+import { deepEqual } from "./misc";
 const MERGABLE_SIZE = 1000 * 1000; // 1 MB
 
 export function isMergable(a: Entity, b?: Entity) {
@@ -123,7 +123,7 @@ export async function computeMergedContent(
   let newArrayBuffer: ArrayBuffer | undefined = undefined;
   const decoder = new TextDecoder("utf-8");
 
-  if (isEqual(contentLeft, contentRight)) {
+  if (deepEqual(contentLeft, contentRight)) {
     // we are lucky enough
     newArrayBuffer = contentLeft;
     // TODO: save the write

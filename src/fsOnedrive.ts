@@ -6,7 +6,6 @@ import type {
   UploadSession,
   User,
 } from "@microsoft/microsoft-graph-types";
-import cloneDeep from "lodash/cloneDeep";
 import { request, requestUrl } from "obsidian";
 import {
   type BatchRenameOp,
@@ -670,7 +669,7 @@ class MyAuthProvider implements AuthenticationProvider {
  * @param onedriveConfig
  */
 export const getShrinkedSettings = (onedriveConfig: OnedriveConfig) => {
-  const config = cloneDeep(onedriveConfig);
+  const config = structuredClone(onedriveConfig);
   config.accessToken = "x";
   config.accessTokenExpiresInSeconds = 1;
   config.accessTokenExpiresAtTime = 1;

@@ -1,4 +1,3 @@
-import isEqual from "lodash/isEqual";
 import { nanoid } from "nanoid";
 import type {
   BatchRenameOp,
@@ -7,6 +6,7 @@ import type {
   RenameOpts,
 } from "./baseTypes";
 import { debugInfo } from "./logger";
+import { deepEqual } from "./misc";
 
 export abstract class FakeFs {
   abstract kind: string;
@@ -110,7 +110,7 @@ export abstract class FakeFs {
 
       debugInfo(`check connect: download file`);
       const content3 = await this.readFile(filename);
-      if (!isEqual(content2, content3)) {
+      if (!deepEqual(content2, content3)) {
         throw Error(`downloaded file is not equal with uploaded file!`);
       }
 

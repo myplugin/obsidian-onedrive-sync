@@ -1,4 +1,3 @@
-import cloneDeep from "lodash/cloneDeep";
 import QRCode from "qrcode";
 
 import {
@@ -55,7 +54,9 @@ export const exportConfigUri = async (
   currentVaultName: string,
   pluginVersion: string
 ): Promise<QrResult> => {
-  const settings2 = cloneDeep(settings) as Partial<RemotelySavePluginSettings>;
+  const settings2 = structuredClone(
+    settings
+  ) as Partial<RemotelySavePluginSettings>;
   stripOnedriveSecretsInPlace(settings2.onedrive!);
   settings2.password = "";
   delete settings2.vaultRandomID;

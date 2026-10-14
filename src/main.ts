@@ -1,8 +1,5 @@
 // biome-ignore lint/suspicious/noShadowRestrictedNames: <explanation>
 import AggregateError from "aggregate-error";
-import cloneDeep from "lodash/cloneDeep";
-import debounce from "lodash/debounce";
-import throttle from "lodash/throttle";
 import { FileText, RefreshCcw, RotateCcw, createElement } from "lucide";
 import {
   type App,
@@ -76,7 +73,7 @@ import {
   upsertPluginVersionByVault,
 } from "./localdb";
 import { debugInfo, setDebugEnabled } from "./logger";
-import { changeMobileStatusBar } from "./misc";
+import { changeMobileStatusBar, debounce, throttle } from "./misc";
 import { DEFAULT_PROFILER_CONFIG, Profiler } from "./profiler";
 import { RemotelySaveSettingTab } from "./settings";
 import { syncer } from "./sync";
@@ -1339,7 +1336,7 @@ export default class RemotelySavePlugin extends Plugin {
   async loadSettings() {
     this.settings = Object.assign(
       {},
-      cloneDeep(DEFAULT_SETTINGS),
+      structuredClone(DEFAULT_SETTINGS),
       // loadData() returns `any` per the Obsidian API; the on-disk shape is
       // either the messy (obfuscated) or the normal config (or null).
       messyConfigToNormal(
@@ -1656,7 +1653,7 @@ export default class RemotelySavePlugin extends Plugin {
     }
     try {
       if (parsed.func === "settings") {
-        const copied = cloneDeep(parsed.parsed);
+        const copied = structuredClone(parsed.parsed);
         this.settings = Object.assign({}, this.settings, copied);
         await this.mergeOnedriveAuthFromDBOrMigrate();
         await this.saveSettings();
@@ -1732,7 +1729,9 @@ export default class RemotelySavePlugin extends Plugin {
     // before DB is ready (early in onload) we fall back to writing the
     // whole settings (legacy behavior) so checkIfOauthExpires etc. still
     // see a token.
-    const settingsCopy = dbReady ? cloneDeep(this.settings) : this.settings;
+    const settingsCopy = dbReady
+      ? structuredClone(this.settings)
+      : this.settings;
     if (dbReady) {
       this.stripOnedriveAuthInPlace(settingsCopy.onedrive);
       stripPasswordInPlace(settingsCopy);
@@ -1851,7 +1850,7 @@ export default class RemotelySavePlugin extends Plugin {
     ) {
       console.warn(`onedrive expired`);
       onedriveExpired = true;
-      this.settings.onedrive = cloneDeep(DEFAULT_ONEDRIVE_CONFIG);
+      this.settings.onedrive = structuredClone(DEFAULT_ONEDRIVE_CONFIG);
       needSave = true;
     }
 
