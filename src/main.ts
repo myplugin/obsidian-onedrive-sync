@@ -568,7 +568,7 @@ export default class RemotelySavePlugin extends Plugin {
       realCounter: number,
       realTotalCount: number,
       pathName: string,
-      decision: string
+      decision: string | undefined
     ) => {
       this.setCurrSyncMsg(
         t,
@@ -576,7 +576,7 @@ export default class RemotelySavePlugin extends Plugin {
         realCounter,
         realTotalCount,
         pathName,
-        decision,
+        decision ?? "",
         triggerSource
       );
     };

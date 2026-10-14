@@ -1861,7 +1861,7 @@ export const handleConflictModifiedSmartConflict = async (
     if (!dirtyOpenHandledPaths?.has(r.key)) {
       dirtyOpenHandledPaths?.add(r.key);
       let mergedContent: ArrayBuffer | undefined = undefined;
-      if (isMergable(r.local!, r.remote!)) {
+      if (isMergable(r.local!, r.remote)) {
         const origContent = await getFileContentHistoryByVaultAndProfile(
           db,
           vaultRandomID,
@@ -1884,7 +1884,7 @@ export const handleConflictModifiedSmartConflict = async (
   }
 
   // heavy lifting
-  if (isMergable(r.local!, r.remote!)) {
+  if (isMergable(r.local!, r.remote)) {
     const origContent = await getFileContentHistoryByVaultAndProfile(
       db,
       vaultRandomID,
@@ -2091,8 +2091,8 @@ export const dispatchOperationToActualV3 = async (
           );
         }
       }
-    } catch (e: any) {
-      if ((e as any)?.code === "REMOTE_ETAG_MISMATCH") {
+    } catch (e: unknown) {
+      if ((e as { code?: string })?.code === "REMOTE_ETAG_MISMATCH") {
         // 412 = OneDrive atomically REJECTED the write (If-Match
         // precondition failed): nothing was written remotely and the local
         // file is untouched, so there is no half state. Re-route this entry
@@ -2120,7 +2120,7 @@ export const dispatchOperationToActualV3 = async (
           ts: new Date(),
           key: r.key,
           walkEtag: r.remote?.etag,
-          disposition: isMergable(r.local!, r.remote!)
+          disposition: isMergable(r.local!, r.remote)
             ? "merged"
             : "duplicated",
         });
@@ -2354,12 +2354,12 @@ export const doActualSync = async (
   profileID: string,
   concurrency: number,
   protectModifyPercentage: number,
-  getProtectModifyPercentageErrorStrFunc: any,
+  getProtectModifyPercentageErrorStrFunc: (percentage: number, modified: number, total: number) => string,
   db: InternalDBs,
   profiler: Profiler | undefined,
   conflictAction: ConflictActionType,
   triggerSource: SyncTriggerSourceType,
-  callbackSyncProcess?: any,
+  callbackSyncProcess?: (s: SyncTriggerSourceType, counter: number, total: number, key: string, decision: string | undefined) => Promise<void> | void,
   remoteDeltaCount?: number,
   conflictsEncountered?: ConflictLogEntry[],
   isFileDirtyOpen?: (path: string) => boolean,
@@ -2513,13 +2513,13 @@ export const doActualSync = async (
           );
         };
 
-        const makeCatch = () => (e: any) => {
+        const makeCatch = () => (e: unknown) => {
           // Preserve .code and .key from the original error so
           // errNotifyFunc can identify REMOTE_NOT_FOUND and trigger
           // the self-heal (clearing stale delta state).
-          const wrapped = new Error(e.message);
-          (wrapped as any).code = (e as any)?.code;
-          (wrapped as any).key = (e as any)?.key;
+          const err = e as { message?: string; code?: string; key?: string };
+          const wrapped = new Error(err.message ?? String(e));
+          Object.assign(wrapped, { code: err.code, key: err.key });
           potentialErrors.push(wrapped);
           if (potentialErrors.length >= 3) {
             tooManyErrors = true;
@@ -2587,8 +2587,10 @@ export const doActualSync = async (
               result.error ??
               new Error(`batch rename failed: ${result.status}`);
             const wrapped = new Error(`${val.key}: ${err.message}`);
-            (wrapped as any).code = (err as any)?.code;
-            (wrapped as any).key = val.key;
+            Object.assign(wrapped, {
+              code: (err as { code?: string })?.code,
+              key: val.key,
+            });
             potentialErrors.push(wrapped);
             if (potentialErrors.length >= 3) {
               tooManyErrors = true;
@@ -2651,14 +2653,14 @@ export const doActualSync = async (
             );
           };
 
-          queue.add(fn).catch((e) => {
-            const msg = `${key}: ${e.message}`;
+          queue.add(fn).catch((e: unknown) => {
+            const err = e as { message?: string; code?: string; key?: string };
+            const msg = `${key}: ${err.message ?? String(e)}`;
             // Preserve .code and .key from the original error so
             // errNotifyFunc can identify REMOTE_NOT_FOUND and trigger
             // the self-heal (clearing stale delta state).
             const wrapped = new Error(msg);
-            (wrapped as any).code = (e as any)?.code;
-            (wrapped as any).key = (e as any)?.key;
+            Object.assign(wrapped, { code: err.code, key: err.key });
             potentialErrors.push(wrapped);
             if (potentialErrors.length >= 3) {
               tooManyErrors = true;
@@ -2717,18 +2719,22 @@ export async function syncer(
   selfPluginId: string,
   settings: RemotelySavePluginSettings,
   pluginVersion: string,
-  configSaver: () => Promise<any>,
-  getProtectModifyPercentageErrorStrFunc: any,
+  configSaver: () => Promise<void>,
+  getProtectModifyPercentageErrorStrFunc: (
+    percentage: number,
+    modified: number,
+    total: number
+  ) => string,
   markIsSyncingFunc: (isSyncing: boolean) => void,
-  notifyFunc?: (s: SyncTriggerSourceType, step: number) => Promise<any>,
-  errNotifyFunc?: (s: SyncTriggerSourceType, error: Error) => Promise<any>,
-  ribboonFunc?: (s: SyncTriggerSourceType, step: number) => Promise<any>,
+  notifyFunc?: (s: SyncTriggerSourceType, step: number) => Promise<void>,
+  errNotifyFunc?: (s: SyncTriggerSourceType, error: Error) => Promise<void>,
+  ribboonFunc?: (s: SyncTriggerSourceType, step: number) => Promise<void>,
   statusBarFunc?: (
     s: SyncTriggerSourceType,
     step: number,
     everythingOk: boolean
-  ) => any,
-  callbackSyncProcess?: any,
+  ) => Promise<void> | void,
+  callbackSyncProcess?: (s: SyncTriggerSourceType, counter: number, total: number, key: string, decision: string | undefined) => Promise<void> | void,
   // Dirty-buffer protection: injected by main.ts, returns true when the
   // (plain-text, vault-relative) path is currently open in an editor with
   // unsaved changes. Optional — when not supplied, the guard is a no-op
@@ -2924,7 +2930,7 @@ export async function syncer(
         );
       }
     } // end skipSync else block — steps 6-7 only run when changes detected
-  } catch (error: any) {
+  } catch (error: unknown) {
     profiler?.insert("start error branch");
     everythingOk = false;
     await errNotifyFunc?.(triggerSource, error as Error);

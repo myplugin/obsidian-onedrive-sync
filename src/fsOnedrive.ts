@@ -70,12 +70,12 @@ export interface GraphResponse {
   headers: {
     get(name: string): string | null;
     // Lowercased header names are also exposed as flat properties, so
-    // _retryOnTransientError's `(e.headers as any)["retry-after"]` lookup
-    // works on raw {status, headers} 429 throws.
-    [key: string]: any;
+    // _retryOnTransientError's `headers["retry-after"]` lookup works on
+    // raw {status, headers} 429 throws.
+    [key: string]: unknown;
   };
   text(): Promise<string>;
-  json(): Promise<any>;
+  json(): Promise<unknown>;
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 
@@ -107,7 +107,7 @@ export async function graphRequest(
   const body =
     init.body instanceof Uint8Array
       ? bufferToArrayBuffer(init.body)
-      : (init.body as string | ArrayBuffer | undefined);
+      : init.body;
   const res = await requestUrl({
     url,
     method: init.method ?? "GET",
@@ -128,7 +128,7 @@ export async function graphRequest(
       ...lower,
     },
     text: () => Promise.resolve(res.text),
-    json: () =>
+    json: (): Promise<unknown> =>
       Promise.resolve(res.json ?? (res.text ? JSON.parse(res.text) : null)),
     arrayBuffer: () => Promise.resolve(res.arrayBuffer),
   };
@@ -148,10 +148,16 @@ export async function graphRequest(
  * wrappers may put it in .response.status or in the message string), so we
  * check all known locations.
  */
-function isHttp404(e: any): boolean {
-  const status: number | undefined = e?.status ?? e?.response?.status;
+function isHttp404(e: unknown): boolean {
+  if (typeof e !== "object" || e === null) return false;
+  const err = e as {
+    status?: number;
+    response?: { status?: number };
+    message?: string;
+  };
+  const status: number | undefined = err.status ?? err.response?.status;
   if (status === 404) return true;
-  if (typeof e?.message === "string" && e.message.includes("status 404")) {
+  if (typeof err.message === "string" && err.message.includes("status 404")) {
     return true;
   }
   return false;
@@ -165,13 +171,19 @@ function isHttp404(e: any): boolean {
  * `Error("OneDrive ... failed: XXX ...")`. This unifies both so the retry
  * wrapper can decide whether an error is transient.
  */
-function extractHttpStatus(e: any): number | undefined {
-  const fromProps: unknown = e?.status ?? e?.response?.status;
+function extractHttpStatus(e: unknown): number | undefined {
+  if (typeof e !== "object" || e === null) return undefined;
+  const err = e as {
+    status?: number;
+    response?: { status?: number };
+    message?: string;
+  };
+  const fromProps: unknown = err.status ?? err.response?.status;
   if (typeof fromProps === "number") {
     return fromProps;
   }
-  if (typeof e?.message === "string") {
-    const m = e.message.match(/(?:status\s+|:\s+)(\d{3})/i);
+  if (typeof err.message === "string") {
+    const m = err.message.match(/(?:status\s+|:\s+)(\d{3})/i);
     if (m !== null) {
       return Number.parseInt(m[1], 10);
     }
@@ -200,9 +212,16 @@ function extractHttpStatus(e: any): number | undefined {
  * pre-retry behavior. The `net::ERR_` catch-all below still matches other
  * transient net errors; the guard above it defangs it for timeouts.
  */
-export function isTransientNetworkError(e: any): boolean {
-  const msg =
-    typeof e?.message === "string" ? e.message : typeof e === "string" ? e : "";
+export function isTransientNetworkError(e: unknown): boolean {
+  let msg = "";
+  if (typeof e === "string") {
+    msg = e;
+  } else if (typeof e === "object" && e !== null) {
+    const m = (e as { message?: unknown }).message;
+    if (typeof m === "string") {
+      msg = m;
+    }
+  }
   if (msg === "") return false;
   // Timeouts are slow-to-fire and persistent; do NOT retry them (see above).
   if (/TIMED_OUT/i.test(msg)) return false;
@@ -210,6 +229,12 @@ export function isTransientNetworkError(e: any): boolean {
     msg
   );
 }
+
+/** An Error carrying optional machine-readable `code`/`key` fields (set by
+ *  this file's error builders; driveItemConvert's out-of-scope error also
+ *  carries `.code`). Used to read those fields off `unknown` catch values
+ *  without resorting to `any`. */
+type CodedError = Error & { code?: string; key?: string };
 
 /**
  * Build a recognizable error for the "remote file was deleted between the
@@ -220,8 +245,7 @@ function remoteNotFoundError(key: string): Error {
   const err = new Error(
     `Remote file not found (deleted since sync started): ${key}`
   );
-  (err as any).code = "REMOTE_NOT_FOUND";
-  (err as any).key = key;
+  Object.assign(err, { code: "REMOTE_NOT_FOUND", key });
   return err;
 }
 
@@ -236,8 +260,7 @@ export function remoteEtagMismatchError(key: string): Error {
   const err = new Error(
     `Remote etag mismatch (another device changed this file since sync walk): ${key}`
   );
-  (err as any).code = "REMOTE_ETAG_MISMATCH";
-  (err as any).key = key;
+  Object.assign(err, { code: "REMOTE_ETAG_MISMATCH", key });
   return err;
 }
 
@@ -250,7 +273,7 @@ export function remoteEtagMismatchError(key: string): Error {
  * Pure function: shared by this file's write methods and upper layers.
  */
 export function classifyOneDriveWriteError(
-  e: any
+  e: unknown
 ): "REMOTE_ETAG_MISMATCH" | "REMOTE_NOT_FOUND" | null {
   const status = extractHttpStatus(e);
   if (status === 412) return "REMOTE_ETAG_MISMATCH";
@@ -359,7 +382,9 @@ export function _buildCreateUploadSessionBody(
   ctimeStr?: string,
   _expectedEtag?: string
 ) {
-  const item: any = { "@microsoft.graph.conflictBehavior": "replace" };
+  const item: DriveItem & { "@microsoft.graph.conflictBehavior": string } = {
+    "@microsoft.graph.conflictBehavior": "replace",
+  };
   if (mtimeStr !== undefined && ctimeStr !== undefined) {
     item.fileSystemInfo = {
       lastModifiedDateTime: mtimeStr,
@@ -431,7 +456,7 @@ export const sendAuthReq = async (
   authority: string,
   authCode: string,
   verifier: string,
-  errorCallBack: any
+  errorCallBack: (err: unknown) => Promise<void>
 ) => {
   // // original code snippets for references
   // const authResponse = await pca.acquireTokenByCode({
@@ -455,7 +480,11 @@ export const sendAuthReq = async (
       method: "POST",
       contentType: "application/x-www-form-urlencoded",
       body: new URLSearchParams({
-        tenant: "consumers",
+        // v2.0 auth-code token grant has NO `tenant` body param: the {tenant}
+        // in the URL path (/common here) is authoritative and routes BOTH
+        // personal + work/school accounts. Sending tenant=consumers was
+        // undocumented and forced a consumers context, blocking work/school
+        // code redemption. See MS Learn v2-oauth2-auth-code-flow.
         client_id: clientID,
         scope: SCOPES.join(" "),
         code: authCode,
@@ -465,10 +494,10 @@ export const sendAuthReq = async (
       }).toString(),
     });
 
-    const rsp2 = JSON.parse(rsp1);
+    const rsp2: unknown = JSON.parse(rsp1);
     // console.info(rsp2);
 
-    if (rsp2.error !== undefined) {
+    if ((rsp2 as { error?: string }).error !== undefined) {
       return rsp2 as AccessCodeResponseFailedType;
     } else {
       return rsp2 as AccessCodeResponseSuccessfulType;
@@ -491,7 +520,10 @@ export const sendRefreshTokenReq = async (
       method: "POST",
       contentType: "application/x-www-form-urlencoded",
       body: new URLSearchParams({
-        tenant: "consumers",
+        // v2.0 refresh-token grant has NO `tenant` body param (see
+        // v2-oauth2-auth-code-flow); the /common URL path resolves the account
+        // type from the refresh_token itself. tenant=consumers was undocumented
+        // and forced consumers context — removed so work/school refresh works.
         client_id: clientID,
         scope: SCOPES.join(" "),
         refresh_token: refreshToken,
@@ -499,10 +531,10 @@ export const sendRefreshTokenReq = async (
       }).toString(),
     });
 
-    const rsp2 = JSON.parse(rsp1);
+    const rsp2: unknown = JSON.parse(rsp1);
     // console.info(rsp2);
 
-    if (rsp2.error !== undefined) {
+    if ((rsp2 as { error?: string }).error !== undefined) {
       return rsp2 as AccessCodeResponseFailedType;
     } else {
       return rsp2 as AccessCodeResponseSuccessfulType;
@@ -516,7 +548,7 @@ export const sendRefreshTokenReq = async (
 export const setConfigBySuccessfullAuthInplace = async (
   config: OnedriveConfig,
   authRes: AccessCodeResponseSuccessfulType,
-  saveUpdatedConfigFunc: () => Promise<any> | undefined
+  saveUpdatedConfigFunc: (() => Promise<void>) | undefined
 ) => {
   debugInfo("start updating local info of OneDrive token");
   config.accessToken = authRes.access_token;
@@ -569,11 +601,11 @@ const getOnedrivePath = (fileOrFolderPath: string, remoteBaseDir: string) => {
 // to adapt to the required interface
 class MyAuthProvider implements AuthenticationProvider {
   onedriveConfig: OnedriveConfig;
-  saveUpdatedConfigFunc: () => Promise<any>;
+  saveUpdatedConfigFunc: () => Promise<void>;
   private refreshPromise: Promise<string> | null = null;
   constructor(
     onedriveConfig: OnedriveConfig,
-    saveUpdatedConfigFunc: () => Promise<any>
+    saveUpdatedConfigFunc: () => Promise<void>
   ) {
     this.onedriveConfig = onedriveConfig;
     this.saveUpdatedConfigFunc = saveUpdatedConfigFunc;
@@ -614,13 +646,13 @@ class MyAuthProvider implements AuthenticationProvider {
       this.onedriveConfig.authority,
       this.onedriveConfig.refreshToken
     );
-    if ((r as any).error !== undefined) {
-      const r2 = r as AccessCodeResponseFailedType;
+    if ("error" in r) {
+      const r2 = r;
       throw Error(
         `Error while refreshing accessToken: ${r2.error}, ${String(r2.error_codes)}: ${r2.error_description}`
       );
     }
-    const r2 = r as AccessCodeResponseSuccessfulType;
+    const r2 = r;
     this.onedriveConfig.accessToken = r2.access_token;
     this.onedriveConfig.refreshToken = r2.refresh_token!;
     this.onedriveConfig.accessTokenExpiresInSeconds = r2.expires_in;
@@ -645,13 +677,42 @@ export const getShrinkedSettings = (onedriveConfig: OnedriveConfig) => {
   return config;
 };
 
+/** One page of a Graph delta / children enumeration response: the item
+ *  array plus the paging annotations (`@odata.nextLink` while more pages
+ *  remain; `@odata.deltaLink` on the final page of a delta query). */
+interface DeltaResponsePage {
+  value: DriveItem[];
+  "@odata.nextLink"?: string;
+  "@odata.deltaLink"?: string;
+}
+
+/** A DriveItem plus the pre-authenticated download URL annotation Graph
+ *  returns when `@microsoft.graph.downloadUrl` is $select'ed. */
+type DriveItemWithDownloadUrl = DriveItem & {
+  "@microsoft.graph.downloadUrl"?: string;
+};
+
+/** The `body` of one Graph `$batch` sub-response; only the error facet is
+ *  read (batch rename does not consume the wrapped driveItem). */
+interface BatchSubResponseBody {
+  error?: { message?: string };
+}
+
+/** One sub-response inside a Graph `$batch` envelope, correlated to the
+ *  request by `id`. */
+interface BatchSubResponse {
+  id: string;
+  status: number;
+  body?: BatchSubResponseBody;
+}
+
 export class FakeFsOnedrive extends FakeFs {
   kind: "onedrive";
   onedriveConfig: OnedriveConfig;
   remoteBaseDir: string;
   vaultFolderExists: boolean;
   authGetter: MyAuthProvider;
-  saveUpdatedConfigFunc: () => Promise<any>;
+  saveUpdatedConfigFunc: () => Promise<void>;
   foldersCreatedBefore: Set<string>;
   /**
    * The full remote entity list from the previous sync's walk().
@@ -682,7 +743,7 @@ export class FakeFsOnedrive extends FakeFs {
   constructor(
     onedriveConfig: OnedriveConfig,
     vaultName: string,
-    saveUpdatedConfigFunc: () => Promise<any>,
+    saveUpdatedConfigFunc: () => Promise<void>,
     prevRemoteEntities?: Entity[]
   ) {
     super();
@@ -722,11 +783,11 @@ export class FakeFsOnedrive extends FakeFs {
       // /users/{id}/drive, /groups/{id}/drive, /sites/{id}/drive). Bare /drive
       // is accepted for GET (lenient binding) but rejected on POST with
       // invalidRequest "Invalid request".
-      const k = await this._getJson("/me/drive/special/approot/children");
-      // console.debug(k);
-      const rootMatches = (k.value as DriveItem[]).filter(
-        (x) => x.name === this.remoteBaseDir
+      const k = await this._getJson<{ value: DriveItem[] }>(
+        "/me/drive/special/approot/children"
       );
+      // console.debug(k);
+      const rootMatches = k.value.filter((x) => x.name === this.remoteBaseDir);
       this.vaultFolderExists = rootMatches.length > 0;
       if (this.vaultFolderExists) {
         // Capture the vault root folder's id: the anchor for walk()'s
@@ -790,11 +851,11 @@ export class FakeFsOnedrive extends FakeFs {
     fn: () => Promise<T>,
     maxRetries = 3
   ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown = undefined;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await fn();
-      } catch (e: any) {
+      } catch (e: unknown) {
         lastError = e;
         const status = extractHttpStatus(e);
         const isThrottled = status === 429;
@@ -816,10 +877,16 @@ export class FakeFsOnedrive extends FakeFs {
         }
         // Retry-After (seconds) is authoritative when present; otherwise
         // fall back to exponential backoff, capped to avoid unbounded waits.
+        const err = e as {
+          headers?: Record<string, unknown>;
+          response?: { headers?: Record<string, unknown> };
+        } | null;
+        const retryAfterValue =
+          err?.headers?.["Retry-After"] ||
+          err?.headers?.["retry-after"] ||
+          err?.response?.headers?.["Retry-After"];
         const retryAfterRaw: string | undefined =
-          (e?.headers as any)?.["Retry-After"] ||
-          (e?.headers as any)?.["retry-after"] ||
-          (e?.response?.headers as any)?.["Retry-After"];
+          typeof retryAfterValue === "string" ? retryAfterValue : undefined;
         const retryAfterSec = retryAfterRaw
           ? Number.parseInt(retryAfterRaw, 10)
           : Math.min(2 ** attempt, 10);
@@ -835,10 +902,10 @@ export class FakeFsOnedrive extends FakeFs {
     throw lastError;
   }
 
-  async _getJson(pathFragOrig: string) {
+  async _getJson<T = unknown>(pathFragOrig: string): Promise<T> {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`getJson, theUrl=${theUrl}`);
-    return await this._retryOnTransientError(async () => {
+    return await this._retryOnTransientError<T>(async () => {
       return JSON.parse(
         await request({
           url: theUrl,
@@ -849,18 +916,18 @@ export class FakeFsOnedrive extends FakeFs {
             "Cache-Control": "no-cache",
           },
         })
-      );
+      ) as T;
     });
   }
 
-  async _postJson(
+  async _postJson<T = unknown>(
     pathFragOrig: string,
-    payload: any,
+    payload: unknown,
     headers?: Record<string, string>
-  ) {
+  ): Promise<T> {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`postJson, theUrl=${theUrl}`);
-    return await this._retryOnTransientError(async () => {
+    return await this._retryOnTransientError<T>(async () => {
       const accessToken = await this.authGetter.getAccessToken();
       const res = await graphRequest(theUrl, {
         method: "POST",
@@ -891,20 +958,23 @@ export class FakeFsOnedrive extends FakeFs {
         const err = new Error(
           `OneDrive POST failed: ${res.status} ${pathFragOrig} ${text}`
         );
-        (err as any).status = res.status;
-        (err as any).headers = {
-          "Retry-After": res.headers.get("Retry-After"),
-        };
+        Object.assign(err, {
+          status: res.status,
+          headers: { "Retry-After": res.headers.get("Retry-After") },
+        });
         throw err;
       }
-      return text === "" ? null : JSON.parse(text);
+      return (text === "" ? null : JSON.parse(text)) as T;
     });
   }
 
-  async _patchJson(pathFragOrig: string, payload: any) {
+  async _patchJson<T = unknown>(
+    pathFragOrig: string,
+    payload: unknown
+  ): Promise<T> {
     const theUrl = this._buildUrl(pathFragOrig);
     console.debug(`patchJson, theUrl=${theUrl}`);
-    return await this._retryOnTransientError(async () => {
+    return await this._retryOnTransientError<T>(async () => {
       const res = await graphRequest(theUrl, {
         method: "PATCH",
         headers: {
@@ -931,13 +1001,13 @@ export class FakeFsOnedrive extends FakeFs {
         const err = new Error(
           `OneDrive PATCH failed: ${res.status} ${pathFragOrig} ${text}`
         );
-        (err as any).status = res.status;
-        (err as any).headers = {
-          "Retry-After": res.headers.get("Retry-After"),
-        };
+        Object.assign(err, {
+          status: res.status,
+          headers: { "Retry-After": res.headers.get("Retry-After") },
+        });
         throw err;
       }
-      return text === "" ? null : JSON.parse(text);
+      return (text === "" ? null : JSON.parse(text)) as T;
     });
   }
 
@@ -954,8 +1024,13 @@ export class FakeFsOnedrive extends FakeFs {
               Authorization: `Bearer ${await this.authGetter.getAccessToken()}`,
             },
           });
-        } catch (e: any) {
-          const status: number | undefined = e?.status ?? e?.response?.status;
+        } catch (e: unknown) {
+          const err = e as {
+            status?: number;
+            response?: { status?: number };
+          } | null;
+          const status: number | undefined =
+            err?.status ?? err?.response?.status;
           // 404 = already deleted, treat as success (idempotent delete)
           if (status === 404) {
             return;
@@ -974,17 +1049,20 @@ export class FakeFsOnedrive extends FakeFs {
           return;
         }
         if (res.status === 429) {
-          throw { status: 429, headers: res.headers } as any;
+          throw Object.assign(new Error("OneDrive rate limited (HTTP 429)"), {
+            status: 429,
+            headers: res.headers,
+          });
         }
         if (!res.ok && res.status !== 204) {
           const body = await res.text().catch(() => "");
           const err = new Error(
             `OneDrive DELETE failed: ${res.status} ${pathFragOrig} ${body}`
           );
-          (err as any).status = res.status;
-          (err as any).headers = {
-            "Retry-After": res.headers.get("Retry-After"),
-          };
+          Object.assign(err, {
+            status: res.status,
+            headers: { "Retry-After": res.headers.get("Retry-After") },
+          });
           throw err;
         }
       }
@@ -1024,7 +1102,10 @@ export class FakeFsOnedrive extends FakeFs {
         });
       }
       if (res.status === 429) {
-        throw { status: 429, headers: res.headers } as any;
+        throw Object.assign(new Error("OneDrive rate limited (HTTP 429)"), {
+          status: 429,
+          headers: res.headers,
+        });
       }
       if (res.status === 412 && key !== undefined) {
         // If-Match precondition failed: another device changed this file
@@ -1096,7 +1177,10 @@ export class FakeFsOnedrive extends FakeFs {
         });
       }
       if (res.status === 429) {
-        throw { status: 429, headers: res.headers } as any;
+        throw Object.assign(new Error("OneDrive rate limited (HTTP 429)"), {
+          status: 429,
+          headers: res.headers,
+        });
       }
       if (res.status === 412 && key !== undefined) {
         // Precondition failed on a fragment PUT: a concurrent write
@@ -1163,13 +1247,16 @@ export class FakeFsOnedrive extends FakeFs {
       debugInfo(
         `walk: ${skippedItems.length} delta item(s) had no parentReference.path — retrying via stat-by-id`
       );
-      const stat404Items: any[] = [];
+      const stat404Items: DriveItem[] = [];
       const statResults = await Promise.all(
         skippedItems
-          .filter((item: any) => item.id !== undefined && item.id !== null)
-          .map(async (item: any) => {
+          .filter((item): item is DriveItem => {
+            const it = item as { id?: string | null };
+            return it.id !== undefined && it.id !== null;
+          })
+          .map(async (item) => {
             try {
-              return await this._getJson(
+              return await this._getJson<DriveItem>(
                 `/drive/items/${item.id}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,eTag`
               );
             } catch (e) {
@@ -1190,7 +1277,7 @@ export class FakeFsOnedrive extends FakeFs {
                 // correctly dropped, never enters the sync).
                 console.debug(
                   "walk: stat-retry 404 for delta item (treated as gone)",
-                  item?.id
+                  item.id
                 );
               } else {
                 // [DIAG] non-404 GET failure (after _retryOnTransientError
@@ -1199,7 +1286,7 @@ export class FakeFsOnedrive extends FakeFs {
                 // stays counted as unresolved so the terminal warn fires.
                 console.warn(
                   "[DIAG] stat-retry GET failed (non-404) for delta item",
-                  item?.id,
+                  item.id,
                   e instanceof Error ? e.message : e
                 );
               }
@@ -1219,7 +1306,7 @@ export class FakeFsOnedrive extends FakeFs {
       // which the statResults loop skips via `continue`).
       for (const item404 of stat404Items) {
         const ownId404 = item404.id;
-        if (lookupMap.has(ownId404)) {
+        if (ownId404 !== undefined && lookupMap.has(ownId404)) {
           const keyRaw404 = lookupMap.get(ownId404)!;
           if (keyRaw404 !== "/" && keyRaw404 !== "") {
             deletedKeys.add(keyRaw404);
@@ -1253,11 +1340,11 @@ export class FakeFsOnedrive extends FakeFs {
           // unresolved, NOT invalidating — this is the thrash-stopper.
           if (
             e instanceof Error &&
-            (e as any).code === "ONEDRIVE_PATH_OUT_OF_SCOPE"
+            (e as CodedError).code === "ONEDRIVE_PATH_OUT_OF_SCOPE"
           ) {
             console.debug(
               "walk: stat-retry dropped out-of-scope item",
-              (statResp as any).id
+              statResp.id
             );
             // Decrement so the drop is truly "not counted as unresolved":
             // otherwise it stays in unresolvedCount and the check below
@@ -1275,13 +1362,13 @@ export class FakeFsOnedrive extends FakeFs {
             // does the non-delta GET actually return a path?).
             console.warn(
               "[DIAG] stat-retry conversion failed for",
-              (statResp as any)?.id,
+              statResp.id,
               "code=",
-              (e as any)?.code,
+              (e as CodedError | null)?.code,
               "statHasPath=",
-              (statResp as any)?.parentReference?.path != null,
+              statResp.parentReference?.path != null,
               "statName=",
-              (statResp as any)?.name,
+              statResp.name,
               "msg=",
               e instanceof Error ? e.message : e
             );
@@ -1312,15 +1399,18 @@ export class FakeFsOnedrive extends FakeFs {
           this.remoteBaseDir,
           "skipped=",
           JSON.stringify(
-            skippedItems.map((it: any) => ({
-              id: it?.id,
-              name: it?.name,
-              isFolder: it != null && "folder" in it,
-              parentId: it?.parentReference?.id,
-              hasPath: it?.parentReference?.path != null,
-              removed: it != null && "@removed" in it,
-              isRootName: it?.name === this.remoteBaseDir,
-            }))
+            skippedItems.map((raw) => {
+              const it = raw as DriveItem | null | undefined;
+              return {
+                id: it?.id,
+                name: it?.name,
+                isFolder: it != null && "folder" in it,
+                parentId: it?.parentReference?.id,
+                hasPath: it?.parentReference?.path != null,
+                removed: it != null && "@removed" in it,
+                isRootName: it?.name === this.remoteBaseDir,
+              };
+            })
           ).slice(0, 800)
         );
       }
@@ -1357,9 +1447,9 @@ export class FakeFsOnedrive extends FakeFs {
       this.remoteBaseDir
     );
 
-    let res: any;
+    let res: DeltaResponsePage;
     try {
-      res = await this._getJson(startUrl);
+      res = await this._getJson<DeltaResponsePage>(startUrl);
     } catch (e) {
       if (canIncremental) {
         // deltaLink may have expired 鈥?fall back to full enumeration
@@ -1369,22 +1459,22 @@ export class FakeFsOnedrive extends FakeFs {
         );
         canIncremental = false;
         startUrl = buildDeltaStartUrl(false, "", this.remoteBaseDir);
-        res = await this._getJson(startUrl);
+        res = await this._getJson<DeltaResponsePage>(startUrl);
       } else {
         throw e;
       }
     }
 
-    const driveItems = res.value as DriveItem[];
+    const driveItems = res.value;
 
     while (NEXT_LINK_KEY in res) {
-      res = await this._getJson(res[NEXT_LINK_KEY]);
-      driveItems.push(...(res.value as DriveItem[]));
+      res = await this._getJson<DeltaResponsePage>(res[NEXT_LINK_KEY]!);
+      driveItems.push(...res.value);
     }
 
     // Save deltaLink for next sync's incremental query
     if (DELTA_LINK_KEY in res) {
-      this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY];
+      this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY]!;
       await this.saveUpdatedConfigFunc();
     }
 
@@ -1458,10 +1548,10 @@ export class FakeFsOnedrive extends FakeFs {
     // another device's sync). walk() saves its own deltaLink at the end of
     // every enumeration (full and incremental), so this save was redundant
     // and harmful. See deltaMerge.ts for the documented 404 path.
-    const res = await this._getJson(
+    const res = await this._getJson<{ value: DriveItem[] }>(
       `/drive/special/approot:/${this.remoteBaseDir}:/delta`
     );
-    const driveItems = res.value as DriveItem[];
+    const driveItems = res.value;
     // console.debug(driveItems);
 
     // unify everything to Entity — tolerate per-item parse failures with
@@ -1499,11 +1589,11 @@ export class FakeFsOnedrive extends FakeFs {
 
   async _statFromRoot(key: string): Promise<Entity> {
     // console.info(`remotePath=${remotePath}`);
-    const rsp = await this._getJson(
+    const rsp = await this._getJson<DriveItem>(
       `${key}?$select=id,cTag,eTag,fileSystemInfo,folder,file,name,parentReference,size`
     );
     // console.info(rsp);
-    const driveItem = rsp as DriveItem;
+    const driveItem = rsp;
     const res = fromDriveItemToEntity(driveItem, this.remoteBaseDir);
     // console.info(res);
     return res;
@@ -1531,11 +1621,13 @@ export class FakeFsOnedrive extends FakeFs {
     } else {
       // https://stackoverflow.com/questions/56479865/creating-nested-folders-in-one-go-onedrive-api
       // use PATCH to create folder recursively!!!
-      const playload: any = {
+      const playload: DriveItem & {
+        "@microsoft.graph.conflictBehavior": string;
+      } = {
         folder: {},
         "@microsoft.graph.conflictBehavior": "replace",
       };
-      const fileSystemInfo: Record<string, string> = {};
+      const fileSystemInfo: FileSystemInfo = {};
       if (mtime !== undefined && mtime !== 0) {
         const mtimeStr = new Date(mtime).toISOString();
         fileSystemInfo["lastModifiedDateTime"] = mtimeStr;
@@ -1641,7 +1733,7 @@ export class FakeFsOnedrive extends FakeFs {
       // The PUT response already contains the full DriveItem, and the PATCH
       // response (if sent) also returns the updated DriveItem. Use that
       // instead of making a redundant _statFromRoot API call.
-      let driveItem: any;
+      let driveItem: DriveItem | UploadSession;
       driveItem = await this._putArrayBuffer(
         `${key}:/content?${new URLSearchParams({
           "@microsoft.graph.conflictBehavior": "replace",
@@ -1652,7 +1744,7 @@ export class FakeFsOnedrive extends FakeFs {
       );
       if (mtime !== 0 && ctime !== 0) {
         try {
-          driveItem = await this._patchJson(key, {
+          driveItem = await this._patchJson<DriveItem>(key, {
             fileSystemInfo: {
               lastModifiedDateTime: mtimeStr,
               createdDateTime: ctimeStr,
@@ -1694,12 +1786,12 @@ export class FakeFsOnedrive extends FakeFs {
       // via uploadSession); If-Match is a HEADER, documented as supported by
       // createUploadSession — sent only when the walk gave us an etag.
       const hasTimes = mtime !== 0 && ctime !== 0;
-      const playload: any = _buildCreateUploadSessionBody(
+      const playload = _buildCreateUploadSessionBody(
         hasTimes ? mtimeStr : undefined,
         hasTimes ? ctimeStr : undefined,
         expectedEtag
       );
-      const s: UploadSession = await this._postJson(
+      const s = await this._postJson<UploadSession>(
         `${key}:/createUploadSession`,
         playload,
         expectedEtag !== undefined && expectedEtag !== ""
@@ -1717,7 +1809,7 @@ export class FakeFsOnedrive extends FakeFs {
       // upload the ranges one by one
       // The last range PUT returns the completed DriveItem.
       let rangeStart = 0;
-      let lastResult: any;
+      let lastResult: DriveItem | UploadSession | undefined;
       while (rangeStart < uint8.byteLength) {
         lastResult = await this._putUint8ArrayByRange(
           uploadUrl,
@@ -1733,10 +1825,7 @@ export class FakeFsOnedrive extends FakeFs {
       // making a redundant _statFromRoot API call.
       try {
         if (lastResult && "name" in lastResult) {
-          return fromDriveItemToEntity(
-            lastResult as DriveItem,
-            this.remoteBaseDir
-          );
+          return fromDriveItemToEntity(lastResult, this.remoteBaseDir);
         }
       } catch {
         // Fallback below
@@ -1778,9 +1867,9 @@ export class FakeFsOnedrive extends FakeFs {
     const downloadFile = getOnedrivePath(key, this.remoteBaseDir);
 
     // Single GET: metadata fields + download URL annotation
-    let rsp: any;
+    let rsp: DriveItemWithDownloadUrl;
     try {
-      rsp = await this._getJson(
+      rsp = await this._getJson<DriveItemWithDownloadUrl>(
         `${downloadFile}?$select=id,name,size,fileSystemInfo,folder,file,parentReference,@microsoft.graph.downloadUrl`
       );
     } catch (e) {
@@ -1789,10 +1878,10 @@ export class FakeFsOnedrive extends FakeFs {
       }
       throw e;
     }
-    const driveItem = rsp as DriveItem;
+    const driveItem = rsp;
     const entity = fromDriveItemToEntity(driveItem, this.remoteBaseDir);
 
-    const downloadUrl: string = rsp["@microsoft.graph.downloadUrl"];
+    const downloadUrl = rsp["@microsoft.graph.downloadUrl"];
     if (!downloadUrl) {
       // Fallback: if the annotation is absent (folders, some items),
       // use the two-call path.
@@ -1824,9 +1913,9 @@ export class FakeFsOnedrive extends FakeFs {
   }
 
   async _readFileFromRoot(key: string): Promise<ArrayBuffer> {
-    const rsp = await this._getJson(
-      `${key}?$select=@microsoft.graph.downloadUrl`
-    );
+    const rsp = await this._getJson<{
+      "@microsoft.graph.downloadUrl"?: string;
+    }>(`${key}?$select=@microsoft.graph.downloadUrl`);
     const downloadUrl: string | undefined = rsp["@microsoft.graph.downloadUrl"];
     if (!downloadUrl) {
       // Fallback: when the pre-auth download URL annotation is absent
@@ -1839,13 +1928,16 @@ export class FakeFsOnedrive extends FakeFs {
           },
         });
         if (res.status === 429) {
-          throw { status: 429, headers: res.headers } as any;
+          throw Object.assign(new Error("OneDrive rate limited (HTTP 429)"), {
+            status: 429,
+            headers: res.headers,
+          });
         }
         if (!res.ok) {
           const err = new Error(
             `OneDrive content download failed: ${res.status}`
           );
-          (err as any).status = res.status;
+          Object.assign(err, { status: res.status });
           throw err;
         }
         return await res.arrayBuffer();
@@ -1935,9 +2027,12 @@ export class FakeFsOnedrive extends FakeFs {
    *  not a concern here; the only contract difference is the response
    *  envelope shape ({ responses: [{ id, status, body }] }). */
   private async _batchPatch(
-    ops: { id: string; url: string; body: any }[]
-  ): Promise<Map<string, { status: number; body: any }>> {
-    const results = new Map<string, { status: number; body: any }>();
+    ops: { id: string; url: string; body: unknown }[]
+  ): Promise<Map<string, { status: number; body?: BatchSubResponseBody }>> {
+    const results = new Map<
+      string,
+      { status: number; body?: BatchSubResponseBody }
+    >();
     const BATCH_SIZE = 20;
     for (let i = 0; i < ops.length; i += BATCH_SIZE) {
       const chunk = ops.slice(i, i + BATCH_SIZE);
@@ -1963,7 +2058,7 @@ export class FakeFsOnedrive extends FakeFs {
               "Content-Type": "application/json",
             },
           })
-        );
+        ) as { responses?: BatchSubResponse[] };
       });
       for (const resp of response.responses ?? []) {
         results.set(resp.id, {
@@ -1990,7 +2085,7 @@ export class FakeFsOnedrive extends FakeFs {
     const patchOps: {
       id: string;
       url: string;
-      body: any;
+      body: { name: string; parentReference?: { id: string } };
       opIndex: number;
     }[] = [];
 
@@ -2019,8 +2114,12 @@ export class FakeFsOnedrive extends FakeFs {
             getOnedrivePath(op.key1, this.remoteBaseDir)
           );
           oldRemoteId = oldItem.remoteId ?? undefined;
-        } catch (e: any) {
-          results[i] = { ok: false, status: 0, error: e };
+        } catch (e: unknown) {
+          results[i] = {
+            ok: false,
+            status: 0,
+            error: e instanceof Error ? e : new Error(String(e)),
+          };
           continue;
         }
       }
@@ -2047,8 +2146,12 @@ export class FakeFsOnedrive extends FakeFs {
             const newParent = await this._statFromRoot(newParentPath);
             newParentRemoteId = newParent.remoteId!;
             this._parentRemoteIdCache.set(newParentPath, newParentRemoteId);
-          } catch (e: any) {
-            results[i] = { ok: false, status: 0, error: e };
+          } catch (e: unknown) {
+            results[i] = {
+              ok: false,
+              status: 0,
+              error: e instanceof Error ? e : new Error(String(e)),
+            };
             continue;
           }
         }
@@ -2138,7 +2241,7 @@ export class FakeFsOnedrive extends FakeFs {
     this.deletedRemotelyKeys.add(key);
   }
 
-  async checkConnect(callbackFunc?: any): Promise<boolean> {
+  async checkConnect(callbackFunc?: (err: unknown) => void): Promise<boolean> {
     try {
       const k = await this.getUserDisplayName();
       if (k === "<unknown display name>") {
@@ -2155,7 +2258,7 @@ export class FakeFsOnedrive extends FakeFs {
 
   async getUserDisplayName() {
     await this._init();
-    const res: User = await this._getJson("/me?$select=displayName");
+    const res = await this._getJson<User>("/me?$select=displayName");
     return res.displayName || "<unknown display name>";
   }
 
