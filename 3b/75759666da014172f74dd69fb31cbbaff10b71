@@ -1,0 +1,95 @@
+docs/lessons/esbuild-define-lexical-substitution.md
+  h_77bd96c5a60e28 1-95
+versions.json
+  h_77bd96c5a60e28 13-14
+src/baseTypes.ts
+  h_77bd96c5a60e28 14-23
+manifest.json
+  h_77bd96c5a60e28 4
+package.json
+  h_77bd96c5a60e28 3,7
+manifest-beta.json
+  h_77bd96c5a60e28 4
+scripts/verify-build.mjs
+  h_77bd96c5a60e28 1-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "3b75759666da014172f74dd69fb31cbbaff10b71",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  },
+  "sessions": {
+    "s_0760e3d980da5c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f31953f5fffep4XEuQuBNBFL5R",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 52,
+      "total_deletions": 3,
+      "overridden_lines": 0,
+      "turn_models": {
+        "t_50ce4ebd6fbbab": "qwen3.8-max",
+        "t_54e1c8c40a8137": "qwen3.8-max",
+        "t_b9cbcfe1cb8963": "qwen3.8-max",
+        "t_edb5e2b8cd19bd": "qwen3.8-max"
+      },
+      "model_totals": {
+        "qwen3.8-max": {
+          "additions": 52,
+          "deletions": 3
+        }
+      }
+    },
+    "s_082e756d7b8900": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f390c405effeBCcg010qMeYhU8",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 79,
+      "overridden_lines": 0
+    },
+    "s_2d8720350674f7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3785439fffeP0Iiwm4snWrRWh",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 151,
+      "overridden_lines": 0
+    },
+    "s_c7970f70270c76": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f4dd77059ffeI7yzaUn6Ui5hGw",
+        "model": "glm-5.2"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 17,
+      "overridden_lines": 0
+    },
+    "s_ed741c418eb3a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f41f53e1fffewvtbPbofzVuAQh",
+        "model": "qwen3.8-max"
+      },
+      "human_author": "chenyude <chenyude@h-partners.com>",
+      "total_additions": 0,
+      "total_deletions": 96,
+      "overridden_lines": 0
+    }
+  }
+}
