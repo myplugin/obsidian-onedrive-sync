@@ -1,0 +1,20 @@
+docs/remote_services/onedrive/README.md
+  h_77bd96c5a60e28 13
+src/langs/en.json
+  h_77bd96c5a60e28 219
+src/langs/zh_cn.json
+  h_77bd96c5a60e28 219
+src/langs/zh_tw.json
+  h_77bd96c5a60e28 219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "71ed35e122937463419b3ded17699ad6f0118ff4",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
