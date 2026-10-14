@@ -216,7 +216,7 @@
   "settings_onedrive_revoke_desc": "您現在使用了使用者名稱 {{username}} 來連線。如果想取消連線，請點選此按鈕。",
   "settings_onedrive_revoke_button": "撤回鑑權",
   "settings_onedrive_auth": "鑑權",
-  "settings_onedrive_auth_desc": "鑑權。",
+  "settings_onedrive_auth_desc": "請使用個人 Microsoft 帳戶。不支援工作/學校帳戶及 OneDrive for Business（含 Microsoft 365 教育版）——本外掛經 App Folder 權限同步，僅對個人帳戶有效。",
   "settings_onedrive_auth_button": "鑑權",
   "settings_onedrive_connect_succ": "很好！我們可連線上 OneDrive！",
   "settings_onedrive_connect_fail": "我們未能連線上 OneDrive。",

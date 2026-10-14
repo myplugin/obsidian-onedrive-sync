@@ -216,7 +216,7 @@
   "settings_onedrive_revoke_desc": "You've connected as user {{username}}. If you want to disconnect, click this button.",
   "settings_onedrive_revoke_button": "Revoke Auth",
   "settings_onedrive_auth": "Auth",
-  "settings_onedrive_auth_desc": "Auth.",
+  "settings_onedrive_auth_desc": "Use a personal Microsoft account. Work/school & OneDrive for Business (incl. Microsoft 365 Education) aren't supported — this plugin syncs via the App Folder scope, which is personal-only.",
   "settings_onedrive_auth_button": "Auth",
   "settings_onedrive_connect_succ": "Great! We can connect to OneDrive!",
   "settings_onedrive_connect_fail": "We cannot connect to OneDrive.",

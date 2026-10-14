@@ -10,7 +10,7 @@
 
 ### How about OneDrive for Business?
 
-This plugin only works for "OneDrive for personal", and not works for "OneDrive for Business" (yet). See [#11](https://github.com/remotely-save/remotely-save/issues/11) to further details.
+This plugin only works with **personal** Microsoft accounts (OneDrive for home) — not OneDrive for Business / work or school accounts (incl. Microsoft 365 Education). It syncs via the OneDrive **App Folder** (`Files.ReadWrite.AppFolder`), a scope Microsoft only supports for personal accounts; Business has no app-sandbox equivalent, and supporting it would require granting write access to your entire OneDrive (`Files.ReadWrite`) — a broader permission we deliberately avoid. Please use a personal Microsoft account.
 
 ### I cannot find `/Apps/obsidian-onedrive-sync` folder
 

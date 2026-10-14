@@ -216,7 +216,7 @@
   "settings_onedrive_revoke_desc": "您现在使用了用户名 {{username}} 来连接。如果想取消连接，请点击此按钮。",
   "settings_onedrive_revoke_button": "撤回鉴权",
   "settings_onedrive_auth": "鉴权",
-  "settings_onedrive_auth_desc": "鉴权。",
+  "settings_onedrive_auth_desc": "请使用个人 Microsoft 账户。不支持工作/学校账户及 OneDrive for Business（含 Microsoft 365 教育版）——本插件经 App Folder 权限同步，仅对个人账户有效。",
   "settings_onedrive_auth_button": "鉴权",
   "settings_onedrive_connect_succ": "很好！我们可连接上 OneDrive！",
   "settings_onedrive_connect_fail": "我们未能连接上 OneDrive。",
