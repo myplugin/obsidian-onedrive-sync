@@ -5,6 +5,7 @@ import debounce from "lodash/debounce";
 import throttle from "lodash/throttle";
 import { FileText, RefreshCcw, RotateCcw, createElement } from "lucide";
 import {
+  type App,
   type Editor,
   type EventRef,
   Events,
@@ -16,6 +17,8 @@ import {
   Platform,
   Plugin,
   type Setting,
+  type TAbstractFile,
+  TFile,
   TFolder,
   type WorkspaceLeaf,
   addIcon,
@@ -26,6 +29,7 @@ import type {
   OnedriveConfig,
   RemotelySavePluginSettings,
   SyncTriggerSourceType,
+  UriParams,
 } from "./baseTypes";
 import {
   COMMAND_CALLBACK,
@@ -40,6 +44,7 @@ import { FakeFsEncrypt } from "./fsEncrypt";
 import { getClient } from "./fsGetter";
 import { FakeFsLocal } from "./fsLocal";
 import {
+  type AccessCodeResponseFailedType as AccessCodeResponseFailedTypeOnedrive,
   type AccessCodeResponseSuccessfulType as AccessCodeResponseSuccessfulTypeOnedrive,
   DEFAULT_ONEDRIVE_CONFIG,
   sendAuthReq as sendAuthReqOnedrive,
@@ -87,6 +92,18 @@ import {
   projectSyncableFields,
   stripPasswordInPlace,
 } from "./syncSettings";
+
+/** An Error carrying optional machine-readable `code`/`key` fields (set by
+ *  fsOnedrive's error builders, preserved by sync.ts's makeCatch). Used in
+ *  errNotifyFunc to detect REMOTE_NOT_FOUND without resorting to `any`. */
+type CodedError = Error & { code?: string; key?: string };
+
+/** Vault.off declares its callback param as `(...data: unknown[]) =>
+ *  unknown`, which precisely-typed handlers (e.g. `(file: TAbstractFile) =>
+ *  void`) are not assignable to under parameter contravariance. off()
+ *  matches handlers by reference, so widening the same reference at the
+ *  off() call site is behavior-preserving. */
+type LooseVaultEventCallback = (...data: unknown[]) => unknown;
 
 const DEFAULT_SETTINGS: RemotelySavePluginSettings = {
   onedrive: DEFAULT_ONEDRIVE_CONFIG,
@@ -172,7 +189,7 @@ const getIconSvg = () => {
 };
 
 const getStatusBarShortMsgFromSyncSource = (
-  t: (x: TransItemType, vars?: any) => string,
+  t: (x: TransItemType, vars?: Record<string, string>) => string,
   s: SyncTriggerSourceType | undefined
 ) => {
   if (s === undefined) {
@@ -199,7 +216,7 @@ export default class RemotelySavePlugin extends Plugin {
   db!: InternalDBs;
   isSyncing!: boolean;
   hasPendingSyncOnSave!: boolean;
-  lastModifiedFile: any = null;
+  lastModifiedFile: TFile | null = null;
   // In-memory cache of the last successful sync time (ms) for the rate-limit
   // sync-on-save handler — avoids an IndexedDB read on every vault event.
   // undefined = not yet loaded this session (lazy DB read on first use);
@@ -311,7 +328,7 @@ export default class RemotelySavePlugin extends Plugin {
       this.settings.encryptionMethod ?? "rclone-base64"
     );
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.i18n.t(x, vars);
     };
 
@@ -326,9 +343,9 @@ export default class RemotelySavePlugin extends Plugin {
         1
       );
       const res = t("syncrun_abort_protectmodifypercentage", {
-        protectModifyPercentage,
-        realModifyDeleteCount,
-        allFilesCount,
+        protectModifyPercentage: `${protectModifyPercentage}`,
+        realModifyDeleteCount: `${realModifyDeleteCount}`,
+        allFilesCount: `${allFilesCount}`,
         percent,
       });
       return res;
@@ -475,10 +492,10 @@ export default class RemotelySavePlugin extends Plugin {
 
       if (error instanceof AggregateError) {
         // Partition into 404 "file deleted since walk" vs other errors.
-        const notFound: any[] = [];
+        const notFound: CodedError[] = [];
         const others: Error[] = [];
-        for (const e of error.errors) {
-          if ((e as any)?.code === "REMOTE_NOT_FOUND") {
+        for (const e of error.errors as readonly CodedError[]) {
+          if (e?.code === "REMOTE_NOT_FOUND") {
             notFound.push(e);
           } else {
             others.push(e);
@@ -507,7 +524,7 @@ export default class RemotelySavePlugin extends Plugin {
         }
       } else {
         // Single error — check if it's a REMOTE_NOT_FOUND
-        if ((error as any)?.code === "REMOTE_NOT_FOUND") {
+        if ((error as CodedError)?.code === "REMOTE_NOT_FOUND") {
           await selfHealStaleDelta();
         }
         // Always show errors, even for auto-sync.
@@ -708,7 +725,7 @@ export default class RemotelySavePlugin extends Plugin {
         console.error("Error during post-sync cleanup:", cleanupErr);
       }
 
-      (profiler as Profiler | undefined)?.clear();
+      profiler?.clear();
 
       this.syncEvent?.trigger("SYNC_DONE");
     }
@@ -825,7 +842,7 @@ export default class RemotelySavePlugin extends Plugin {
     syncOnSaveMode) — extending the sync-on-save modify handlers would
     leave the dirty set stale in "rateLimit"/"off" modes, where those
     handlers are not registered. */
-  _dirtyClearOnSaveHandler = (file: any) => {
+  _dirtyClearOnSaveHandler = (file: TAbstractFile) => {
     const p = file?.path;
     if (p !== undefined && p !== null && p !== "") {
       this.dirtyOpenFiles.delete(normalizePath(p));
@@ -949,7 +966,7 @@ export default class RemotelySavePlugin extends Plugin {
       this.settings.lang = lang;
       await this.saveSettings();
     });
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.i18n.t(x, vars);
     };
 
@@ -972,9 +989,10 @@ export default class RemotelySavePlugin extends Plugin {
         vaultRandomIDFromOldConfigFile,
         profileID
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       new Notice(
-        err?.message ?? "error of prepareDBAndVaultRandomID",
+        (err as { message?: string } | null | undefined)?.message ??
+          "error of prepareDBAndVaultRandomID",
         10 * 1000
       );
       throw err;
@@ -1005,13 +1023,24 @@ export default class RemotelySavePlugin extends Plugin {
     // must AFTER preparing DB
     this.enableAutoClearSyncPlanHist();
 
-    if ((this.app as any).plugins?.enabledPlugins?.has("remotely-save")) {
+    // `app.plugins` is Obsidian's internal (untyped in the public API)
+    // plugin registry; intersect to read enabledPlugins without `any`.
+    if (
+      (
+        this.app as App & {
+          plugins?: { enabledPlugins?: Set<string> };
+        }
+      ).plugins?.enabledPlugins?.has("remotely-save")
+    ) {
       new Notice(t("conflict_with_remotely_save"), 10000);
       return;
     }
 
     this.registerObsidianProtocolHandler(COMMAND_URI, async (inputParams) => {
-      const r = await this.applyImportedUriParams(inputParams);
+      // ObsidianProtocolData carries every URI param as a string, which is
+      // exactly the UriParams shape importQrCodeUri reads; the all-optional
+      // target trips the weak-type check without the assertion.
+      const r = await this.applyImportedUriParams(inputParams as UriParams);
       new Notice(r.message);
     });
 
@@ -1051,14 +1080,16 @@ export default class RemotelySavePlugin extends Plugin {
             this.settings.onedrive.authority,
             inputParams.code,
             this.oauth2Info.verifier,
-            async (e: any) => {
+            async (e: unknown) => {
               new Notice(t("protocol_onedrive_connect_fail"));
-              new Notice(`${e}`);
+              new Notice(String(e));
               return; // throw?
             }
           );
 
-          if ((rsp as any).error !== undefined) {
+          if (
+            (rsp as AccessCodeResponseFailedTypeOnedrive).error !== undefined
+          ) {
             new Notice(`${JSON.stringify(rsp)}`);
             throw Error(`${JSON.stringify(rsp)}`);
           }
@@ -1309,7 +1340,15 @@ export default class RemotelySavePlugin extends Plugin {
     this.settings = Object.assign(
       {},
       cloneDeep(DEFAULT_SETTINGS),
-      messyConfigToNormal(await this.loadData())
+      // loadData() returns `any` per the Obsidian API; the on-disk shape is
+      // either the messy (obfuscated) or the normal config (or null).
+      messyConfigToNormal(
+        (await this.loadData()) as
+          | RemotelySavePluginSettings
+          | { readme: string; d: string }
+          | null
+          | undefined
+      )
     );
 
     if (this.settings.syncedSettingFields === undefined) {
@@ -1373,12 +1412,17 @@ export default class RemotelySavePlugin extends Plugin {
     // Back-compat: the legacy `deferSyncWhileEditing` boolean toggle was
     // merged into deferSyncIdleMs (0 = disabled). false meant "disabled" —
     // translate to 0; any other value keeps the already-defaulted
-    // deferSyncIdleMs. See deriveDeferIdleMs + tests.
+    // deferSyncIdleMs. See deriveDeferIdleMs + tests. The field no longer
+    // exists in RemotelySavePluginSettings, so read/delete it through an
+    // intersection carrying the legacy optional key.
+    const legacySettings = this.settings as RemotelySavePluginSettings & {
+      deferSyncWhileEditing?: boolean;
+    };
     this.settings.deferSyncIdleMs = deriveDeferIdleMs(
-      (this.settings as any).deferSyncWhileEditing as boolean | undefined,
+      legacySettings.deferSyncWhileEditing,
       this.settings.deferSyncIdleMs
     );
-    delete (this.settings as any).deferSyncWhileEditing;
+    delete legacySettings.deferSyncWhileEditing;
     if (this.settings.deleteToWhere === undefined) {
       this.settings.deleteToWhere = "system";
     }
@@ -1548,14 +1592,14 @@ export default class RemotelySavePlugin extends Plugin {
     if (!this.isDbReady()) {
       return {
         status: "error",
-        message: this.i18n.t("modal_qr_notconnected" as TransItemType),
+        message: this.i18n.t("modal_qr_notconnected"),
       };
     }
     const auth = await getOnedriveAuthByVault(this.db, this.vaultRandomID);
     if (auth === null || auth === undefined || auth.refreshToken === "") {
       return {
         status: "error",
-        message: this.i18n.t("modal_qr_notconnected" as TransItemType),
+        message: this.i18n.t("modal_qr_notconnected"),
       };
     }
     const payload: CredentialsPayload = {
@@ -1592,7 +1636,7 @@ export default class RemotelySavePlugin extends Plugin {
    * Schema-version mismatch → reject with a Notice.
    */
   async applyImportedUriParams(
-    inputParams: any
+    inputParams: UriParams
   ): Promise<{ status: "ok" | "error"; message: string }> {
     const parsed = importQrCodeUri(inputParams, this.app.vault.getName());
     if (parsed.status === "error") {
@@ -1604,7 +1648,7 @@ export default class RemotelySavePlugin extends Plugin {
     ) {
       return {
         status: "error",
-        message: this.i18n.t("modal_qr_schemamismatch" as TransItemType, {
+        message: this.i18n.t("modal_qr_schemamismatch", {
           expected: `${CONFIG_SCHEMA_VERSION}`,
           got: parsed.sv ?? "",
         }),
@@ -1618,7 +1662,7 @@ export default class RemotelySavePlugin extends Plugin {
         await this.saveSettings();
         return {
           status: "ok",
-          message: this.i18n.t("protocol_saveqr" as TransItemType, {
+          message: this.i18n.t("protocol_saveqr", {
             manifestName: this.manifest.name,
           }),
         };
@@ -1628,7 +1672,7 @@ export default class RemotelySavePlugin extends Plugin {
         if (!this.isDbReady()) {
           return {
             status: "error",
-            message: this.i18n.t("modal_qr_notconnected" as TransItemType),
+            message: this.i18n.t("modal_qr_notconnected"),
           };
         }
         const existing = (await getOnedriveAuthByVault(
@@ -1662,7 +1706,7 @@ export default class RemotelySavePlugin extends Plugin {
         await this.saveSettings();
         return {
           status: "ok",
-          message: this.i18n.t("protocol_saveqr_auth" as TransItemType, {
+          message: this.i18n.t("protocol_saveqr_auth", {
             manifestName: this.manifest.name,
           }),
         };
@@ -1698,7 +1742,7 @@ export default class RemotelySavePlugin extends Plugin {
       : settingsCopy;
     // skip the disk write if content is unchanged — avoids spurious mtime
     // bumps that cause sync ping-pong on every load.
-    const dataOnDisk = await this.loadData();
+    const dataOnDisk: unknown = await this.loadData();
     if (JSON.stringify(dataToSave) !== JSON.stringify(dataOnDisk)) {
       await this.saveData(dataToSave);
     }
@@ -1741,7 +1785,7 @@ export default class RemotelySavePlugin extends Plugin {
       const exists = await this.app.vault.adapter.exists(p);
       if (!exists) return null;
       const text = await this.app.vault.adapter.read(p);
-      const parsed = JSON.parse(text);
+      const parsed: unknown = JSON.parse(text);
       if (
         parsed === null ||
         typeof parsed !== "object" ||
@@ -1749,7 +1793,7 @@ export default class RemotelySavePlugin extends Plugin {
       ) {
         return null;
       }
-      return parsed as Partial<RemotelySavePluginSettings>;
+      return parsed;
     } catch (e) {
       console.warn("synced_settings.json unreadable, skipping reconcile", e);
       return null;
@@ -1803,7 +1847,7 @@ export default class RemotelySavePlugin extends Plugin {
     let onedriveExpired = false;
     if (
       this.settings.onedrive.refreshToken !== "" &&
-      current >= this.settings!.onedrive!.credentialsShouldBeDeletedAtTime!
+      current >= this.settings.onedrive.credentialsShouldBeDeletedAtTime!
     ) {
       console.warn(`onedrive expired`);
       onedriveExpired = true;
@@ -1969,11 +2013,14 @@ export default class RemotelySavePlugin extends Plugin {
     void this._checkCurrFileModified("SYNC").catch(console.error);
   };
 
-  _syncOnSaveModifyHandler = (file: any) => {
+  _syncOnSaveModifyHandler = (file: TAbstractFile) => {
     // Track the actual modified file (not just getActiveFile()) so
     // _checkCurrFileModified checks the right file even if the user
     // switched to a different file before the throttle fires.
-    this.lastModifiedFile = file;
+    // The vault "modify" event is typed TAbstractFile but only fires for
+    // files — narrow via instanceof (obsidianmd/no-tfile-tfolder-cast) so
+    // _checkCurrFileModified can read .stat.mtime without a cast.
+    this.lastModifiedFile = file instanceof TFile ? file : null;
     void Promise.resolve(this._syncOnSaveEvent2()).catch(console.error);
   };
 
@@ -1996,7 +2043,7 @@ export default class RemotelySavePlugin extends Plugin {
    * net; otherwise the handler stays inert. No throttle, no SYNC_DONE
    * listener, no defer state — the 1-min window is the rate limit.
    */
-  _syncOnSaveRateLimitHandler = async (_file: any) => {
+  _syncOnSaveRateLimitHandler = async (_file: TAbstractFile) => {
     // Prerequisite: periodic auto-sync must be enabled — it catches the
     // changes dropped within the 1-min window. If periodic is off, the
     // rate-limit mode stays inert (no sync on save).
@@ -2054,14 +2101,29 @@ export default class RemotelySavePlugin extends Plugin {
     // Always tear down every sync-on-save listener first so re-toggling
     // (settings change, sync-algo notice) never double-registers.
     this.syncEvent?.off("SYNC_DONE", this._syncOnSaveEvent1);
-    this.app.vault.off("modify", this._syncOnSaveModifyHandler);
+    this.app.vault.off(
+      "modify",
+      this._syncOnSaveModifyHandler as LooseVaultEventCallback
+    );
     this.app.vault.off("create", this._syncOnSaveEvent2);
     this.app.vault.off("delete", this._syncOnSaveEvent2);
     this.app.vault.off("rename", this._syncOnSaveEvent2);
-    this.app.vault.off("modify", this._syncOnSaveRateLimitHandler);
-    this.app.vault.off("create", this._syncOnSaveRateLimitHandler);
-    this.app.vault.off("delete", this._syncOnSaveRateLimitHandler);
-    this.app.vault.off("rename", this._syncOnSaveRateLimitHandler);
+    this.app.vault.off(
+      "modify",
+      this._syncOnSaveRateLimitHandler as LooseVaultEventCallback
+    );
+    this.app.vault.off(
+      "create",
+      this._syncOnSaveRateLimitHandler as LooseVaultEventCallback
+    );
+    this.app.vault.off(
+      "delete",
+      this._syncOnSaveRateLimitHandler as LooseVaultEventCallback
+    );
+    this.app.vault.off(
+      "rename",
+      this._syncOnSaveRateLimitHandler as LooseVaultEventCallback
+    );
 
     const mode = this.settings.syncOnSaveMode;
     if (mode === "throttle") {
@@ -2113,7 +2175,7 @@ export default class RemotelySavePlugin extends Plugin {
 
   enableCheckingFileStat() {
     this.app.workspace.onLayoutReady(() => {
-      const t = (x: TransItemType, vars?: any) => {
+      const t = (x: TransItemType, vars?: Record<string, string>) => {
         return this.i18n.t(x, vars);
       };
       this.registerEvent(
@@ -2156,7 +2218,7 @@ export default class RemotelySavePlugin extends Plugin {
   }
 
   setCurrSyncMsg(
-    t: (x: TransItemType, vars?: any) => string,
+    t: (x: TransItemType, vars?: Record<string, string>) => string,
     s: SyncTriggerSourceType,
     i: number,
     totalCount: number,
@@ -2190,7 +2252,7 @@ export default class RemotelySavePlugin extends Plugin {
     // console.debug(lastSuccessSyncMillis);
     // console.debug(lastFailedSyncMillis);
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.i18n.t(x, vars);
     };
 
@@ -2206,7 +2268,7 @@ export default class RemotelySavePlugin extends Plugin {
 
     if (syncStatus === "syncing") {
       lastSyncMsg =
-        getStatusBarShortMsgFromSyncSource(t, s!) + t("statusbar_syncing");
+        getStatusBarShortMsgFromSyncSource(t, s) + t("statusbar_syncing");
     } else if (inputTs > 0) {
       let prefix = "";
       if (isSuccess) {
@@ -2226,17 +2288,17 @@ export default class RemotelySavePlugin extends Plugin {
       const seconds = Math.floor(deltaTime / 1000);
       let timeText = "";
       if (years > 0) {
-        timeText = t("statusbar_time_years", { time: years });
+        timeText = t("statusbar_time_years", { time: `${years}` });
       } else if (months > 0) {
-        timeText = t("statusbar_time_months", { time: months });
+        timeText = t("statusbar_time_months", { time: `${months}` });
       } else if (weeks > 0) {
-        timeText = t("statusbar_time_weeks", { time: weeks });
+        timeText = t("statusbar_time_weeks", { time: `${weeks}` });
       } else if (days > 0) {
-        timeText = t("statusbar_time_days", { time: days });
+        timeText = t("statusbar_time_days", { time: `${days}` });
       } else if (hours > 0) {
-        timeText = t("statusbar_time_hours", { time: hours });
+        timeText = t("statusbar_time_hours", { time: `${hours}` });
       } else if (minutes > 0) {
-        timeText = t("statusbar_time_minutes", { time: minutes });
+        timeText = t("statusbar_time_minutes", { time: `${minutes}` });
       } else if (seconds > 30) {
         timeText = t("statusbar_time_lessminute");
       } else {
