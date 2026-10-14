@@ -1,0 +1,24 @@
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package.json
+  h_77bd96c5a60e28 3
+src/deltaMerge.ts
+  h_77bd96c5a60e28 3,97,122,175-176,178-182,208,210,281
+src/driveItemConvert.ts
+  h_77bd96c5a60e28 33,88,94,115,131,391,457,479,481-482,484,543-544,627,648,651
+versions.json
+  h_77bd96c5a60e28 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "c4de77644fd19a1e5886e847dd145d87bb990670",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
