@@ -11,8 +11,16 @@ declare global {
   var DEFAULT_ONEDRIVE_AUTHORITY: string;
 }
 
-export const ONEDRIVE_CLIENT_ID = window.DEFAULT_ONEDRIVE_CLIENT_ID;
-export const ONEDRIVE_AUTHORITY = window.DEFAULT_ONEDRIVE_AUTHORITY;
+// IMPORTANT: must read `global.DEFAULT_*`, NOT `window.DEFAULT_*`.
+// esbuild's `define` (esbuild.config.mjs) replaces the literal token
+// `global.DEFAULT_ONEDRIVE_CLIENT_ID` with the client-id string at build time.
+// It does NOT define a property on the runtime `window` object — a `window.*`
+// access here compiles to an undefined property read, which silently breaks
+// OneDrive auth (empty auth modal: clientID resolves to "" → invalid auth URL).
+// `global` is itself mapped to `window` by esbuild's define, so this is the
+// browser-safe path the bundler guarantees. Do not "auto-fix" to `window`.
+export const ONEDRIVE_CLIENT_ID = global.DEFAULT_ONEDRIVE_CLIENT_ID;
+export const ONEDRIVE_AUTHORITY = global.DEFAULT_ONEDRIVE_AUTHORITY;
 
 export const DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
