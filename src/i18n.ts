@@ -31,7 +31,7 @@ export class I18n {
     }
 
     const res: string =
-      (LANGS[realLang] as (typeof LANGS)["en"])[key] || LANGS["en"][key] || key;
+      (LANGS[realLang])[key] || LANGS["en"][key] || key;
     return res;
   }
 

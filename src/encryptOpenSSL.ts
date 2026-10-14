@@ -64,7 +64,7 @@ export const encryptArrayBuffer = async (
     { name: "AES-CBC", iv },
     keyCrypt,
     arrBuf
-  )) as ArrayBuffer;
+  ));
 
   const prefix = new TextEncoder().encode("Salted__");
 
@@ -99,7 +99,7 @@ export const decryptArrayBuffer = async (
     { name: "AES-CBC", iv },
     keyCrypt,
     arrBuf.slice(16)
-  )) as ArrayBuffer;
+  ));
 
   return dec;
 };

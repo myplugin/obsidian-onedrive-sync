@@ -35,28 +35,28 @@ export const setDebugEnabled = (enabled: boolean) => {
 export const isDebugEnabled = () => debugEnabled;
 
 /** Gated drop-in replacement for console.log. */
-export const debugLog = (...args: any[]) => {
+export const debugLog = (...args: unknown[]) => {
   if (debugEnabled) {
     console.debug(...args);
   }
 };
 
 /** Gated drop-in replacement for console.info. */
-export const debugInfo = (...args: any[]) => {
+export const debugInfo = (...args: unknown[]) => {
   if (debugEnabled) {
     console.debug(...args);
   }
 };
 
 /** Gated drop-in replacement for console.warn. */
-export const debugWarn = (...args: any[]) => {
+export const debugWarn = (...args: unknown[]) => {
   if (debugEnabled) {
     console.warn(...args);
   }
 };
 
 /** Gated drop-in replacement for console.error. */
-export const debugError = (...args: any[]) => {
+export const debugError = (...args: unknown[]) => {
   if (debugEnabled) {
     console.error(...args);
   }

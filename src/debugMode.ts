@@ -15,7 +15,7 @@ import { mkdirpInVault } from "./misc";
 import type { SyncPlanType } from "./sync";
 
 const getSubsetOfSyncPlan = (x: string, onlyChange: boolean): SyncPlanType => {
-  const y: SyncPlanType = JSON.parse(x);
+  const y = JSON.parse(x) as SyncPlanType;
   if (!onlyChange) {
     return y;
   }

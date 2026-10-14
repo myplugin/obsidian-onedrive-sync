@@ -219,7 +219,7 @@ export const prepareDBs = async (
       name: DEFAULT_DB_NAME,
       storeName: DEFAULT_TBL_FILE_CONTENT_HISTORY,
     }),
-  } as InternalDBs;
+  };
 
   // try to get vaultRandomID firstly
   let vaultRandomID = "";
@@ -532,9 +532,9 @@ export const getLastSuccessSyncTimeByVault = async (
   db: InternalDBs,
   vaultRandomID: string
 ) => {
-  return (await db.simpleKVForMiscTbl.getItem(
+  return await db.simpleKVForMiscTbl.getItem<number>(
     `${vaultRandomID}-lastSuccessSyncMillis`
-  )) as number | null | undefined;
+  );
 };
 
 export const upsertLastFailedSyncTimeByVault = async (
@@ -552,9 +552,9 @@ export const getLastFailedSyncTimeByVault = async (
   db: InternalDBs,
   vaultRandomID: string
 ) => {
-  return (await db.simpleKVForMiscTbl.getItem(
+  return await db.simpleKVForMiscTbl.getItem<number>(
     `${vaultRandomID}-lastFailedSyncMillis`
-  )) as number | null | undefined;
+  );
 };
 
 export const upsertLastSuccessCheckTimeByVault = async (
@@ -572,9 +572,9 @@ export const getLastSuccessCheckTimeByVault = async (
   db: InternalDBs,
   vaultRandomID: string
 ) => {
-  return (await db.simpleKVForMiscTbl.getItem(
+  return await db.simpleKVForMiscTbl.getItem<number>(
     `${vaultRandomID}-lastSuccessCheckMillis`
-  )) as number | null | undefined;
+  );
 };
 
 export const upsertLastFailedCheckTimeByVault = async (
@@ -592,9 +592,9 @@ export const getLastFailedCheckTimeByVault = async (
   db: InternalDBs,
   vaultRandomID: string
 ) => {
-  return (await db.simpleKVForMiscTbl.getItem(
+  return await db.simpleKVForMiscTbl.getItem<number>(
     `${vaultRandomID}-lastFailedCheckMillis`
-  )) as number | null | undefined;
+  );
 };
 
 export const upsertPluginVersionByVault = async (
@@ -682,9 +682,9 @@ export const getOnedriveAuthByVault = async (
   db: InternalDBs,
   vaultRandomID: string
 ): Promise<OnedriveAuthFields | null | undefined> => {
-  return (await db.simpleKVForMiscTbl.getItem(
+  return await db.simpleKVForMiscTbl.getItem<OnedriveAuthFields>(
     `${vaultRandomID}-onedriveAuth`
-  )) as OnedriveAuthFields | null | undefined;
+  );
 };
 
 export const upsertOnedriveAuthByVault = async (
