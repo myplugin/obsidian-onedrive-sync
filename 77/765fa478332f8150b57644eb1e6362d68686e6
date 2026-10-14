@@ -1,0 +1,14 @@
+AGENTS.md
+  h_77bd96c5a60e28 7,9,19,24,32,34,46-47,51,55-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "77765fa478332f8150b57644eb1e6362d68686e6",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
