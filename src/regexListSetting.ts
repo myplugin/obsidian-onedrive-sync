@@ -8,7 +8,7 @@ export interface RegexListSettingOptions {
   containerEl: HTMLElement;
   getValues: () => string[];
   setValues: (next: string[]) => Promise<void>;
-  t: (k: TransItemType, vars?: any) => string;
+  t: (k: TransItemType, vars?: Record<string, string>) => string;
   placeholder?: string;
 }
 
@@ -21,7 +21,7 @@ export interface RegexListSettingOptions {
  */
 function confirmDeleteRegex(
   app: App,
-  t: (k: TransItemType, vars?: any) => string,
+  t: (k: TransItemType, vars?: Record<string, string>) => string,
   regex: string
 ): Promise<boolean> {
   return new Promise((resolve) => {

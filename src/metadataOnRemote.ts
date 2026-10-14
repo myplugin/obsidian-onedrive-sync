@@ -70,9 +70,9 @@ export const deserializeMetadataOnRemote = (x: string | ArrayBuffer) => {
     y1 = new TextDecoder().decode(x);
   }
 
-  let y2: any;
+  let y2: Record<string, unknown>;
   try {
-    y2 = JSON.parse(y1);
+    y2 = JSON.parse(y1) as Record<string, unknown>;
   } catch {
     throw new Error(
       `invalid remote meta data file with first few chars: ${y1.slice(0, 5)}`
@@ -88,8 +88,10 @@ export const deserializeMetadataOnRemote = (x: string | ArrayBuffer) => {
   let y3: string;
   try {
     y3 = (
-      base64url.parse(reverseString(y2["d"]), {
-        out: Buffer.allocUnsafe as any,
+      base64url.parse(reverseString(y2["d"] as string), {
+        out: Buffer.allocUnsafe as unknown as (new (size: number) => {
+          [index: number]: number;
+        }),
         loose: true,
       }) as Buffer
     ).toString("utf-8");

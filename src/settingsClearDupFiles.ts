@@ -8,13 +8,13 @@ import type RemotelySavePlugin from "./main";
 
 class ClearDupFilesModal extends Modal {
   readonly plugin: RemotelySavePlugin;
-  readonly t: (x: TransItemType, vars?: any) => string;
+  readonly t: (x: TransItemType, vars?: Record<string, string>) => string;
   readonly files: string[];
   readonly fsLocal: FakeFsLocal;
   constructor(
     app: App,
     plugin: RemotelySavePlugin,
-    t: (x: TransItemType, vars?: any) => string,
+    t: (x: TransItemType, vars?: Record<string, string>) => string,
     files: string[],
     fsLocal: FakeFsLocal
   ) {
@@ -62,7 +62,7 @@ class ClearDupFilesModal extends Modal {
 
 export const generateClearDupFilesSettingsPart = (
   containerEl: HTMLElement,
-  t: (x: TransItemType, vars?: any) => string,
+  t: (x: TransItemType, vars?: Record<string, string>) => string,
   app: App,
   plugin: RemotelySavePlugin
 ) => {

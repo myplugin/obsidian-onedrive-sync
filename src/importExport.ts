@@ -117,7 +117,7 @@ export interface ProcessQrCodeResultType {
   func?: string;
   /** The JSON-parsed payload (a settings object for func=settings, a
    *  CredentialsPayload for func=onedrive_auth). */
-  parsed?: any;
+  parsed?: Record<string, unknown>;
   /** Schema version from the URI, for the caller to gate on. */
   sv?: string;
 }
@@ -144,10 +144,10 @@ export const parseUriByHand = (input: string) => {
  * turn into a localized Notice.
  */
 export const importQrCodeUri = (
-  inputParams: any,
+  inputParams: UriParams,
   currentVaultName: string
 ): ProcessQrCodeResultType => {
-  const params = inputParams as UriParams;
+  const params = inputParams;
   if (params.func === undefined || params.func === "") {
     return {
       status: "error",
@@ -169,9 +169,9 @@ export const importQrCodeUri = (
   if (params.data === undefined) {
     return { status: "error", message: `missing data` };
   }
-  let parsed: any;
+  let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(params.data);
+    parsed = JSON.parse(params.data) as Record<string, unknown>;
   } catch {
     return { status: "error", message: `errors while parsing data` };
   }

@@ -1,7 +1,7 @@
 import { Cipher as CipherRCloneCryptPack } from "@fyears/rclone-crypt";
 import { nanoid } from "nanoid";
 
-const ctx: WorkerGlobalScope = self as any;
+const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 const workerNanoID = nanoid();
 const cipher = new CipherRCloneCryptPack("base64");
@@ -25,7 +25,7 @@ async function decryptContentBuf(input: ArrayBuffer) {
   return (await cipher.decryptData(new Uint8Array(input))).buffer;
 }
 
-async function handleMessage(event: any) {
+async function handleMessage(event: MessageEvent) {
   const port: MessagePort = event.ports[0];
   const {
     action,
@@ -183,6 +183,13 @@ async function handleMessage(event: any) {
   }
 }
 
-ctx.addEventListener("message", (event: any) => {
+ctx.addEventListener("message", (event: MessageEvent) => {
   void handleMessage(event);
 });
+
+// Type-only stub: the worker module has no runtime default export (esbuild's
+// inline-worker plugin replaces this import with a Worker constructor at build
+// time). This export exists solely so `import EncryptWorker from "./encryptRClone.worker"`
+// type-checks without @ts-ignore, giving EncryptWorker the shape { new (): Worker }.
+// The runtime value is null (never called — esbuild replaces the import at build time).
+export default null as unknown as { new (): Worker };

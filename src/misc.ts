@@ -339,13 +339,13 @@ export const checkHasSpecialCharForDir = (x: string) => {
   return /[?/\\]/.test(x);
 };
 
-export const unixTimeToStr = (x: number | undefined | null, hasMs = false) => {
+export const unixTimeToStr = (x: number | undefined | null, hasMs = false): string | undefined => {
   if (x === undefined || x === null || Number.isNaN(x)) {
     return undefined;
   }
   if (hasMs) {
     // 1716712162574 => '2024-05-26T16:29:22.574+08:00'
-    return window.moment(x).toISOString(true);
+    return window.moment(x).toISOString(true) as string;
   } else {
     // 1716712162574 => '2024-05-26T16:29:22+08:00'
     return window.moment(x).format() as string;

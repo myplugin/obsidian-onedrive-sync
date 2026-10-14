@@ -495,7 +495,7 @@ export class FakeFsEncrypt extends FakeFs {
     return await this.innerFs.rm(keyEnc);
   }
 
-  async checkConnect(callbackFunc?: any): Promise<boolean> {
+  async checkConnect(callbackFunc?: (err: unknown) => void): Promise<boolean> {
     return await this.innerFs.checkConnect(callbackFunc);
   }
 
@@ -673,7 +673,7 @@ export class FakeFsEncrypt extends FakeFs {
     return await this.innerFs.getUserDisplayName();
   }
 
-  async revokeAuth(): Promise<any> {
+  async revokeAuth(): Promise<void> {
     return await this.innerFs.revokeAuth();
   }
 

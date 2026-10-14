@@ -45,8 +45,15 @@ export function formatConflictLogLine(e: ConflictLogEntry): string {
  * acceptable here: appends happen once per sync run from a single plugin
  * instance (concurrent syncs are already guarded by isSyncing).
  */
+/** Minimal adapter shape (exists/read/write) for dependency-free unit testing. */
+interface ConflictLogAdapter {
+  exists(path: string): Promise<boolean>;
+  read(path: string): Promise<string>;
+  write(path: string, data: string): Promise<void>;
+}
+
 export async function appendConflictLog(
-  adapter: any,
+  adapter: ConflictLogAdapter,
   line: string
 ): Promise<void> {
   const exists = await adapter.exists(CONFLICT_LOG_FILENAME).catch(() => false);

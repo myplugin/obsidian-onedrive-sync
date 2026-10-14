@@ -8,7 +8,7 @@ import { FakeFsOnedrive } from "./fsOnedrive";
 export function getClient(
   settings: RemotelySavePluginSettings,
   vaultName: string,
-  saveUpdatedConfigFunc: () => Promise<any>,
+  saveUpdatedConfigFunc: () => Promise<void>,
   prevRemoteEntities?: Entity[]
 ): FakeFs {
   switch (settings.serviceType) {

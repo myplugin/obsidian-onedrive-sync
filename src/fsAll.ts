@@ -78,15 +78,19 @@ export abstract class FakeFs {
           targetParentRemoteId: op.targetParentRemoteId,
         });
         results.push({ ok: true, status: 200 });
-      } catch (e: any) {
-        results.push({ ok: false, status: 0, error: e });
+      } catch (e: unknown) {
+        results.push({
+          ok: false,
+          status: 0,
+          error: e instanceof Error ? e : new Error(String(e)),
+        });
       }
     }
     return results;
   }
   abstract rm(key: string): Promise<void>;
-  abstract checkConnect(callbackFunc?: any): Promise<boolean>;
-  async checkConnectCommonOps(callbackFunc?: any) {
+  abstract checkConnect(callbackFunc?: (err: unknown) => void): Promise<boolean>;
+  async checkConnectCommonOps(callbackFunc?: (err: unknown) => void) {
     const folderName = `rs-test-folder-${nanoid()}/`;
     const filename = `${folderName}rs-test-file-${nanoid()}`;
     try {
@@ -137,6 +141,6 @@ export abstract class FakeFs {
     }
   }
   abstract getUserDisplayName(): Promise<string>;
-  abstract revokeAuth(): Promise<any>;
+  abstract revokeAuth(): Promise<void>;
   abstract allowEmptyFile(): boolean;
 }

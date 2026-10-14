@@ -21,18 +21,20 @@ export const messyConfigToNormal = (
   // console.debug(x);
   if (x === null || x === undefined) {
     console.debug("the messy config is null or undefined, skip");
-    return x as any;
+    return x;
   }
   if ("readme" in x && "d" in x) {
     // we should decode
     const y = JSON.parse(
       (
         base64url.parse(reverseString(x["d"]), {
-          out: Buffer.allocUnsafe as any,
+          out: Buffer.allocUnsafe as unknown as (new (size: number) => {
+            [index: number]: number;
+          }),
           loose: true,
         }) as Buffer
       ).toString("utf-8")
-    );
+    ) as RemotelySavePluginSettings;
     // console.debug("loading, parsed config is:");
     // console.debug(y);
     return y;

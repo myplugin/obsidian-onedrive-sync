@@ -53,7 +53,7 @@ export function projectSyncableFields(
   for (const f of fields) {
     if (!SYNCABLE_SET.has(f)) continue;
     if (f in settings) {
-      (out as any)[f] = (settings as any)[f];
+      (out as unknown as Record<string, unknown>)[f] = (settings as unknown as Record<string, unknown>)[f];
     }
   }
   return out;
@@ -72,7 +72,7 @@ export function applySyncedFields(
   for (const f of fields) {
     if (!SYNCABLE_SET.has(f)) continue;
     if (f in partial) {
-      (settings as any)[f] = (partial as any)[f];
+      (settings as unknown as Record<string, unknown>)[f] = (partial as unknown as Record<string, unknown>)[f];
     }
   }
   return settings;

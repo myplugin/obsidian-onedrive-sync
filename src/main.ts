@@ -1624,7 +1624,7 @@ export default class RemotelySavePlugin extends Plugin {
         };
       }
       if (parsed.func === "onedrive_auth") {
-        const f = parsed.parsed as CredentialsPayload;
+        const f = parsed.parsed as unknown as CredentialsPayload;
         if (!this.isDbReady()) {
           return {
             status: "error",

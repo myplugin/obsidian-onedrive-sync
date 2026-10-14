@@ -14,7 +14,7 @@ export function addSyncToggle(
   setting: Setting,
   fieldName: string,
   plugin: RemotelySavePlugin,
-  t: (k: TransItemType, vars?: any) => string
+  t: (k: TransItemType, vars?: Record<string, string>) => string
 ): void {
   const labelFor = (on: boolean) =>
     on ? t("settings_synctoggle_on") : t("settings_synctoggle_off");
