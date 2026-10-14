@@ -1,0 +1,26 @@
+package-lock.json
+  s_183ddb10964bbc::t_501735ce119867 392-394,403-405,410,1682-1684,1910-1912,1921,3066-3068,3411-3414,4439,5117-5141,6691-6693,6946-6948,8792-8794,8833-8835,9232-9235,9579-9581,9586,9589-9600,9861,10040-10042,10532-10534,10692-10695
+package.json
+  s_183ddb10964bbc::t_acf571b64f2bda 11
+src/misc.ts
+  s_183ddb10964bbc::t_83633ef4bda5f1 2-4,79-82,175,629-631,643-645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "a4a7de6e868e4cdd9d5226214333c7776010709d",
+  "prompts": {},
+  "sessions": {
+    "s_183ddb10964bbc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ec7de32aeffeVWRkSbxnBdWNLg",
+        "model": "glm-5.2"
+      },
+      "human_author": "pef <pef@local>",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "overridden_lines": 0
+    }
+  }
+}
