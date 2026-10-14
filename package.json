@@ -1,6 +1,6 @@
 {
   "name": "onedrive-vault-sync",
-  "version": "0.6.23",
+  "version": "0.6.24",
   "description": "Sync your Obsidian vault with OneDrive (personal, App Folder).",
   "scripts": {
     "dev": "node esbuild.config.mjs --watch",
@@ -63,7 +63,7 @@
     "typescript-eslint": "^8.71.2"
   },
   "dependencies": {
-    "@azure/msal-node": "^2.12.0",
+    "@azure/msal-node": "^7.1.0",
     "@fyears/rclone-crypt": "^0.0.7",
     "@fyears/tsqueue": "^1.0.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",

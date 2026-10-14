@@ -125,6 +125,28 @@ function nodeUrlStubPlugin() {
   };
 }
 
+// msal-node ≥5.1.5 replaced `uuid` with `node:crypto` (for `randomBytes` +
+// `createHash` in PKCE generation). The `node:` scheme bypasses esbuild's
+// `browser` field (which maps the bare `crypto` → crypto-browserify), so
+// intercept `node:crypto` here and redirect to the same polyfill. Matches
+// the `node:url` stub pattern above.
+function nodeCryptoStubPlugin() {
+  return {
+    name: "node-crypto-stub",
+    setup(build) {
+      build.onResolve({ filter: /^node:crypto$/ }, () => ({
+        path: "node-crypto-stub",
+        namespace: "node-crypto-stub",
+      }));
+      build.onLoad({ filter: /.*/, namespace: "node-crypto-stub" }, () => ({
+        contents: `module.exports = require("crypto-browserify");`,
+        loader: "js",
+        resolveDir: process.cwd(),
+      }));
+    },
+  };
+}
+
 // localforage's dist UMD inlines `lie` -> `immediate` (a macrotask scheduler for
 // its Promise polyfill). `immediate` tries MutationObserver -> setImmediate/
 // MessageChannel -> `document.createElement('script')` (IE6-8 onreadystatechange
@@ -240,6 +262,7 @@ esbuild
     plugins: [
       inlineWorkerPlugin(),
       nodeUrlStubPlugin(),
+      nodeCryptoStubPlugin(),
       localforageScriptStubPlugin(),
       ...deployPlugins,
     ],
