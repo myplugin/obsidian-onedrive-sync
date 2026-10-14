@@ -1,0 +1,26 @@
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package.json
+  h_77bd96c5a60e28 3
+src/configPersist.ts
+  h_77bd96c5a60e28 2,31
+src/metadataOnRemote.ts
+  h_77bd96c5a60e28 2,91
+src/misc.ts
+  h_77bd96c5a60e28 1206-1216
+versions.json
+  h_77bd96c5a60e28 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "1b6a7d1eac6c55050a72082444cdcf4011c71c92",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
