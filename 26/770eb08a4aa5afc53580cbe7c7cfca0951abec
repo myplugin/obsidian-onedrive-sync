@@ -1,0 +1,48 @@
+src/configPersist.ts
+  h_77bd96c5a60e28 24,31-33,37
+src/conflictLog.ts
+  h_77bd96c5a60e28 48-54,56
+src/encryptRClone.ts
+  h_77bd96c5a60e28 12,35
+src/encryptRClone.worker.ts
+  h_77bd96c5a60e28 4,28,186,189-195
+src/fsAll.ts
+  h_77bd96c5a60e28 81-86,92-93,144
+src/fsEncrypt.ts
+  h_77bd96c5a60e28 498,676
+src/fsGetter.ts
+  h_77bd96c5a60e28 11
+src/fsLocal.ts
+  h_77bd96c5a60e28 204,212
+src/importExport.ts
+  h_77bd96c5a60e28 120,147,150,172,174
+src/main.ts
+  h_77bd96c5a60e28 1627
+src/metadataOnRemote.ts
+  h_77bd96c5a60e28 73,75,91-94
+src/misc.ts
+  h_77bd96c5a60e28 342,348
+src/profiler.ts
+  h_77bd96c5a60e28 62
+src/regexListSetting.ts
+  h_77bd96c5a60e28 11,24
+src/settingsClearDupFiles.ts
+  h_77bd96c5a60e28 11,17,65
+src/syncAlgoV3Notice.ts
+  h_77bd96c5a60e28 20
+src/syncSettings.ts
+  h_77bd96c5a60e28 56,75
+src/syncToggle.ts
+  h_77bd96c5a60e28 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "26770eb08a4aa5afc53580cbe7c7cfca0951abec",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
