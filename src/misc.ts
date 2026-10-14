@@ -6,9 +6,15 @@ import * as path from "path-browserify";
 import { base32 } from "rfc4648";
 import XRegExp from "xregexp";
 
+/** Structural shape of the moment.Moment methods used by this module. */
+interface MomentLike {
+  toISOString(keepOffset?: boolean): string;
+  format(format?: string): string;
+}
+
 declare global {
   interface Window {
-    moment: (...data: any) => any;
+    moment: (...data: unknown[]) => MomentLike;
   }
 }
 
@@ -309,7 +315,7 @@ export const getSplitRanges = (bytesTotal: number, bytesEachPart: number) => {
  * @param obj anything
  * @returns string of the name of the object
  */
-export const getTypeName = (obj: any) => {
+export const getTypeName = (obj: unknown) => {
   return Object.prototype.toString.call(obj).slice(8, -1);
 };
 
@@ -345,10 +351,10 @@ export const unixTimeToStr = (x: number | undefined | null, hasMs = false): stri
   }
   if (hasMs) {
     // 1716712162574 => '2024-05-26T16:29:22.574+08:00'
-    return window.moment(x).toISOString(true) as string;
+    return window.moment(x).toISOString(true);
   } else {
     // 1716712162574 => '2024-05-26T16:29:22+08:00'
-    return window.moment(x).format() as string;
+    return window.moment(x).format();
   }
 };
 
@@ -357,11 +363,11 @@ export const unixTimeToStr = (x: number | undefined | null, hasMs = false): stri
  * @returns
  */
 const getCircularReplacer = () => {
-  const seen = new WeakSet();
-  return (key: any, value: any) => {
+  const seen = new WeakSet<object>();
+  return (key: string, value: unknown) => {
     if (typeof value === "object" && value !== null) {
       if (seen.has(value)) {
-        return;
+        return undefined;
       }
       seen.add(value);
     }
@@ -374,7 +380,7 @@ const getCircularReplacer = () => {
  * @param x
  * @returns
  */
-export const toText = (x: any) => {
+export const toText = (x: unknown) => {
   if (x === undefined || x === null) {
     return `${x}`;
   }
@@ -391,12 +397,17 @@ export const toText = (x: any) => {
     return `${String(x)}`;
   }
 
+  if (x instanceof Error) {
+    return `ERROR! MESSAGE: ${x.message}, STACK: ${x.stack}`;
+  }
+
   if (
-    x instanceof Error ||
-    (x?.stack &&
-      x?.message &&
-      typeof x.stack === "string" &&
-      typeof x.message === "string")
+    typeof x === "object" &&
+    x !== null &&
+    "stack" in x &&
+    "message" in x &&
+    typeof x.stack === "string" &&
+    typeof x.message === "string"
   ) {
     return `ERROR! MESSAGE: ${x.message}, STACK: ${x.stack}`;
   }
@@ -408,7 +419,9 @@ export const toText = (x: any) => {
     }
     throw new Error("not jsonable");
   } catch {
-    return `${x}`;
+    // Last-resort stringification after JSON.stringify failed (e.g. circular).
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- intentional best-effort
+    return String(x);
   }
 };
 
@@ -423,10 +436,10 @@ export const statFix = async (vault: Vault, path: string) => {
     throw Error(`${path} doesn't exist cannot run stat`);
   }
   if (s.ctime === undefined || s.ctime === null || Number.isNaN(s.ctime)) {
-    s.ctime = undefined as any; // force assignment
+    Reflect.set(s, "ctime", undefined); // force assignment (Stat.ctime is typed number)
   }
   if (s.mtime === undefined || s.mtime === null || Number.isNaN(s.mtime)) {
-    s.mtime = undefined as any; // force assignment
+    Reflect.set(s, "mtime", undefined); // force assignment (Stat.mtime is typed number)
   }
   if (
     (s.size === undefined || s.size === null || Number.isNaN(s.size)) &&
@@ -560,7 +573,7 @@ export const changeMobileStatusBar = (
             // have to wait, otherwise the height is not correct??
             await delay(300);
             const height = window
-              .getComputedStyle(k as Element)
+              .getComputedStyle(k)
               .getPropertyValue("height");
 
             statusbar.addClass("rs-statusbar-flex");
@@ -661,13 +674,18 @@ export const fixEntityListCasesInplace = (entities: { keyRaw: string }[]) => {
  * @param object
  * @returns bytes
  */
-export const roughSizeOfObject = (object: any) => {
-  const objectList: any[] = [];
-  const stack = [object];
+const isRecord = (x: unknown): x is Record<string, unknown> =>
+  typeof x === "object" && x !== null;
+
+export const roughSizeOfObject = (object: unknown) => {
+  const objectList: unknown[] = [];
+  const stack: unknown[] = [object];
   let bytes = 0;
 
   while (stack.length) {
     const value = stack.pop();
+
+    if (value === undefined) continue;
 
     switch (typeof value) {
       case "boolean":
@@ -680,7 +698,7 @@ export const roughSizeOfObject = (object: any) => {
         bytes += 8;
         break;
       case "object":
-        if (!objectList.includes(value)) {
+        if (isRecord(value) && !objectList.includes(value)) {
           objectList.push(value);
           for (const prop in value) {
             if (Object.prototype.hasOwnProperty.call(value, prop)) {
@@ -858,8 +876,11 @@ export function validateRegex(
   try {
     XRegExp(r, "A");
     return { ok: true };
-  } catch (e: any) {
-    return { ok: false, error: String(e?.message ?? e) };
+  } catch (e: unknown) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
   }
 }
 
