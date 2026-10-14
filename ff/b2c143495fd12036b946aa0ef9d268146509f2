@@ -1,0 +1,40 @@
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package-lock.json
+  h_77bd96c5a60e28 3,9,8024
+package.json
+  h_77bd96c5a60e28 3
+src/conflictLogic.ts
+  h_77bd96c5a60e28 13,126
+src/fsAll.ts
+  h_77bd96c5a60e28 9,113
+src/fsOnedrive.ts
+  h_77bd96c5a60e28 672
+src/importExport.ts
+  h_77bd96c5a60e28 57-59
+src/main.ts
+  h_77bd96c5a60e28 76,1339,1656,1732-1734,1853
+src/metadataOnRemote.ts
+  h_77bd96c5a60e28 2,36
+src/misc.ts
+  h_77bd96c5a60e28 927-1204
+src/obsFolderLister.ts
+  h_77bd96c5a60e28 5,135,172
+tsconfig.json
+  h_77bd96c5a60e28 17
+versions.json
+  h_77bd96c5a60e28 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "ffb2c143495fd12036b946aa0ef9d268146509f2",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
