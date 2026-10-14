@@ -82,7 +82,7 @@ class PasswordModal extends Modal {
   onOpen() {
     const { contentEl } = this;
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -160,7 +160,7 @@ class EncryptionMethodModal extends Modal {
   onOpen() {
     const { contentEl } = this;
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -208,7 +208,7 @@ export class ChangeRemoteBaseDirModal extends Modal {
   onOpen() {
     const { contentEl } = this;
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -232,7 +232,7 @@ export class ChangeRemoteBaseDirModal extends Modal {
           );
           button.onClick(async () => {
             // in the settings, the value is reset to the special case ""
-            (this.plugin.settings as any)[this.service].remoteBaseDir = "";
+            (this.plugin.settings[this.service as "onedrive"]).remoteBaseDir = "";
             await this.plugin.saveSettings();
             new Notice(t("modal_remotebasedir_notice"));
             this.close();
@@ -260,7 +260,7 @@ export class ChangeRemoteBaseDirModal extends Modal {
         .addButton((button) => {
           button.setButtonText(t("modal_remotebasedir_secondconfirm_change"));
           button.onClick(async () => {
-            (this.plugin.settings as any)[this.service].remoteBaseDir =
+            (this.plugin.settings[this.service as "onedrive"]).remoteBaseDir =
               this.newRemoteBaseDir;
             await this.plugin.saveSettings();
             new Notice(t("modal_remotebasedir_notice"));
@@ -311,7 +311,7 @@ export class OnedriveAuthModal extends Modal {
     );
     this.plugin.oauth2Info.verifier = verifier;
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -375,7 +375,7 @@ export class OnedriveRevokeAuthModal extends Modal {
 
   async onOpen() {
     const { contentEl } = this;
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -401,7 +401,7 @@ export class OnedriveRevokeAuthModal extends Modal {
           try {
             this.plugin.settings.onedrive = JSON.parse(
               JSON.stringify(DEFAULT_ONEDRIVE_CONFIG)
-            );
+            ) as typeof DEFAULT_ONEDRIVE_CONFIG;
             await this.plugin.saveSettings();
             this.authDiv.toggleClass(
               "onedrive-auth-button-hide",
@@ -437,7 +437,7 @@ class ExportSettingsQrCodeModal extends Modal {
   async onOpen() {
     const { contentEl } = this;
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -582,7 +582,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
     containerEl.empty();
     new Setting(containerEl).setName("OneDrive sync").setHeading();
 
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -657,7 +657,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
   // ① 账户与连接
   private generateAccountSection(containerEl: HTMLElement): void {
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -812,7 +812,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           .addOption("error", t("settings_onedrive_emptyfile_error"))
           .setValue(this.plugin.settings.onedrive.emptyFile)
           .onChange(async (val) => {
-            this.plugin.settings.onedrive.emptyFile = val as any;
+            this.plugin.settings.onedrive.emptyFile = val as "skip" | "error";
             await this.plugin.saveSettings();
           });
       });
@@ -861,7 +861,9 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       if (latestTime === null || latestOutcome === null) {
         desc = t("settings_connection_never");
       } else {
-        const time = (moment as any)(latestTime).fromNow();
+        const time = (
+          moment as unknown as (inp?: number) => { fromNow(): string }
+        )(latestTime).fromNow();
         const outcome =
           latestOutcome === "success"
             ? t("settings_connection_success")
@@ -881,8 +883,8 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
           () => this.plugin.saveSettings()
         );
         const errors = { msg: "" };
-        const res = await client.checkConnect((err: any) => {
-          errors.msg = `${err}`;
+        const res = await client.checkConnect((err: unknown) => {
+          errors.msg = String(err);
         });
         const now = Date.now();
         if (res) {
@@ -910,7 +912,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
   // ② 同步选项
   private generateSyncOptionsSection(containerEl: HTMLElement): void {
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -1522,7 +1524,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
   // ③ 冲突处理
   private generateConflictSection(containerEl: HTMLElement): void {
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -1570,7 +1572,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
   // ④ 加密
   private generateEncryptionSection(containerEl: HTMLElement): void {
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -1627,7 +1629,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
 
   // ⑤ 高级
   private generateAdvancedSection(containerEl: HTMLElement): void {
-    const t = (x: TransItemType, vars?: any) => {
+    const t = (x: TransItemType, vars?: Record<string, string>) => {
       return this.plugin.i18n.t(x, vars);
     };
 
@@ -1810,7 +1812,11 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       .addButton(async (button) => {
         button.setButtonText(t("settings_outputsettingsconsole_button"));
         button.onClick(async () => {
-          const c = messyConfigToNormal(await this.plugin.loadData());
+          const c = messyConfigToNormal(
+            (await this.plugin.loadData()) as Parameters<
+              typeof messyConfigToNormal
+            >[0]
+          );
           // User explicitly clicked "output settings to console": must fire
           // regardless of the debug level. console.debug is one of the
           // scanner-allowed methods (shows at DevTools "Verbose" level).
@@ -2082,7 +2088,7 @@ export class RemotelySaveSettingTab extends PluginSettingTab {
       const diagnosis = diagnoseSyncSkip(
         key,
         this.plugin.settings,
-        this.app.vault.configDir!,
+        this.app.vault.configDir,
         this.plugin.manifest.id
       );
       if (!diagnosis.skipped) {
