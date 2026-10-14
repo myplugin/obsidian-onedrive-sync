@@ -18,10 +18,11 @@ export function isMergable(a: Entity, b?: Entity) {
     return false;
   }
 
+  const key = a.key as string;
   return (
-    !a.key!.endsWith("/") &&
+    !key.endsWith("/") &&
     a.sizeRaw <= MERGABLE_SIZE &&
-    (a.key!.endsWith(".md") || a.key!.endsWith(".markdown"))
+    (key.endsWith(".md") || key.endsWith(".markdown"))
   );
 }
 

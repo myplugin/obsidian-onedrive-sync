@@ -191,7 +191,8 @@ export class FakeFsEncrypt extends FakeFs {
     if (this.isPasswordEmpty()) {
       for (const innerEntity of innerWalkResult) {
         res.push(copyEntityAndCopyKeyEncSizeEnc(innerEntity));
-        this.cacheMapOrigToEnc[innerEntity.key!] = innerEntity.key!;
+        const innerKey = innerEntity.key as string;
+        this.cacheMapOrigToEnc[innerKey] = innerKey;
       }
       this.hasCacheMap = true;
       return res;
@@ -206,11 +207,11 @@ export class FakeFsEncrypt extends FakeFs {
         res.push({
           key: key,
           keyRaw: innerEntity.keyRaw,
-          keyEnc: innerEntity.key!,
+          keyEnc: innerEntity.key,
           mtimeCli: innerEntity.mtimeCli,
           mtimeSvr: innerEntity.mtimeSvr,
           size: size,
-          sizeEnc: innerEntity.size!,
+          sizeEnc: innerEntity.size,
           sizeRaw: innerEntity.sizeRaw,
           hash: undefined,
           synthesizedFolder: innerEntity.synthesizedFolder,
@@ -239,11 +240,11 @@ export class FakeFsEncrypt extends FakeFs {
       return {
         key: key,
         keyRaw: innerEntity.keyRaw,
-        keyEnc: innerEntity.key!,
+        keyEnc: innerEntity.key,
         mtimeCli: innerEntity.mtimeCli,
         mtimeSvr: innerEntity.mtimeSvr,
         size: undefined,
-        sizeEnc: innerEntity.size!,
+        sizeEnc: innerEntity.size,
         sizeRaw: innerEntity.sizeRaw,
         hash: undefined,
         synthesizedFolder: innerEntity.synthesizedFolder,
@@ -288,11 +289,11 @@ export class FakeFsEncrypt extends FakeFs {
       return {
         key: key,
         keyRaw: innerEntity.keyRaw,
-        keyEnc: innerEntity.key!,
+        keyEnc: innerEntity.key,
         mtimeCli: innerEntity.mtimeCli,
         mtimeSvr: innerEntity.mtimeSvr,
         size: 0,
-        sizeEnc: innerEntity.size!,
+        sizeEnc: innerEntity.size,
         sizeRaw: innerEntity.sizeRaw,
         hash: undefined,
         synthesizedFolder: innerEntity.synthesizedFolder,
@@ -341,11 +342,11 @@ export class FakeFsEncrypt extends FakeFs {
       return {
         key: key,
         keyRaw: innerEntity.keyRaw,
-        keyEnc: innerEntity.key!,
+        keyEnc: innerEntity.key,
         mtimeCli: innerEntity.mtimeCli,
         mtimeSvr: innerEntity.mtimeSvr,
         size: undefined,
-        sizeEnc: innerEntity.size!,
+        sizeEnc: innerEntity.size,
         sizeRaw: innerEntity.sizeRaw,
         hash: undefined,
         synthesizedFolder: innerEntity.synthesizedFolder,
@@ -403,11 +404,11 @@ export class FakeFsEncrypt extends FakeFs {
       entity = {
         key: key,
         keyRaw: innerEntity.keyRaw,
-        keyEnc: innerEntity.key!,
+        keyEnc: innerEntity.key,
         mtimeCli: innerEntity.mtimeCli,
         mtimeSvr: innerEntity.mtimeSvr,
         size: undefined,
-        sizeEnc: innerEntity.size!,
+        sizeEnc: innerEntity.size,
         sizeRaw: innerEntity.sizeRaw,
         hash: undefined,
         synthesizedFolder: innerEntity.synthesizedFolder,
@@ -552,8 +553,8 @@ export class FakeFsEncrypt extends FakeFs {
       }
       return res;
     } else if (this.method === "rclone-base64") {
-      const res =
-        await this.cipherRClone!.encryptContentByCallingWorker(content);
+      const cipher = this.cipherRClone as rclone.CipherRclone;
+      const res = await cipher.encryptContentByCallingWorker(content);
       if (res === undefined) {
         throw Error(`cannot encrypt content`);
       }
@@ -575,8 +576,8 @@ export class FakeFsEncrypt extends FakeFs {
       }
       return res;
     } else if (this.method === "rclone-base64") {
-      const res =
-        await this.cipherRClone!.decryptContentByCallingWorker(content);
+      const cipher = this.cipherRClone as rclone.CipherRclone;
+      const res = await cipher.decryptContentByCallingWorker(content);
       if (res === undefined) {
         throw Error(`cannot decrypt content`);
       }
@@ -598,7 +599,8 @@ export class FakeFsEncrypt extends FakeFs {
       }
       return res;
     } else if (this.method === "rclone-base64") {
-      const res = await this.cipherRClone!.encryptNameByCallingWorker(name);
+      const cipher = this.cipherRClone as rclone.CipherRclone;
+      const res = await cipher.encryptNameByCallingWorker(name);
       if (res === undefined) {
         throw Error(`cannot encrypt name=${name}`);
       }
@@ -646,7 +648,8 @@ export class FakeFsEncrypt extends FakeFs {
         );
       }
     } else if (this.method === "rclone-base64") {
-      const res = await this.cipherRClone!.decryptNameByCallingWorker(name);
+      const cipher = this.cipherRClone as rclone.CipherRclone;
+      const res = await cipher.decryptNameByCallingWorker(name);
       if (res === undefined) {
         throw Error(`cannot decrypt name=${name}`);
       }

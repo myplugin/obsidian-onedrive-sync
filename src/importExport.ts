@@ -57,7 +57,7 @@ export const exportConfigUri = async (
   const settings2 = structuredClone(
     settings
   ) as Partial<RemotelySavePluginSettings>;
-  stripOnedriveSecretsInPlace(settings2.onedrive!);
+  stripOnedriveSecretsInPlace(settings2.onedrive as OnedriveConfig);
   settings2.password = "";
   delete settings2.vaultRandomID;
   const data = encodeURIComponent(JSON.stringify(settings2));

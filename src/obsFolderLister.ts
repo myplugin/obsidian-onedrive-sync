@@ -129,7 +129,7 @@ export const listFilesInObsFolder = async (
   while (q.length > 0) {
     const itemsToFetch: string[] = [];
     while (q.length > 0) {
-      itemsToFetch.push(q.pop()!);
+      itemsToFetch.push(q.pop() as string);
     }
 
     const itemsToFetchChunks = chunkArray(itemsToFetch, CHUNK_SIZE);

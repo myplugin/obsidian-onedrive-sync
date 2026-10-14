@@ -959,7 +959,8 @@ export default class RemotelySavePlugin extends Plugin {
     const profileID: string = this.getCurrProfileID();
 
     // lang should be load early, but after settings
-    this.i18n = new I18n(this.settings.lang!, async (lang: LangTypeAndAuto) => {
+    const initialLang = this.settings.lang as LangTypeAndAuto;
+    this.i18n = new I18n(initialLang, async (lang: LangTypeAndAuto) => {
       this.settings.lang = lang;
       await this.saveSettings();
     });
@@ -1844,9 +1845,11 @@ export default class RemotelySavePlugin extends Plugin {
 
     // check expired or not
     let onedriveExpired = false;
+    const credDelTime = this.settings.onedrive.credentialsShouldBeDeletedAtTime;
     if (
       this.settings.onedrive.refreshToken !== "" &&
-      current >= this.settings.onedrive.credentialsShouldBeDeletedAtTime!
+      credDelTime !== undefined &&
+      current >= credDelTime
     ) {
       console.warn(`onedrive expired`);
       onedriveExpired = true;

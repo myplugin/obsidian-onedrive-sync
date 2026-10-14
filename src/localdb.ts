@@ -634,7 +634,7 @@ export const insertProfilerResultByVault = async (
     .map((x) => Number.parseInt(x.split("\t")[1]));
   records.sort((a, b) => -(a - b)); // descending
   while (records.length > 5) {
-    const ts = records.pop()!;
+    const ts = records.pop() as number;
     await db.profilerResultsTbl.removeItem(`${vaultRandomID}\t${ts}`);
   }
 };

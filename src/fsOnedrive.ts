@@ -554,7 +554,7 @@ export const setConfigBySuccessfullAuthInplace = async (
   config.accessTokenExpiresAtTime =
     Date.now() + authRes.expires_in - 5 * 60 * 1000;
   config.accessTokenExpiresInSeconds = authRes.expires_in;
-  config.refreshToken = authRes.refresh_token!;
+  config.refreshToken = authRes.refresh_token as string;
 
   // manually set it expired after 80 days;
   config.credentialsShouldBeDeletedAtTime =
@@ -653,7 +653,7 @@ class MyAuthProvider implements AuthenticationProvider {
     }
     const r2 = r;
     this.onedriveConfig.accessToken = r2.access_token;
-    this.onedriveConfig.refreshToken = r2.refresh_token!;
+    this.onedriveConfig.refreshToken = r2.refresh_token as string;
     this.onedriveConfig.accessTokenExpiresInSeconds = r2.expires_in;
     this.onedriveConfig.accessTokenExpiresAtTime =
       currentTs + r2.expires_in * 1000 - 60 * 2 * 1000;
@@ -1306,7 +1306,7 @@ export class FakeFsOnedrive extends FakeFs {
       for (const item404 of stat404Items) {
         const ownId404 = item404.id;
         if (ownId404 !== undefined && lookupMap.has(ownId404)) {
-          const keyRaw404 = lookupMap.get(ownId404)!;
+          const keyRaw404 = lookupMap.get(ownId404) as string;
           if (keyRaw404 !== "/" && keyRaw404 !== "") {
             deletedKeys.add(keyRaw404);
           }
@@ -1467,13 +1467,15 @@ export class FakeFsOnedrive extends FakeFs {
     const driveItems = res.value;
 
     while (NEXT_LINK_KEY in res) {
-      res = await this._getJson<DeltaResponsePage>(res[NEXT_LINK_KEY]!);
+      res = await this._getJson<DeltaResponsePage>(
+        res[NEXT_LINK_KEY] as string
+      );
       driveItems.push(...res.value);
     }
 
     // Save deltaLink for next sync's incremental query
     if (DELTA_LINK_KEY in res) {
-      this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY]!;
+      this.onedriveConfig.deltaLink = res[DELTA_LINK_KEY] as string;
       await this.saveUpdatedConfigFunc();
     }
 
@@ -1797,7 +1799,7 @@ export class FakeFsOnedrive extends FakeFs {
           ? { "If-Match": expectedEtag }
           : undefined
       );
-      const uploadUrl = s.uploadUrl!;
+      const uploadUrl = s.uploadUrl as string;
       console.debug("uploadSession = ");
       console.debug(s);
 
@@ -1998,7 +2000,7 @@ export class FakeFsOnedrive extends FakeFs {
         newParentRemoteId = cachedParentId;
       } else {
         const newParent = await this._statFromRoot(newParentPath);
-        newParentRemoteId = newParent.remoteId!;
+        newParentRemoteId = newParent.remoteId as string;
         this._parentRemoteIdCache.set(newParentPath, newParentRemoteId);
       }
       const itemIdUrl = `/drive/items/${oldRemoteId}`;
@@ -2143,7 +2145,7 @@ export class FakeFsOnedrive extends FakeFs {
         } else {
           try {
             const newParent = await this._statFromRoot(newParentPath);
-            newParentRemoteId = newParent.remoteId!;
+            newParentRemoteId = newParent.remoteId as string;
             this._parentRemoteIdCache.set(newParentPath, newParentRemoteId);
           } catch (e: unknown) {
             results[i] = {

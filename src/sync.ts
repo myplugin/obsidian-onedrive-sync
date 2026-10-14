@@ -99,7 +99,7 @@ const copyEntityAndFixTimeFormat = (
  */
 const ensureMTimeOfRemoteEntityValid = (remote: Entity) => {
   if (
-    !remote.key!.endsWith("/") &&
+    !(remote.key as string).endsWith("/") &&
     remote.mtimeCli === undefined &&
     remote.mtimeSvr === undefined
   ) {
@@ -421,7 +421,7 @@ const ensembleMixedEnties = async (
       copyEntityAndFixTimeFormat(remote, serviceType)
     );
 
-    const key = remoteCopied.key!;
+    const key = remoteCopied.key as string;
 
     const skipOrNot = checkIsSkipItemOrNotByName(
       key,
@@ -475,7 +475,7 @@ const ensembleMixedEnties = async (
   } else {
     // normally go through the prevSyncEntityList
     for (const prevSync of prevSyncEntityList) {
-      const key = prevSync.key!;
+      const key = prevSync.key as string;
 
       if (!(key in skipOrNotResults)) {
         const skipOrNot = checkIsSkipItemOrNotByName(
@@ -517,7 +517,7 @@ const ensembleMixedEnties = async (
   // because we want to get keyEnc based on the remote
   // (we don't consume prevSync here because it gains no benefit)
   for (const local of localEntityList) {
-    const key = local.key!;
+    const key = local.key as string;
 
     if (!(key in skipOrNotResults)) {
       const skipOrNot = checkIsSkipItemOrNotByName(
@@ -854,7 +854,7 @@ const getSyncPlanInplace = async (
             // If only one compares true (no prev also means it compares False), the other is modified. Backup and sync.
             if (
               skipSizeLargerThan <= 0 ||
-              remote.sizeEnc! <= skipSizeLargerThan
+              (remote.sizeEnc as number) <= skipSizeLargerThan
             ) {
               if (
                 syncDirection === "incremental_push_only" ||
@@ -881,7 +881,7 @@ const getSyncPlanInplace = async (
             // If only one compares true (no prev also means it compares False), the other is modified. Backup and sync.
             if (
               skipSizeLargerThan <= 0 ||
-              local.sizeEnc! <= skipSizeLargerThan
+              (local.sizeEnc as number) <= skipSizeLargerThan
             ) {
               if (
                 syncDirection === "incremental_pull_only" ||
@@ -929,7 +929,7 @@ const getSyncPlanInplace = async (
                     keptFolder.add(getParentFolder(key));
                   }
                 } else if (conflictAction === "keep_larger") {
-                  if (local.sizeEnc! >= remote.sizeEnc!) {
+                  if ((local.sizeEnc as number) >= (remote.sizeEnc as number)) {
                     mixedEntry.decisionBranch = 13;
                     mixedEntry.decision = "conflict_created_then_keep_local";
                     mixedEntry.change = true;
@@ -991,7 +991,7 @@ const getSyncPlanInplace = async (
                     keptFolder.add(getParentFolder(key));
                   }
                 } else if (conflictAction === "keep_larger") {
-                  if (local.sizeEnc! >= remote.sizeEnc!) {
+                  if ((local.sizeEnc as number) >= (remote.sizeEnc as number)) {
                     mixedEntry.decisionBranch = 18;
                     mixedEntry.decision = "conflict_modified_then_keep_local";
                     mixedEntry.change = true;
@@ -1047,7 +1047,7 @@ const getSyncPlanInplace = async (
           // if B is not in the previous list, B is new
           if (
             skipSizeLargerThan <= 0 ||
-            remote.sizeEnc! <= skipSizeLargerThan
+            (remote.sizeEnc as number) <= skipSizeLargerThan
           ) {
             if (
               syncDirection === "incremental_push_only" ||
@@ -1101,7 +1101,7 @@ const getSyncPlanInplace = async (
           // if B is in the previous list and MODIFIED, B has been deleted by A but modified by B
           if (
             skipSizeLargerThan <= 0 ||
-            remote.sizeEnc! <= skipSizeLargerThan
+            (remote.sizeEnc as number) <= skipSizeLargerThan
           ) {
             if (
               syncDirection === "incremental_push_only" ||
@@ -1130,7 +1130,10 @@ const getSyncPlanInplace = async (
 
         if (prevSync === undefined) {
           // if A is not in the previous list, A is new
-          if (skipSizeLargerThan <= 0 || local.sizeEnc! <= skipSizeLargerThan) {
+          if (
+            skipSizeLargerThan <= 0 ||
+            (local.sizeEnc as number) <= skipSizeLargerThan
+          ) {
             if (
               syncDirection === "incremental_pull_only" ||
               syncDirection === "incremental_pull_and_delete_only"
@@ -1209,7 +1212,10 @@ const getSyncPlanInplace = async (
           }
         } else {
           // if A is in the previous list and MODIFIED, A has been deleted by B but modified by A
-          if (skipSizeLargerThan <= 0 || local.sizeEnc! <= skipSizeLargerThan) {
+          if (
+            skipSizeLargerThan <= 0 ||
+            (local.sizeEnc as number) <= skipSizeLargerThan
+          ) {
             if (
               syncDirection === "incremental_pull_only" ||
               syncDirection === "incremental_pull_and_delete_only"
@@ -1861,12 +1867,12 @@ export const handleConflictModifiedSmartConflict = async (
     if (!dirtyOpenHandledPaths?.has(r.key)) {
       dirtyOpenHandledPaths?.add(r.key);
       let mergedContent: ArrayBuffer | undefined = undefined;
-      if (isMergable(r.local!, r.remote)) {
+      if (isMergable(r.local as Entity, r.remote)) {
         const origContent = await getFileContentHistoryByVaultAndProfile(
           db,
           vaultRandomID,
           profileID,
-          r.local!
+          r.local as Entity
         );
         mergedContent = await computeMergedContent(
           r.key,
@@ -1884,12 +1890,12 @@ export const handleConflictModifiedSmartConflict = async (
   }
 
   // heavy lifting
-  if (isMergable(r.local!, r.remote)) {
+  if (isMergable(r.local as Entity, r.remote)) {
     const origContent = await getFileContentHistoryByVaultAndProfile(
       db,
       vaultRandomID,
       profileID,
-      r.local!
+      r.local as Entity
     );
     // console.debug(`we get origContent:`)
     // console.debug(origContent)
@@ -1920,7 +1926,7 @@ export const handleConflictModifiedSmartConflict = async (
       profileID,
       r.key
     );
-    const mtimeCli = (await fsLocal.stat(r.key)).mtimeCli!;
+    const mtimeCli = (await fsLocal.stat(r.key)).mtimeCli as number;
     await tryDuplicateFile(
       r.key,
       fsLocal,
@@ -2008,20 +2014,20 @@ export const dispatchOperationToActualV3 = async (
 
       // but we might need to update content, because it's a new feature
       if (conflictAction === "smart_conflict") {
-        if (isMergable(r.local!)) {
+        if (isMergable(r.local as Entity)) {
           const k = await getFileContentHistoryByVaultAndProfile(
             db,
             vaultRandomID,
             profileID,
-            r.local!
+            r.local as Entity
           );
           if (k === null || k === undefined) {
             await upsertFileContentHistoryByVaultAndProfile(
               db,
               vaultRandomID,
               profileID,
-              r.local!,
-              await fsLocal.readFile(r.local!.keyRaw)
+              r.local as Entity,
+              await fsLocal.readFile((r.local as Entity).keyRaw)
             );
           }
         }
@@ -2063,7 +2069,7 @@ export const dispatchOperationToActualV3 = async (
     r.decision === "conflict_modified_then_keep_local"
   ) {
     // console.debug(`before upload in sync, r=${JSON.stringify(r, null, 2)}`);
-    const mtimeCli = (await fsLocal.stat(r.key)).mtimeCli!;
+    const mtimeCli = (await fsLocal.stat(r.key)).mtimeCli as number;
     try {
       const { entity, content } = await copyFileOrFolder(
         r.key,
@@ -2087,7 +2093,7 @@ export const dispatchOperationToActualV3 = async (
             vaultRandomID,
             profileID,
             entity,
-            content!
+            content as ArrayBuffer
           );
         }
       }
@@ -2120,7 +2126,7 @@ export const dispatchOperationToActualV3 = async (
           ts: new Date(),
           key: r.key,
           walkEtag: r.remote?.etag,
-          disposition: isMergable(r.local!, r.remote)
+          disposition: isMergable(r.local as Entity, r.remote)
             ? "merged"
             : "duplicated",
         });
@@ -2163,16 +2169,16 @@ export const dispatchOperationToActualV3 = async (
       db,
       vaultRandomID,
       profileID,
-      r.remote!
+      r.remote as Entity
     );
     if (conflictAction === "smart_conflict") {
-      if (isMergable(r.remote!)) {
+      if (isMergable(r.remote as Entity)) {
         await upsertFileContentHistoryByVaultAndProfile(
           db,
           vaultRandomID,
           profileID,
-          r.remote!,
-          c1! // always file, always has real value
+          r.remote as Entity,
+          c1 as ArrayBuffer // always file, always has real value
         );
       }
     }
@@ -2186,7 +2192,7 @@ export const dispatchOperationToActualV3 = async (
       r.key
     );
     if (conflictAction === "smart_conflict") {
-      if (isMergable(r.remote!)) {
+      if (isMergable(r.remote as Entity)) {
         await clearFileContentHistoryByVaultAndProfile(
           db,
           vaultRandomID,
@@ -2226,7 +2232,7 @@ export const dispatchOperationToActualV3 = async (
       r.key
     );
     if (conflictAction === "smart_conflict") {
-      if (isMergable(r.local!)) {
+      if (isMergable(r.local as Entity)) {
         await clearFileContentHistoryByVaultAndProfile(
           db,
           vaultRandomID,
@@ -2288,7 +2294,7 @@ export const dispatchOperationToActualV3 = async (
     r.decision === "folder_moved_then_rename_remote"
   ) {
     // Rename on remote: old key -> this key (the new path)
-    const oldKey = r.movedFromKey!;
+    const oldKey = r.movedFromKey as string;
     await fsEncrypt.rename(oldKey, r.key);
     await clearPrevSyncRecordByVaultAndProfile(
       db,
@@ -2555,7 +2561,7 @@ export const doActualSync = async (
             ? mixedEntityMappings[parentKey]
             : undefined;
           return {
-            key1: val.movedFromKey!,
+            key1: val.movedFromKey as string,
             key2: val.key,
             sourceRemoteId: val.movedFromRemoteId,
             targetParentRemoteId:
@@ -2596,7 +2602,7 @@ export const doActualSync = async (
               tooManyErrors = true;
             }
           } else {
-            const oldKey = val.movedFromKey!;
+            const oldKey = val.movedFromKey as string;
             await clearPrevSyncRecordByVaultAndProfile(
               db,
               vaultRandomID,

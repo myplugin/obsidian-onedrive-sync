@@ -1,6 +1,6 @@
 {
   "name": "onedrive-vault-sync",
-  "version": "0.6.28",
+  "version": "0.6.29",
   "description": "Sync your Obsidian vault with OneDrive (personal, App Folder).",
   "scripts": {
     "dev": "node esbuild.config.mjs --watch",
@@ -9,7 +9,8 @@
     "deploy": "node scripts/deploy.mjs",
     "format": "npx @biomejs/biome check --write .",
     "clean": "node -e \"require('fs').rmSync('main.js',{force:true})\"",
-    "test": "mocha --import=tsx tests/**/*.ts"
+    "test": "mocha --import=tsx tests/**/*.ts",
+    "scan": "node scripts/obsidian-scan.mjs"
   },
   "browser": {
     "path": "path-browserify",

@@ -80,8 +80,8 @@ export const extractDriveItemMetadata = (x: DriveItem, requireMtime = true) => {
     mtimeSvr,
     mtimeCli: mtimeSvr,
     ctimeCli: ctimeTry ? Date.parse(ctimeTry) : mtimeSvr,
-    size: isFolder ? 0 : x.size!,
-    sizeRaw: isFolder ? 0 : x.size!,
+    size: isFolder ? 0 : (x.size as number),
+    sizeRaw: isFolder ? 0 : (x.size as number),
     // Graph types eTag as NullableOption<string> (string | null); Entity.etag
     // is `string | undefined`, so coerce null -> undefined.
     etag: x.eTag ?? undefined,
@@ -481,7 +481,7 @@ export const fromDriveItemToEntityWithIdFallback = (
       x.id !== undefined &&
       idToKeyMap.has(x.id)
     ) {
-      key = idToKeyMap.get(x.id)!;
+      key = idToKeyMap.get(x.id) as string;
     } else {
       throw e; // not a path-missing error, or id not in map → re-throw → self-heal
     }
@@ -657,7 +657,7 @@ export const fromDriveItemToEntityWithChainFallback = (
     ) {
       // 1. own-id hit -> MODIFY case: reuse the prev keyRaw verbatim (it
       //    already carries the folder trailing slash when applicable).
-      key = lookupMap.get(ownId)!;
+      key = lookupMap.get(ownId) as string;
     } else {
       // 2. parent-id chain -> NEW item (throws ONEDRIVE_PATH_MISSING when
       //    the parent chain is unreachable -> caller skips + self-heals).
