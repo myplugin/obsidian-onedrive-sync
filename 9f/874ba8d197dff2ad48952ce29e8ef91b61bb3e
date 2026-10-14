@@ -1,0 +1,26 @@
+docs/lessons/esbuild-define-lexical-substitution.md
+  h_77bd96c5a60e28 1-95
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package.json
+  h_77bd96c5a60e28 3,7
+scripts/verify-build.mjs
+  h_77bd96c5a60e28 1-104
+src/baseTypes.ts
+  h_77bd96c5a60e28 14-23
+versions.json
+  h_77bd96c5a60e28 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.2",
+  "base_commit_sha": "9f874ba8d197dff2ad48952ce29e8ef91b61bb3e",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
