@@ -30,7 +30,7 @@ import type { Entity } from "./baseTypes";
  *          name === remoteBaseDir, and it carries a `folder` facet).
  */
 export function isApprootRootDriveItem(
-  item: any,
+  item: DriveItem | null | undefined,
   remoteBaseDir: string
 ): boolean {
   if (item == null || remoteBaseDir === "") {
@@ -85,13 +85,13 @@ export const extractDriveItemMetadata = (x: DriveItem, requireMtime = true) => {
     // Graph types eTag as NullableOption<string> (string | null); Entity.etag
     // is `string | undefined`, so coerce null -> undefined.
     etag: x.eTag ?? undefined,
-    remoteId: (x as any).id,
+    remoteId: x.id,
     // OneDrive guarantees quickXorHash for files on both Personal and
     // Business. Folders have no `file` facet → hash is undefined (correct:
     // folders are out of scope for rename tracking). The `file` facet is
     // already in $select (syncOptimize.ts DELTA_SELECT), so the hash is on
     // the wire — this just parses it.
-    hash: (x as any).file?.hashes?.quickXorHash ?? undefined,
+    hash: x.file?.hashes?.quickXorHash ?? undefined,
     isFolder,
   };
 };
@@ -112,7 +112,7 @@ export const extractDriveItemMetadata = (x: DriveItem, requireMtime = true) => {
  */
 function pathMissingError(): Error {
   const err = new Error("x.parentReference.path is undefinded or null");
-  (err as any).code = "ONEDRIVE_PATH_MISSING";
+  Object.assign(err, { code: "ONEDRIVE_PATH_MISSING" });
   return err;
 }
 
@@ -128,7 +128,7 @@ function pathMissingError(): Error {
  */
 function outOfScopeError(message: string): Error {
   const err = new Error(message);
-  (err as any).code = "ONEDRIVE_PATH_OUT_OF_SCOPE";
+  Object.assign(err, { code: "ONEDRIVE_PATH_OUT_OF_SCOPE" });
   return err;
 }
 
@@ -388,7 +388,7 @@ export const fromDriveItemToEntity = (
       size: 0,
       sizeRaw: 0,
       synthesizedFile: false,
-      remoteId: (x as any).id,
+      remoteId: x.id,
     };
   }
   // 2. remoteItem / package / bundle (before path, preserving order)
@@ -454,7 +454,7 @@ export const fromDriveItemToEntityWithIdFallback = (
       size: 0,
       sizeRaw: 0,
       synthesizedFile: false,
-      remoteId: (x as any).id,
+      remoteId: x.id,
     };
   }
   // remoteItem / package / bundle (same guards, same order)
@@ -476,12 +476,12 @@ export const fromDriveItemToEntityWithIdFallback = (
     // path missing — try the id→key fallback (modify case)
     if (
       e instanceof Error &&
-      (e as any).code === "ONEDRIVE_PATH_MISSING" &&
+      (e as { code?: string }).code === "ONEDRIVE_PATH_MISSING" &&
       idToKeyMap &&
-      (x as any).id !== undefined &&
-      idToKeyMap.has((x as any).id)
+      x.id !== undefined &&
+      idToKeyMap.has(x.id)
     ) {
-      key = idToKeyMap.get((x as any).id)!;
+      key = idToKeyMap.get(x.id)!;
     } else {
       throw e; // not a path-missing error, or id not in map → re-throw → self-heal
     }
@@ -540,8 +540,8 @@ export const deriveKeyFromParentChain = (
   approotRootId: string | undefined,
   remoteBaseDir: string
 ): string => {
-  const parentId = (x.parentReference as any)?.id;
-  const name = x.name as any;
+  const parentId = x.parentReference?.id;
+  const name = x.name;
   if (
     parentId === undefined ||
     parentId === null ||
@@ -624,7 +624,7 @@ export const fromDriveItemToEntityWithChainFallback = (
       size: 0,
       sizeRaw: 0,
       synthesizedFile: false,
-      remoteId: (x as any).id,
+      remoteId: x.id,
     };
   }
   // remoteItem / package / bundle (same guards, same order)
@@ -645,10 +645,10 @@ export const fromDriveItemToEntityWithChainFallback = (
   } catch (e) {
     // Match on .code, NOT the message string (the message carries a
     // historical typo on purpose - see pathMissingError).
-    if (!(e instanceof Error) || (e as any).code !== "ONEDRIVE_PATH_MISSING") {
+    if (!(e instanceof Error) || (e as { code?: string }).code !== "ONEDRIVE_PATH_MISSING") {
       throw e; // unknown-prefix / no-name errors are NOT path-missing
     }
-    const ownId = (x as any).id;
+    const ownId = x.id;
     if (
       lookupMap !== undefined &&
       ownId !== undefined &&

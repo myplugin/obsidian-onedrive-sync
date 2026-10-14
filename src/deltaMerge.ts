@@ -1,5 +1,6 @@
 ﻿// License: Apache-2.0 (see src/LICENSE)
 
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import type { Entity } from "./baseTypes";
 
 /**
@@ -93,7 +94,7 @@ export function buildIdToKeyMap(prevEntities: Entity[]): Map<string, string> {
  * the heavy fsOnedrive module (which pulls in @azure/msal-node etc.).
  */
 export type DriveItemToEntity = (
-  item: any,
+  item: DriveItem,
   remoteBaseDir: string,
   requireMtime?: boolean
 ) => Entity;
@@ -118,7 +119,7 @@ export interface ClassifiedDelta {
    *  delta DriveItem so the caller can stat-by-id to retry with full
    *  metadata (the non-delta GET endpoint returns parentReference.path
    *  reliably, unlike the delta endpoint which often omits it). */
-  skippedItems: any[];
+  skippedItems: unknown[];
 }
 
 /**
@@ -171,10 +172,14 @@ export interface ClassifiedDelta {
  *                              children of the vault root). Documents the
  *                              caller's intent, same pattern as idToKeyMap.
  */
-export function classifyDeltaItems(
-  driveItems: any[],
+export function classifyDeltaItems<T extends { id?: string }>(
+  driveItems: T[],
   remoteBaseDir: string,
-  fromDriveItemToEntity: DriveItemToEntity,
+  fromDriveItemToEntity: (
+    item: T,
+    remoteBaseDir: string,
+    requireMtime?: boolean
+  ) => Entity,
   idToKeyMap?: Map<string, string>,
   approotRootId?: string
 ): ClassifiedDelta {
@@ -200,9 +205,9 @@ export function classifyDeltaItems(
   // after the parent resolved (its id -> keyRaw landed in idToKeyMap, the
   // very instance the closure-bound converter reads) can still succeed -
   // regardless of the order Graph returned the items in.
-  const pending: { item: any; isDeleted: boolean; error: unknown }[] = [];
+  const pending: { item: T; isDeleted: boolean; error: unknown }[] = [];
 
-  const consumeResolved = (item: any, entity: Entity, isDeleted: boolean) => {
+  const consumeResolved = (item: T, entity: Entity, isDeleted: boolean) => {
     if (isDeleted) {
       if (entity.keyRaw !== "/" && entity.keyRaw !== "") {
         deletedKeys.add(entity.keyRaw);
@@ -273,7 +278,7 @@ export function classifyDeltaItems(
   // Added/modified items ARE counted so walk() can self-heal by
   // invalidating the deltaLink (next sync does a full re-enumeration that
   // re-fetches them cleanly).
-  const skippedItems: any[] = [];
+  const skippedItems: unknown[] = [];
   for (const { item, isDeleted, error } of pending) {
     if (isDeleted) {
       console.warn(
