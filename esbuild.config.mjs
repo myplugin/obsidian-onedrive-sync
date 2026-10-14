@@ -224,8 +224,8 @@ esbuild
     minify: prod,
     outfile: "main.js",
     define: {
-      "global.DEFAULT_ONEDRIVE_CLIENT_ID": `"${DEFAULT_ONEDRIVE_CLIENT_ID}"`,
-      "global.DEFAULT_ONEDRIVE_AUTHORITY": `"${DEFAULT_ONEDRIVE_AUTHORITY}"`,
+      "window.DEFAULT_ONEDRIVE_CLIENT_ID": `"${DEFAULT_ONEDRIVE_CLIENT_ID}"`,
+      "window.DEFAULT_ONEDRIVE_AUTHORITY": `"${DEFAULT_ONEDRIVE_AUTHORITY}"`,
       global: "window",
       "process.env.NODE_DEBUG": `undefined`, // ugly fix
       "process.env.DEBUG": `undefined`, // ugly fix

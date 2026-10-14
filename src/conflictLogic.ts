@@ -7,7 +7,7 @@ import isEqual from "lodash/isEqual";
 //   stringifyPatches,
 //   parsePatch,
 // } from "@sanity/diff-match-patch";
-import { LCS, mergeDigIn } from "node-diff3";
+import { type ILCSResult, LCS, mergeDigIn } from "node-diff3";
 import type { Entity } from "./baseTypes";
 import { copyFile } from "./copyLogic";
 import type { FakeFs } from "./fsAll";
@@ -49,13 +49,13 @@ function mergeDigInModified(a: string, o: string, b: string) {
 function getLCSText(a: string, b: string) {
   const aa = a.split("\n");
   const bb = b.split("\n");
-  let raw = LCS(aa, bb);
+  let raw: ILCSResult | null = LCS(aa, bb);
 
   const k: string[] = [];
 
   while (raw !== null && raw !== undefined && raw.buffer1index !== -1) {
     k.unshift(aa[raw.buffer1index]);
-    raw = raw.chain as any;
+    raw = raw.chain;
   }
 
   return k.join("\n");
@@ -260,8 +260,8 @@ async function tryDuplicateFileForSameSizes(
   key2: string,
   fsLocal: FakeFs,
   fsRemote: FakeFs,
-  uploadCallback: (entity: Entity | undefined) => Promise<any>,
-  downloadCallback: (entity: Entity | undefined) => Promise<any>
+  uploadCallback: (entity: Entity | undefined) => Promise<void>,
+  downloadCallback: (entity: Entity | undefined) => Promise<void>
 ) {
   console.debug(`tryDuplicateFileForSameSizes: ${key}`);
 
@@ -323,8 +323,8 @@ async function tryDuplicateFileForDiffSizes(
   key2: string,
   fsLocal: FakeFs,
   fsRemote: FakeFs,
-  uploadCallback: (entity: Entity | undefined) => Promise<any>,
-  downloadCallback: (entity: Entity | undefined) => Promise<any>
+  uploadCallback: (entity: Entity | undefined) => Promise<void>,
+  downloadCallback: (entity: Entity | undefined) => Promise<void>
 ) {
   console.debug(`tryDuplicateFileForDiffSizes: ${key}`);
 
@@ -385,8 +385,8 @@ export async function tryDuplicateFile(
   key: string,
   fsLocal: FakeFs,
   fsRemote: FakeFs,
-  uploadCallback: (entity: Entity | undefined) => Promise<any>,
-  downloadCallback: (entity: Entity | undefined) => Promise<any>
+  uploadCallback: (entity: Entity | undefined) => Promise<void>,
+  downloadCallback: (entity: Entity | undefined) => Promise<void>
 ) {
   const key2 = await findUsableDupKey(key, fsLocal);
 

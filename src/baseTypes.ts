@@ -17,10 +17,16 @@ declare global {
 // It does NOT define a property on the runtime `window` object — a `window.*`
 // access here compiles to an undefined property read, which silently breaks
 // OneDrive auth (empty auth modal: clientID resolves to "" → invalid auth URL).
-// `global` is itself mapped to `window` by esbuild's define, so this is the
-// browser-safe path the bundler guarantees. Do not "auto-fix" to `window`.
-export const ONEDRIVE_CLIENT_ID = global.DEFAULT_ONEDRIVE_CLIENT_ID;
-export const ONEDRIVE_AUTHORITY = global.DEFAULT_ONEDRIVE_AUTHORITY;
+// esbuild's define replaces `window.DEFAULT_ONEDRIVE_CLIENT_ID` with the
+// baked-in value at build time; the `declare global` below makes TS aware of it.
+declare global {
+  interface Window {
+    DEFAULT_ONEDRIVE_CLIENT_ID: string;
+    DEFAULT_ONEDRIVE_AUTHORITY: string;
+  }
+}
+export const ONEDRIVE_CLIENT_ID = window.DEFAULT_ONEDRIVE_CLIENT_ID;
+export const ONEDRIVE_AUTHORITY = window.DEFAULT_ONEDRIVE_AUTHORITY;
 
 export const DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
@@ -249,7 +255,7 @@ export interface MixedEntity {
 
   change?: boolean;
 
-  sideNotes?: any;
+  sideNotes?: Record<string, unknown>;
   /** The old-path key that a "local_moved_then_rename_remote" decision
    *  was matched against. Set by matchMoves; read by dispatch to call
    *  fsEncrypt.rename(movedFromKey, key). */
