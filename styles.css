@@ -642,3 +642,255 @@
 .rs-overflow-wrap {
   overflow-wrap: break-word;
 }
+
+/* ===== Conflict review sidebar (unresolved conflicts view) =====
+   Card list rendered by ConflictReviewView (src/conflictReview.ts) into a
+   left-sidebar leaf. Built on Obsidian theme variables so it tracks the
+   user's theme; two accents carry meaning — accent color for "merged"
+   items, warning color for "duplicate saved" items and their changed
+   diff lines. */
+
+.rs-conflict-summary {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+}
+
+.rs-conflict-item {
+  margin-bottom: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  background: var(--background-primary);
+  overflow: hidden;
+}
+
+/* one orchestrated staggered reveal as the list renders (index classes are
+   capped at 8 by the view) */
+@keyframes rs-conflict-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rs-conflict-item[class*="rs-conflict-item-anim-"] {
+  animation: rs-conflict-item-in 0.28s ease both;
+}
+
+.rs-conflict-item-anim-2 {
+  animation-delay: 40ms;
+}
+.rs-conflict-item-anim-3 {
+  animation-delay: 80ms;
+}
+.rs-conflict-item-anim-4 {
+  animation-delay: 120ms;
+}
+.rs-conflict-item-anim-5 {
+  animation-delay: 160ms;
+}
+.rs-conflict-item-anim-6 {
+  animation-delay: 200ms;
+}
+.rs-conflict-item-anim-7 {
+  animation-delay: 240ms;
+}
+.rs-conflict-item-anim-8 {
+  animation-delay: 280ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-conflict-item[class*="rs-conflict-item-anim-"] {
+    animation: none;
+  }
+}
+
+.rs-conflict-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--background-secondary-alt);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.rs-conflict-badge {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.rs-conflict-badge-merged {
+  color: var(--text-accent);
+  background: color-mix(in srgb, var(--text-accent) 12%, transparent);
+}
+
+.rs-conflict-badge-dup {
+  color: var(--text-warning);
+  background: color-mix(in srgb, var(--text-warning) 14%, transparent);
+}
+
+.rs-conflict-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.rs-conflict-path:hover {
+  color: var(--text-accent);
+  text-decoration: underline;
+}
+
+/* Obsidian mobile stretches bare <button> to full width in some panes;
+   pin the header/row buttons to their content size (same specificity-pin
+   treatment as the regex chips above). */
+.rs-conflict-item-header button,
+.rs-conflict-dup-row button {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+}
+
+.rs-conflict-body {
+  padding: 10px;
+}
+
+.rs-conflict-hint {
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.55;
+}
+
+.rs-conflict-hint-warn {
+  color: var(--text-warning);
+}
+
+.rs-conflict-block-label {
+  margin: 10px 0 4px;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* side-by-side local vs remote columns; wrapping (not scrolling) keeps the
+   pair readable in a narrow sidebar */
+.rs-conflict-diff {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rs-conflict-diff-col {
+  min-width: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 6px);
+  overflow: hidden;
+}
+
+.rs-conflict-diff-col-local {
+  border-top: 2px solid var(--text-accent);
+}
+
+.rs-conflict-diff-col-remote {
+  border-top: 2px solid var(--text-warning);
+}
+
+.rs-conflict-diff-head {
+  padding: 3px 8px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--background-secondary-alt);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.rs-conflict-diff-pre {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--background-primary);
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.5;
+}
+
+.rs-conflict-line {
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  border-radius: 2px;
+}
+
+.rs-conflict-line-local-changed {
+  background: color-mix(in srgb, var(--text-accent) 12%, transparent);
+}
+
+.rs-conflict-line-remote-changed {
+  background: color-mix(in srgb, var(--text-warning) 16%, transparent);
+}
+
+.rs-conflict-dup-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rs-conflict-dup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rs-conflict-dup-label {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.rs-conflict-dup-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.rs-conflict-dup-path:hover {
+  color: var(--text-accent);
+  text-decoration: underline;
+}
+
+.rs-conflict-empty {
+  padding: 28px 12px;
+  text-align: center;
+}
+
+.rs-conflict-empty-title {
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.rs-conflict-empty-desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+}

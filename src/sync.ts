@@ -2255,6 +2255,19 @@ export const dispatchOperationToActualV3 = async (
       isFileDirtyOpen,
       dirtyOpenHandledPaths
     );
+    // C4 (Task 7) parity with the 412 re-route path above: a walk-time
+    // smart-conflict decision (both sides modified/created the same file)
+    // calls the same handleConflictModifiedSmartConflict, so it must also
+    // push a ConflictLogEntry — otherwise walk-time conflicts get no Notice
+    // and no vault-root log line while 412 re-routed ones do.
+    conflictsEncountered?.push({
+      ts: new Date(),
+      key: r.key,
+      walkEtag: r.remote?.etag,
+      disposition: isMergable(r.local as Entity, r.remote)
+        ? "merged"
+        : "duplicated",
+    });
   } else if (r.decision === "folder_to_be_created") {
     await fsLocal.mkdir(r.key);
     const { entity } = await copyFolder(r.key, fsLocal, fsEncrypt);

@@ -36,6 +36,11 @@ import {
 } from "./baseTypes";
 import { messyConfigToNormal, normalConfigToMessy } from "./configPersist";
 import { appendConflictLog, formatConflictLogLine } from "./conflictLog";
+import {
+  ConflictReviewView,
+  VIEW_TYPE_CONFLICT_REVIEW,
+  revealConflictLeaf,
+} from "./conflictReview";
 import { exportVaultSyncPlansToFiles } from "./debugMode";
 import { FakeFsEncrypt } from "./fsEncrypt";
 import { getClient } from "./fsGetter";
@@ -667,14 +672,25 @@ export default class RemotelySavePlugin extends Plugin {
       try {
         const conflicts = syncResult?.conflictsEncountered ?? [];
         if (conflicts.length > 0) {
-          const names = conflicts
-            .map((entry) => entry.key)
-            .slice(0, 5)
-            .join(", ");
-          new Notice(t("conflict_resolved_notice", { names }), 10 * 1000);
+          // Append to the vault-root conflict log FIRST — the review
+          // sidebar reads it back when it opens.
           const adapter = this.app.vault.adapter;
           for (const entry of conflicts) {
             await appendConflictLog(adapter, formatConflictLogLine(entry));
+          }
+          // Surface the conflicts in the review sidebar (opens or focuses
+          // the left leaf; the view itself decides what is still
+          // unresolved). The old 10s Notice is kept only as a fallback if
+          // the leaf cannot be opened.
+          try {
+            await revealConflictLeaf(this.app);
+          } catch (revealErr) {
+            console.error("conflict review leaf open failed:", revealErr);
+            const names = conflicts
+              .map((entry) => entry.key)
+              .slice(0, 5)
+              .join(", ");
+            new Notice(t("conflict_resolved_notice", { names }), 10 * 1000);
           }
         }
       } catch (conflictLogErr) {
@@ -1192,6 +1208,23 @@ export default class RemotelySavePlugin extends Plugin {
         }, 1000 * 30)
       );
     }
+
+    // Conflict review sidebar ("unresolved conflicts"). No ribbon icon —
+    // the leaf is revealed automatically after a sync that produced
+    // conflicts, or manually via the command below.
+    this.registerView(
+      VIEW_TYPE_CONFLICT_REVIEW,
+      (leaf) => new ConflictReviewView(leaf, t)
+    );
+
+    this.addCommand({
+      id: "open-conflicts-view",
+      name: t("command_open_conflicts_view"),
+      icon: "merge",
+      callback: () => {
+        void revealConflictLeaf(this.app).catch(console.error);
+      },
+    });
 
     this.addCommand({
       id: "start-sync",

@@ -1,11 +1,15 @@
 // License: Apache-2.0 (see src/LICENSE)
 
 /**
- * Conflict log written at the vault root when a push was atomically rejected
- * by OneDrive (HTTP 412 via If-Match) and sync re-routed the file to the
- * smart-conflict path (mergeFile / tryDuplicateFile).
+ * Conflict log written at the vault root when sync routes a file to the
+ * smart-conflict path (mergeFile / tryDuplicateFile). Two routes feed it:
+ *  (a) a push atomically rejected by OneDrive (HTTP 412 via If-Match),
+ *      which sync re-routes to handleConflictModifiedSmartConflict, and
+ *  (b) a walk-time decision that both sides modified/created the same file
+ *      (conflict_*_then_smart_conflict), which calls the same handler.
+ * Both push a ConflictLogEntry so the user gets parity notification.
  *
- * "C4" post-sync notification design: the re-route ABSORBS the
+ * "C4" post-sync notification design: the 412 re-route ABSORBS the
  * REMOTE_ETAG_MISMATCH error (sync completes without it ever reaching
  * errNotifyFunc), so sync.ts collects ConflictLogEntry items while it runs
  * and main.ts, after the sync, fires the Notice and appends them here.
