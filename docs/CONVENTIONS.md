@@ -69,3 +69,26 @@ Never `Object.assign` a partial `onedrive` object onto `this.settings` — shall
 ## Device secrets storage (IndexedDB, not data.json)
 
 Device-specific secrets — `refreshToken`, `deltaLink`, `username`, `accessToken`, `accessTokenExpires*`, and the vault `password` — live in IndexedDB as one `OnedriveAuthFields` record keyed `<vaultRandomID>-onedriveAuth` (`getOnedriveAuthByVault` / `upsertOnedriveAuthByVault` in `localdb.ts`). They are NOT persisted to `data.json`: `saveSettings` calls `extractOnedriveAuth` (→ DB) then `stripOnedriveAuthInPlace` (clears them from the data.json-bound copy). At load, `loadSettings` reads data.json then `mergeOnedriveAuthFromDBOrMigrate` overlays the auth fields back into in-memory `settings.onedrive`. Do not regress this: any new code reading `this.settings.onedrive.refreshToken` (etc.) for EXPORT purposes must remember the live value is the DB-merged one, while data.json on disk is stripped.
+
+## Mandatory pre-push gate
+
+**Any change to `package.json` → `npm install` → `npm run build` → `npm run scan` → then push.** No exceptions, no skipping steps. The lockfile staleness incident (0.6.31) was caused by bumping the version in `package.json` without running `npm install` to sync `package-lock.json`. `npm run scan` (6 checks: ESLint + CSS + deps + lockfile sync + version consistency + installability) must pass with 0 warnings before pushing. See `scripts/obsidian-scan.mjs`.
+
+## CI workflow conventions
+
+- **Node 22 LTS** (not 20 — Node 20 is deprecated on GitHub Actions).
+- **`npm ci`** (not `npm install`) — deterministic install from the lockfile.
+- **`npm run scan` before `npm run build`** — the CI runs the same 6-check gate as local. If scan fails, the build doesn't proceed.
+- The release workflow is `.github/workflows/release.yml`. It triggers on semver tag pushes (`*.*.*`).
+
+## npm `file:` overrides require a companion esbuild `alias`
+
+When using `package.json` `"overrides"` with `"file:./local/stub"` to replace a vulnerable transitive dep, the symlink created by npm works on Windows but **does not reliably resolve on Linux CI** (`npm ci` recreates the lockfile's symlink structure, which may be broken cross-platform). Always add a matching `alias` in `esbuild.config.mjs` to redirect the `require()` at bundle time — this bypasses node_modules resolution entirely and is platform-independent. See `docs/aar/elliptic-stub-dual-mechanism.md`.
+
+## Deploy paths read PLUGIN_ID from manifest.json dynamically
+
+Both `esbuild.config.mjs` (inline `deployPlugin` + `reloadPlugin`) and `scripts/deploy.mjs` derive the plugin folder name from `manifest.json`'s `id` field at runtime, not a hardcoded string. When the plugin id changes, update `manifest.json` — deploy paths + reload id follow automatically. Do not re-introduce a hardcoded `"onedrive-vault-sync"` string in either file.
+
+## The Obsidian scanner checks 3 categories (not just ESLint)
+
+The Obsidian community directory scanner checks: (1) ESLint (TS/JS rules via `eslint-plugin-obsidianmd`), (2) CSS lint (`!important` detection), (3) dependency audit (npm audit on production deps), and (4) lockfile sync (package-lock.json must match package.json). `npm run scan` mirrors all of these locally. If the scanner reports a new category not covered by `npm run scan`, add a check for it.

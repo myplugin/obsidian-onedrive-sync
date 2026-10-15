@@ -29,6 +29,7 @@ These recur in any esbuild setup:
 | `minify` | Strip/mangle in production builds. |
 | `watch` | Rebuild automatically when inputs change (esbuild ≥0.17 uses `context.watch()`). |
 | `browser` field (package.json) | Field esbuild honors to redirect Node builtins (`fs`, `http`, …) to browser-friendly polyfills or `false` (stub). Critical when a bundle must run with **no Node runtime**. |
+| `alias` | Redirect a module specifier to a specific file path at **bundle time** — `alias: { elliptic: path.resolve("stubs/elliptic/index.js") }` makes every `require("elliptic")` (including inside `node_modules/`) resolve to that file, bypassing normal node_modules resolution entirely. Unlike npm `overrides` (which create symlinks that may not survive `npm ci` on a different OS), `alias` is a pure build-time redirect — platform-independent, no symlink involved. Use when you need to replace a transitive dep at bundle time without touching node_modules. |
 
 ## `onEnd` is the post-build side-effect hook
 
