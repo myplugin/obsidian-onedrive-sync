@@ -52,7 +52,20 @@ jobs:
         run: npx tsc -noEmit -skipLibCheck
 
       - name: Build (esbuild production)
-        run: node esbuild.config.mjs production
+        run: |
+          set +e
+          output=$(node esbuild.config.mjs production 2>&1)
+          code=$?
+          echo "$output"
+          if [ $code -ne 0 ]; then
+            {
+              echo "## esbuild failed (exit $code)"
+              echo '```'
+              echo "$output" | tail -30
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Verify build artifacts
         run: node scripts/verify-build.mjs
