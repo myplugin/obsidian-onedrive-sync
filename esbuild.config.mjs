@@ -240,6 +240,15 @@ esbuild
     // aggregate-error -> clean-stack) is also redirected via the `browser` field
     // to the `url/` polyfill, matching webpack's externals mapping.
     external: ["obsidian"],
+    // Redirect elliptic to a local stub at bundle time. The npm override
+    // (file:./stubs/elliptic) removes it from the dep tree for npm audit, but
+    // npm ci on Linux doesn't always resolve the file: symlink for bundling.
+    // This alias bypasses node_modules resolution entirely — esbuild points
+    // require('elliptic') straight at the stub. The plugin uses RSA (Azure AD
+    // JWTs), never EC/EdDSA, so the stub (no-op + throw-on-use) is safe.
+    alias: {
+      elliptic: path.resolve("stubs/elliptic/index.js"),
+    },
     inject: ["./esbuild.injecthelper.mjs"],
     format: "cjs",
     // watch: !prod, // no longer valid in esbuild 0.17
