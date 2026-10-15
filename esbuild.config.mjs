@@ -34,6 +34,10 @@ const DEFAULT_ONEDRIVE_CLIENT_ID =
 const DEFAULT_ONEDRIVE_AUTHORITY =
   process.env.ONEDRIVE_AUTHORITY || "https://login.microsoftonline.com/common";
 
+// Plugin id — read from manifest.json so deploy/reload paths track the id
+// automatically (no hardcoded name to forget when the id changes).
+const PLUGIN_ID = JSON.parse(fs.readFileSync("manifest.json", "utf8")).id;
+
 // Auto-deploy to Obsidian vault on build/watch (if VAULT_PATH set in .env).
 // Mirrors scripts/deploy.mjs and the former webpack DeployPlugin so that
 // `npm run dev` (watch) and `npm run build` auto-install the plugin.
@@ -55,7 +59,7 @@ function deployPlugin(pluginDir) {
           console.log(
             `[deploy] main.js + manifest.json + styles.css -> ${pluginDir}`
           );
-          reloadPlugin("onedrive-vault-sync");
+          reloadPlugin(PLUGIN_ID);
         } catch (e) {
           console.error(`[deploy] failed: ${e.message}`);
         }
@@ -211,7 +215,7 @@ if (vaultPath) {
     vaultPath,
     ".obsidian",
     "plugins",
-    "onedrive-vault-sync"
+    PLUGIN_ID
   );
   deployPlugins.push(deployPlugin(pluginDir));
 }
