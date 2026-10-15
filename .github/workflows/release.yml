@@ -48,8 +48,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build plugin (typecheck + esbuild production)
-        run: npm run build
+      - name: Typecheck (tsc)
+        run: npx tsc -noEmit -skipLibCheck
+
+      - name: Build (esbuild production)
+        run: node esbuild.config.mjs production
+
+      - name: Verify build artifacts
+        run: node scripts/verify-build.mjs
 
       - name: Verify manifest version matches the release tag
         # Catches the most common Obsidian review error: a release whose tag
