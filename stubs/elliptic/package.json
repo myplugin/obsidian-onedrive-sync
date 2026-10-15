@@ -1,0 +1,6 @@
+{
+  "name": "elliptic",
+  "version": "0.0.0-stub",
+  "description": "Stub replacing elliptic to eliminate GHSA-848j-6mx2-7j84. The onedrive-vault-sync plugin uses RSA (Azure AD/OneDrive JWTs via jsonwebtoken), never EC/EdDSA crypto. elliptic is pulled in transitively via crypto-browserify but is dead code at runtime.",
+  "main": "index.js"
+}

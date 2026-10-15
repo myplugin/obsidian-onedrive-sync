@@ -10,11 +10,11 @@
 npm run scan
 ```
 
-这会运行 `scripts/obsidian-scan.mjs`,以扫描器的 **默认配置**(所有规则 ON)检查 `src/`。退出码 0 = 干净(0 警告);非 0 = 有警告。
+这会运行 `scripts/obsidian-scan.mjs`,执行 **3 类检查**:ESLint(TS/JS 规则)、CSS lint(`!important` 检测)、dependency audit(生产依赖漏洞)。退出码 0 = 全部干净;非 0 = 有警告。
 
 ### 为什么需要单独的 `scan` 脚本?
 
-`eslint.config.mjs` 用 `obsidianmd.configs.recommended`(默认配置),但**故意关闭**了部分规则(`any`/`unsafe-*`/`assertion`/`unbound-method`),防止 `eslint --fix` 误改 `any` 风格的代码。扫描器用的是 **默认配置**(全部 ON),所以 `scan` 脚本重新启用这些关闭的规则来匹配扫描器视图。
+`eslint.config.mjs` 用 `obsidianmd.configs.recommended`(默认配置),但**故意关闭**了部分规则(`any`/`unsafe-*`/`assertion`/`unbound-method`),防止 `eslint --fix` 误改 `any` 风格的代码。扫描器用的是 **默认配置**(全部 ON),所以 `scan` 脚本重新启用这些关闭的规则来匹配扫描器视图。CSS lint 和 dependency audit 是 ESLint 之外的检查项,`scan` 脚本一并执行。
 
 ### 官方资源
 
@@ -26,7 +26,7 @@ npm run scan
 
 ## 2. 扫描器检查什么?
 
-扫描器用 ESLint 检查 `src/**/*.ts`。分两类:
+扫描器检查 **3 类**:ESLint(TS/JS 规则)、CSS lint(`!important`)、dependency audit(依赖漏洞)。
 
 ### 阻断性 Error(提交后被标记为"风险插件")
 - `no-unsanitized` — innerHTML 必须用 `sanitizeHTMLToDom`
@@ -54,9 +54,15 @@ npm run scan
 - `no-undef` / `no-restricted-globals` — 不要用 `fetch`(用 `requestUrl`/`window.fetch`)
 - `no-self-compare` — 不要 `x !== x`(用 `Number.isNaN`)
 
+### CSS lint(`!important` 检测)
+- `declaration-no-important` — 不要用 `!important`,用选择器特异性提升或 CSS 变量代替。Obsidian mobile 会拉伸 `<button>` 到 `width:100%`,需要更高特异性(如 doubled class + element type)来覆盖。
+
+### Dependency audit(依赖漏洞检测)
+- 检查 `package.json` 依赖树中的已知漏洞(GitHub Advisory Database)。生产依赖(`dependencies`)中的漏洞会被标记为 Warning。开发依赖(`devDependencies`)的漏洞一般不影响上架(不打包到 `main.js`),但建议也关注。
+
 ---
 
-## 3. 已完成的修复(0.6.8 → 0.6.28)
+## 3. 已完成的修复(0.6.8 → 0.6.30)
 
 | 版本 | 修复内容 | 规则 |
 |---|---|---|
@@ -72,6 +78,8 @@ npm run scan
 | 0.6.26 | misc.ts lodash-helper 警告清除(NaN→Number.isNaN, setTimeout→window.setTimeout, DebouncedFunc 重写) | no-self-compare, prefer-window-timers, no-explicit-any |
 | 0.6.26-0.6.27 | devDep 升级(mocha@12, esbuild@0.28.2, eslint-plugin-obsidianmd@0.4.2);crypto-browserify 回退 3.12.0 | dep-vulns |
 | 0.6.28 | `Buffer.allocUnsafe`→`BufferAllocUnsafeFactory` 包装器(调用而非裸传) | unbound-method |
+| 0.6.29 | 73 个 `!` 非空断言清除(11 文件);`npm run scan` 脚本 + 检查清单文档 | no-non-null-assertion |
+| 0.6.30 | 17 处 CSS `!important`→选择器特异性提升(`span.`/`button.` element type + doubled class);elliptic 漏洞→`stubs/elliptic/` npm overrides stub(插件用 RSA,不用 EC crypto);scan 脚本扩展为 3 类检查(ESLint + CSS + deps) | CSS lint, dep audit |
 
 ### 关键模式(供未来参考)
 
@@ -89,15 +97,18 @@ npm run scan
 | `a !== a`(NaN 检查) | `Number.isNaN(a)` |
 | JSON.parse 结果 | `as 具体类型` 或 `as Record<string, unknown>` |
 | 声明式设置 | `getSettingDefinitions(): SettingDefinitionItem[]` + 删除 `display()` |
+| CSS `!important` | 选择器特异性提升:`button.cls.cls`(doubled class + element type,`(0,3,1)`)或 `span.cls`(element type,`(0,2,1)`) |
+| 依赖漏洞(无修复版) | `npm overrides` + 本地 stub 包(`stubs/<pkg>/index.js` 导出 API 空壳),消除 advisory 而不影响运行时(死代码依赖) |
 
 ---
 
-## 4. 剩余项(非 ESLint 扫描器项)
+## 4. 剩余项
 
-这些 **不是** Obsidian ESLint 扫描器检查的(ESLint 不检查 CSS 或 npm audit):
+截至 0.6.30,所有 Obsidian 扫描器检查项(CSS lint + dependency audit + ESLint)均已清零。
 
-- **CSS `!important`** (21 处):移动端布局覆盖(有注释说明)。ESLint 不检查 CSS。
-- **npm audit** (7 个:4 low, 3 moderate, 0 high, 0 critical):全部不可利用 — elliptic(死代码,插件不用 EC crypto)+ moment + 其他(devDep,不打包到 main.js)。ESLint 不检查依赖。
+- **CSS `!important`** — **已修复** (0.6.30):17 处 `!important` 全部替换为选择器特异性提升。
+- **elliptic 漏洞** (GHSA-848j-6mx2-7j84) — **已修复** (0.6.30):通过 `npm overrides` + `stubs/elliptic/` stub 包消除。插件只用 RSA(Azure AD JWT via jsonwebtoken),从不调用 EC crypto,stub 是安全的。
+- **moment 漏洞** (devDep,经 `obsidian`→`jqw` 引入)— **不是扫描器项**(开发依赖,`npm audit --omit=dev` 不检查)。不打包到 `main.js`。
 
 ---
 
