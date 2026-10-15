@@ -1,18 +1,19 @@
 // Runs ALL Obsidian community-directory scanner checks locally:
-// 1. ESLint — with all scanner rules ON (re-enables rules turned OFF in eslint.config.mjs)
-// 2. CSS lint — checks styles.css for !important (scanner flags it)
-// 3. Dependency audit — checks for known vulnerabilities in production deps
+// 1. ESLint �?with all scanner rules ON (re-enables rules turned OFF in eslint.config.mjs)
+// 2. CSS lint �?checks styles.css for !important (scanner flags it)
+// 3. Dependency audit �?checks for known vulnerabilities in production deps
+// 4. Lockfile sync �?checks package-lock.json is in sync with package.json
 //
 // Usage: npm run scan
 // Exit code 0 = clean (all pass). Non-zero = warnings remain.
 
 import { execSync } from "child_process";
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 
 let failures = 0;
 
 // ── 1. ESLint (TS/JS) ──────────────────────────────────────────────
-// Rules that eslint.config.mjs turns OFF locally — re-enable to match scanner.
+// Rules that eslint.config.mjs turns OFF locally �?re-enable to match scanner.
 const REENABLED = [
   "@typescript-eslint/no-explicit-any",
   "@typescript-eslint/no-unnecessary-type-assertion",
@@ -59,7 +60,7 @@ try {
     let charIdx = 0;
     for (let i = 0; i < lines.length; i++) {
       if (charIdx + lines[i].length >= matches[0]?.index ?? -1) {
-        // simplistic — just count per line
+        // simplistic �?just count per line
       }
       charIdx += lines[i].length + 1;
     }
@@ -104,10 +105,30 @@ try {
   }
 }
 
+// ── 4. Lockfile sync (package-lock.json) ───────────────────────────
+console.log("── Lockfile sync (package-lock.json) ──────────────────");
+try {
+  const lockBefore = readFileSync("package-lock.json", "utf8");
+  execSync("npm install --package-lock-only", {
+    stdio: "pipe",
+    encoding: "utf8",
+  });
+  const lockAfter = readFileSync("package-lock.json", "utf8");
+  if (lockBefore !== lockAfter) {
+    console.log("  �?Lockfile: out of date �?run 'npm install' and commit package-lock.json\n");
+    writeFileSync("package-lock.json", lockBefore);
+    failures++;
+  } else {
+    console.log("  �?Lockfile: in sync with package.json\n");
+  }
+} catch (e) {
+  console.log("  ! Lockfile check skipped (npm install --package-lock-only failed)\n");
+}
+
 // ── Summary ────────────────────────────────────────────────────────
 if (failures === 0) {
   console.log("======================================================");
-  console.log("\u2713 Clean \u2014 0 warnings across ESLint, CSS, and dependencies.");
+  console.log("\u2713 Clean \u2014 0 warnings across ESLint, CSS, dependencies, and lockfile.");
 } else {
   console.log("======================================================");
   console.log(`\u2717 ${failures} check(s) failed (see above).`);
