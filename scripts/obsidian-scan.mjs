@@ -1,13 +1,20 @@
 // Runs ALL Obsidian community-directory scanner checks locally:
-// 1. ESLint - with all scanner rules ON (re-enables rules turned OFF in eslint.config.mjs)
+// 1. ESLint - all obsidianmd.configs.recommended rules ON (auto-updates with plugin)
 // 2. CSS lint - checks styles.css for !important (scanner flags it)
 // 3. Dependency audit - checks for known vulnerabilities in production deps
 // 4. Lockfile sync - checks package-lock.json is in sync with package.json
 // 5. Version consistency - package.json, manifest.json, manifest-beta.json, versions.json
 // 6. Installability - npm ci --dry-run verifies the lockfile can install
+// 7. Manifest fields - checks manifest.json has all required Obsidian plugin fields
 //
 // Usage: npm run scan
 // Exit code 0 = clean (all pass). Non-zero = warnings remain.
+//
+// Auto-update: ESLint rules auto-update because eslint.config.mjs uses
+// obsidianmd.configs.recommended (same as the scanner). When eslint-plugin-obsidianmd
+// releases new rules, they're automatically ON here. Non-ESLint checks (CSS, deps,
+// lockfile, manifest) are manually maintained — watch the scanner output for new
+// categories.
 
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
@@ -15,31 +22,9 @@ import { readFileSync, writeFileSync } from "fs";
 let failures = 0;
 
 // == 1. ESLint (TS/JS) ==
-// Rules that eslint.config.mjs turns OFF locally - re-enable to match scanner.
-const REENABLED = [
-  "@typescript-eslint/no-explicit-any",
-  "@typescript-eslint/no-unnecessary-type-assertion",
-  "@typescript-eslint/no-non-null-assertion",
-  "@typescript-eslint/no-unsafe-return",
-  "@typescript-eslint/no-unsafe-assignment",
-  "@typescript-eslint/no-unsafe-call",
-  "@typescript-eslint/no-unsafe-member-access",
-  "@typescript-eslint/no-unsafe-argument",
-  "@typescript-eslint/unbound-method",
-  "@typescript-eslint/no-empty-object-type",
-  "@typescript-eslint/await-thenable",
-  "@typescript-eslint/no-base-to-string",
-  "@typescript-eslint/restrict-template-expressions",
-  "@typescript-eslint/no-duplicate-type-constituents",
-  "@typescript-eslint/no-misused-promises",
-  "@typescript-eslint/no-floating-promises",
-  "no-self-compare",
-  "obsidianmd/prefer-window-timers",
-  "obsidianmd/settings-tab/prefer-setting-definitions",
-  "obsidianmd/settings-tab/no-deprecated-display",
-].map((r) => `--rule "${r}:warn"`);
-
-const eslintCmd = `npx eslint "src/**/*.ts" --max-warnings 0 ${REENABLED.join(" ")}`;
+// All rules ON from eslint.config.mjs (obsidianmd.configs.recommended).
+// --max-warnings 0 makes any warning fatal (matches scanner's view).
+const eslintCmd = `npx eslint "src/**/*.ts" --max-warnings 0`;
 console.log("== ESLint (TS/JS rules) ==");
 try {
   execSync(eslintCmd, { stdio: "inherit" });
@@ -162,10 +147,47 @@ try {
   failures++;
 }
 
+// == 7. Manifest field validation ==
+// Catches accidental field deletion or type change in manifest.json. The
+// Obsidian plugin spec requires all of these fields with the right types.
+console.log("== Manifest field validation ==");
+try {
+  const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
+  const required = {
+    id: "string",
+    name: "string",
+    version: "string",
+    minAppVersion: "string",
+    description: "string",
+    author: "string",
+    isDesktopOnly: "boolean",
+  };
+  const missing = [];
+  const wrongType = [];
+  for (const [field, type] of Object.entries(required)) {
+    if (!(field in manifest)) {
+      missing.push(field);
+    } else if (typeof manifest[field] !== type) {
+      wrongType.push(`${field}: expected ${type}, got ${typeof manifest[field]}`);
+    }
+  }
+  if (missing.length > 0 || wrongType.length > 0) {
+    console.log("  \u2717 Manifest issues:");
+    missing.forEach((f) => console.log(`    missing: ${f}`));
+    wrongType.forEach((w) => console.log(`    type: ${w}`));
+    console.log("");
+    failures++;
+  } else {
+    console.log("  \u2713 Manifest: all 7 required fields present + correct type\n");
+  }
+} catch (e) {
+  console.log("  ! Manifest check skipped: " + (e.message || "error") + "\n");
+}
+
 // == Summary ==
 if (failures === 0) {
   console.log("======================================================");
-  console.log("\u2713 Clean \u2014 0 warnings across all 6 checks.");
+  console.log("\u2713 Clean \u2014 0 warnings across all 7 checks.");
 } else {
   console.log("======================================================");
   console.log(`\u2717 ${failures} check(s) failed (see above).`);
