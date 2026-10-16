@@ -1,0 +1,16 @@
+docs/superpowers/plans/2026-10-16-onedrive-sync-headless-cli.md
+  h_77bd96c5a60e28 1-56
+docs/superpowers/specs/2026-10-16-onedrive-sync-headless-cli-design.md
+  h_77bd96c5a60e28 1-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "a5effa991e2f1f0004a18f1b025a8f75ca036402",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
