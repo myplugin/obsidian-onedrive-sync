@@ -1,0 +1,26 @@
+docs/CONVENTIONS.md
+  h_77bd96c5a60e28 72-94
+docs/aar/elliptic-stub-dual-mechanism.md
+  h_77bd96c5a60e28 1-49
+docs/aar/obsidian-scanner-and-ci-gate.md
+  h_77bd96c5a60e28 1-34
+docs/notes/css-specificity-without-important.md
+  h_77bd96c5a60e28 1-58
+docs/notes/esbuild-bundler.md
+  h_77bd96c5a60e28 32
+docs/notes/github-actions-debugging.md
+  h_77bd96c5a60e28 1-66
+docs/notes/npm-overrides-file-protocol.md
+  h_77bd96c5a60e28 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "df082411bbc52f51085f87a5acd7cefe75964550",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
