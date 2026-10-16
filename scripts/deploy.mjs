@@ -11,7 +11,6 @@
 // Creates the plugin dir if needed. Standalone use: `npm run deploy`.
 // (The esbuild watch/build auto-deploy is a SEPARATE inline plugin in
 // esbuild.config.mjs and is unaffected by changes here.)
-import "dotenv/config";
 import { spawnSync } from "child_process";
 import fs from "fs";
 import os from "os";
@@ -20,6 +19,18 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
+
+// Inline .env loader (replaces the removed `dotenv` dep — mirrors
+// esbuild.config.mjs so `npm run deploy` reads the same .env the build
+// auto-deploy uses). Silently no-ops when .env is absent: VAULT_PATH may
+// come from a real env var instead, or be auto-discovered below.
+const envFile = path.join(projectRoot, ".env");
+if (fs.existsSync(envFile)) {
+  for (const line of fs.readFileSync(envFile, "utf8").split("\n")) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+  }
+}
 const PLUGIN_ID = JSON.parse(
   fs.readFileSync(path.join(projectRoot, "manifest.json"), "utf8")
 ).id;
