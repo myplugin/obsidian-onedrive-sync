@@ -552,7 +552,7 @@ export const setConfigBySuccessfullAuthInplace = async (
   debugInfo("start updating local info of OneDrive token");
   config.accessToken = authRes.access_token;
   config.accessTokenExpiresAtTime =
-    Date.now() + authRes.expires_in - 5 * 60 * 1000;
+    Date.now() + authRes.expires_in * 1000 - 5 * 60 * 1000;
   config.accessTokenExpiresInSeconds = authRes.expires_in;
   config.refreshToken = authRes.refresh_token as string;
 
