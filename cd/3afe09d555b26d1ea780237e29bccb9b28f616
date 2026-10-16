@@ -1,0 +1,22 @@
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package-lock.json
+  h_77bd96c5a60e28 3,9
+package.json
+  h_77bd96c5a60e28 3
+versions.json
+  h_77bd96c5a60e28 32-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "cd3afe09d555b26d1ea780237e29bccb9b28f616",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
