@@ -10,6 +10,9 @@ pnpm-lock.yaml
 main.js
 *.js.map
 
+# headless CLI build output (esbuild.config.cli.mjs)
+dist
+
 # obsidian
 data.json
 
