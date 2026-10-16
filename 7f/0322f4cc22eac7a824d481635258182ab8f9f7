@@ -1,0 +1,32 @@
+docs/releasing/obsidian-scanner-checklist.md
+  h_77bd96c5a60e28 13,17,29,57-62,65,81-82,100-101,105,107,109-111
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package-lock.json
+  h_77bd96c5a60e28 3,9,2448-2452,2918-2922
+package.json
+  h_77bd96c5a60e28 3,94-96
+scripts/obsidian-scan.mjs
+  h_77bd96c5a60e28 1-4,7-8,10-12,14,39-51,53-77,79-113
+stubs/elliptic/index.js
+  h_77bd96c5a60e28 1-39
+stubs/elliptic/package.json
+  h_77bd96c5a60e28 1-6
+styles.css
+  h_77bd96c5a60e28 367-385,395-405,410-419
+versions.json
+  h_77bd96c5a60e28 29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "7f0322f4cc22eac7a824d481635258182ab8f9f7",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
