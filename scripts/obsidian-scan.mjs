@@ -44,9 +44,13 @@ try {
     if (line.includes("!important")) lineNums.push(i + 1);
   });
   if (lineNums.length > 0) {
-    console.log(`  \u2717 CSS: ${lineNums.length} !important declarations in styles.css`);
+    console.log(
+      `  \u2717 CSS: ${lineNums.length} !important declarations in styles.css`
+    );
     console.log(`    Lines: ${lineNums.join(", ")}`);
-    console.log("    Override styles by increasing selector specificity instead.\n");
+    console.log(
+      "    Override styles by increasing selector specificity instead.\n"
+    );
     failures++;
   } else {
     console.log("  \u2713 CSS: 0 !important declarations\n");
@@ -58,17 +62,22 @@ try {
 // == 3. Dependency audit ==
 console.log("== Dependency audit (production deps) ==");
 try {
-  execSync(
-    "npm audit --omit=dev --registry=https://registry.npmjs.org",
-    { stdio: "pipe", encoding: "utf8" }
-  );
+  execSync("npm audit --omit=dev --registry=https://registry.npmjs.org", {
+    stdio: "pipe",
+    encoding: "utf8",
+  });
   console.log("  \u2713 Dependencies: 0 vulnerabilities\n");
 } catch (e) {
   const output = (e.stdout || "") + (e.stderr || "");
   if (output.includes("vulnerabilities") || output.includes("vulnerable")) {
-    const lines = output.split("\n").filter((l) =>
-      l.includes("vulnerabilit") || l.includes("severity") || l.includes("GHSA")
-    );
+    const lines = output
+      .split("\n")
+      .filter(
+        (l) =>
+          l.includes("vulnerabilit") ||
+          l.includes("severity") ||
+          l.includes("GHSA")
+      );
     console.log("  \u2717 Dependencies: vulnerabilities found");
     lines.forEach((l) => console.log("    " + l.trim()));
     console.log("");
@@ -91,14 +100,18 @@ try {
   });
   const lockAfter = readFileSync("package-lock.json", "utf8");
   if (lockBefore !== lockAfter) {
-    console.log("  \u2717 Lockfile: out of date \u2014 run 'npm install' and commit package-lock.json\n");
+    console.log(
+      "  \u2717 Lockfile: out of date \u2014 run 'npm install' and commit package-lock.json\n"
+    );
     writeFileSync("package-lock.json", lockBefore);
     failures++;
   } else {
     console.log("  \u2713 Lockfile: in sync with package.json\n");
   }
 } catch (e) {
-  console.log("  ! Lockfile check skipped (npm install --package-lock-only failed)\n");
+  console.log(
+    "  ! Lockfile check skipped (npm install --package-lock-only failed)\n"
+  );
 }
 
 // == 5. Version consistency ==
@@ -109,19 +122,26 @@ console.log("== Version consistency ==");
 try {
   const pkgVer = JSON.parse(readFileSync("package.json", "utf8")).version;
   const manifestVer = JSON.parse(readFileSync("manifest.json", "utf8")).version;
-  const betaVer = JSON.parse(readFileSync("manifest-beta.json", "utf8")).version;
+  const betaVer = JSON.parse(
+    readFileSync("manifest-beta.json", "utf8")
+  ).version;
   const versions = JSON.parse(readFileSync("versions.json", "utf8"));
   const issues = [];
-  if (pkgVer !== manifestVer) issues.push(`package.json (${pkgVer}) != manifest.json (${manifestVer})`);
-  if (pkgVer !== betaVer) issues.push(`package.json (${pkgVer}) != manifest-beta.json (${betaVer})`);
-  if (!(pkgVer in versions)) issues.push(`versions.json missing entry for ${pkgVer}`);
+  if (pkgVer !== manifestVer)
+    issues.push(`package.json (${pkgVer}) != manifest.json (${manifestVer})`);
+  if (pkgVer !== betaVer)
+    issues.push(`package.json (${pkgVer}) != manifest-beta.json (${betaVer})`);
+  if (!(pkgVer in versions))
+    issues.push(`versions.json missing entry for ${pkgVer}`);
   if (issues.length > 0) {
     console.log("  \u2717 Version mismatch:");
     issues.forEach((i) => console.log("    " + i));
     console.log("");
     failures++;
   } else {
-    console.log(`  \u2713 All version files at ${pkgVer}, versions.json has entry\n`);
+    console.log(
+      `  \u2713 All version files at ${pkgVer}, versions.json has entry\n`
+    );
   }
 } catch (e) {
   console.log("  ! Version check skipped: " + (e.message || "error") + "\n");
@@ -138,10 +158,16 @@ try {
 } catch (e) {
   const output = (e.stdout || "") + (e.stderr || "");
   console.log("  \u2717 Install: npm ci --dry-run failed");
-  const lines = output.split("\n").filter((l) =>
-    l.includes("error") || l.includes("mismatch") || l.includes("ERESOLVE") ||
-    l.includes("ENOENT") || l.includes("lockfile")
-  );
+  const lines = output
+    .split("\n")
+    .filter(
+      (l) =>
+        l.includes("error") ||
+        l.includes("mismatch") ||
+        l.includes("ERESOLVE") ||
+        l.includes("ENOENT") ||
+        l.includes("lockfile")
+    );
   lines.slice(0, 5).forEach((l) => console.log("    " + l.trim()));
   console.log("");
   failures++;
@@ -168,7 +194,9 @@ try {
     if (!(field in manifest)) {
       missing.push(field);
     } else if (typeof manifest[field] !== type) {
-      wrongType.push(`${field}: expected ${type}, got ${typeof manifest[field]}`);
+      wrongType.push(
+        `${field}: expected ${type}, got ${typeof manifest[field]}`
+      );
     }
   }
   if (missing.length > 0 || wrongType.length > 0) {
@@ -178,7 +206,9 @@ try {
     console.log("");
     failures++;
   } else {
-    console.log("  \u2713 Manifest: all 7 required fields present + correct type\n");
+    console.log(
+      "  \u2713 Manifest: all 7 required fields present + correct type\n"
+    );
   }
 } catch (e) {
   console.log("  ! Manifest check skipped: " + (e.message || "error") + "\n");

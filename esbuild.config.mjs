@@ -2,7 +2,9 @@
 // Loads .env from cwd if present; silently no-ops otherwise (the build works
 // without .env — client ID is hardcoded below as the fallback).
 if (fs.existsSync(path.join(process.cwd(), ".env"))) {
-  for (const line of fs.readFileSync(path.join(process.cwd(), ".env"), "utf8").split("\n")) {
+  for (const line of fs
+    .readFileSync(path.join(process.cwd(), ".env"), "utf8")
+    .split("\n")) {
     const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
     if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
   }
@@ -185,7 +187,10 @@ function localforageScriptStubPlugin() {
     name: "localforage-script-stub",
     setup(build) {
       build.onLoad(
-        { filter: /[\\/]node_modules[\\/]localforage[\\/]dist[\\/]localforage\.js$/ },
+        {
+          filter:
+            /[\\/]node_modules[\\/]localforage[\\/]dist[\\/]localforage\.js$/,
+        },
         async (args) => {
           let src = await fs.promises.readFile(args.path, "utf8");
           const before = src;
@@ -211,12 +216,7 @@ function localforageScriptStubPlugin() {
 const vaultPath = process.env.VAULT_PATH;
 const deployPlugins = [];
 if (vaultPath) {
-  const pluginDir = path.join(
-    vaultPath,
-    ".obsidian",
-    "plugins",
-    PLUGIN_ID
-  );
+  const pluginDir = path.join(vaultPath, ".obsidian", "plugins", PLUGIN_ID);
   deployPlugins.push(deployPlugin(pluginDir));
 }
 

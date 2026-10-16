@@ -1,7 +1,10 @@
 // License: Apache-2.0. See LICENSE.
 
 import XRegExp from "xregexp";
-import { isDebugFolderPath, type RemotelySavePluginSettings } from "./baseTypes";
+import {
+  type RemotelySavePluginSettings,
+  isDebugFolderPath,
+} from "./baseTypes";
 import { CONFLICT_LOG_FILENAME } from "./conflictLog";
 import {
   DEFAULT_FILE_NAME_FOR_METADATAONREMOTE,

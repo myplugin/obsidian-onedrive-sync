@@ -60,11 +60,11 @@ export const encryptArrayBuffer = async (
     ["encrypt", "decrypt"]
   );
 
-  const enc = (await window.crypto.subtle.encrypt(
+  const enc = await window.crypto.subtle.encrypt(
     { name: "AES-CBC", iv },
     keyCrypt,
     arrBuf
-  ));
+  );
 
   const prefix = new TextEncoder().encode("Salted__");
 
@@ -95,11 +95,11 @@ export const decryptArrayBuffer = async (
     ["encrypt", "decrypt"]
   );
 
-  const dec = (await window.crypto.subtle.decrypt(
+  const dec = await window.crypto.subtle.decrypt(
     { name: "AES-CBC", iv },
     keyCrypt,
     arrBuf.slice(16)
-  ));
+  );
 
   return dec;
 };

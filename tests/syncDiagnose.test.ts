@@ -3,8 +3,8 @@ import "./_globalsSetup";
 // `_obsidianStub` MUST be imported before ../src/syncDiagnose: it pulls in
 // ../src/baseTypes, which value-imports `obsidian` at module top level.
 import "./_obsidianStub";
-import { diagnoseSyncSkip } from "../src/syncDiagnose";
 import type { RemotelySavePluginSettings } from "../src/baseTypes";
+import { diagnoseSyncSkip } from "../src/syncDiagnose";
 
 const makeSettings = (): RemotelySavePluginSettings =>
   ({

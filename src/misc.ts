@@ -178,8 +178,6 @@ export const isVaildText = (a: string) => {
   );
 };
 
-
-
 /**
  * Convert the headers to a normal object.
  * @param h
@@ -345,7 +343,10 @@ export const checkHasSpecialCharForDir = (x: string) => {
   return /[?/\\]/.test(x);
 };
 
-export const unixTimeToStr = (x: number | undefined | null, hasMs = false): string | undefined => {
+export const unixTimeToStr = (
+  x: number | undefined | null,
+  hasMs = false
+): string | undefined => {
   if (x === undefined || x === null || Number.isNaN(x)) {
     return undefined;
   }
@@ -969,7 +970,12 @@ export const deepEqual = (a: unknown, b: unknown): boolean => {
     // Primitives (or a primitive/object mix) already failed === above; the
     // only remaining equal case is NaN vs NaN. Functions: reference-equal
     // only, same as lodash.
-    return typeof a === "number" && typeof b === "number" && Number.isNaN(a) && Number.isNaN(b);
+    return (
+      typeof a === "number" &&
+      typeof b === "number" &&
+      Number.isNaN(a) &&
+      Number.isNaN(b)
+    );
   }
   if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
     return false;
@@ -1213,4 +1219,6 @@ export const throttle = <Args extends unknown[], R>(
  */
 export const BufferAllocUnsafeFactory = function (this: unknown, size: number) {
   return Buffer.allocUnsafe(size);
-} as unknown as new (size: number) => { [index: number]: number };
+} as unknown as new (
+  size: number
+) => { [index: number]: number };

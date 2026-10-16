@@ -645,7 +645,10 @@ export const fromDriveItemToEntityWithChainFallback = (
   } catch (e) {
     // Match on .code, NOT the message string (the message carries a
     // historical typo on purpose - see pathMissingError).
-    if (!(e instanceof Error) || (e as { code?: string }).code !== "ONEDRIVE_PATH_MISSING") {
+    if (
+      !(e instanceof Error) ||
+      (e as { code?: string }).code !== "ONEDRIVE_PATH_MISSING"
+    ) {
       throw e; // unknown-prefix / no-name errors are NOT path-missing
     }
     const ownId = x.id;

@@ -154,7 +154,9 @@ describe("_retryOnTransientError does not retry a 412 precondition", () => {
     await assert.rejects(
       fs._retryOnTransientError(async () => {
         calls += 1;
-        throw remoteEtagMismatchError("Lab/.obsidian/plugins/copilot/data.json");
+        throw remoteEtagMismatchError(
+          "Lab/.obsidian/plugins/copilot/data.json"
+        );
       }),
       /Remote etag mismatch/
     );

@@ -89,7 +89,9 @@ export abstract class FakeFs {
     return results;
   }
   abstract rm(key: string): Promise<void>;
-  abstract checkConnect(callbackFunc?: (err: unknown) => void): Promise<boolean>;
+  abstract checkConnect(
+    callbackFunc?: (err: unknown) => void
+  ): Promise<boolean>;
   async checkConnectCommonOps(callbackFunc?: (err: unknown) => void) {
     const folderName = `rs-test-folder-${nanoid()}/`;
     const filename = `${folderName}rs-test-file-${nanoid()}`;

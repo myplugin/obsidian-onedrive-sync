@@ -1,8 +1,4 @@
-import {
-  isDebugFolderPath,
-  type Entity,
-  type RenameOpts,
-} from "./baseTypes";
+import { type Entity, type RenameOpts, isDebugFolderPath } from "./baseTypes";
 import { FakeFs } from "./fsAll";
 
 import { TFile, TFolder, type Vault } from "obsidian";

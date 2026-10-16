@@ -332,8 +332,7 @@ export const LEGACY_DEBUG_FOLDER = "_debug_remotely_save/";
  * syncDiagnose so both use the exact same rule. */
 export const isDebugFolderPath = (key: string): boolean =>
   key.startsWith(DEFAULT_DEBUG_FOLDER) || key.startsWith(LEGACY_DEBUG_FOLDER);
-export const DEFAULT_SYNC_DECISIONS_FILE_PREFIX =
-  "sync_decisions_exported_on_";
+export const DEFAULT_SYNC_DECISIONS_FILE_PREFIX = "sync_decisions_exported_on_";
 export const DEFAULT_LOG_HISTORY_FILE_PREFIX = "log_hist_exported_on_";
 export const DEFAULT_PROFILER_RESULT_FILE_PREFIX =
   "profiler_results_exported_on_";
