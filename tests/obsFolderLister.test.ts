@@ -225,3 +225,123 @@ describe("obsFolderLister: five-toggle selective listing", () => {
     assert.deepStrictEqual(keys, [`${CF}/app.json`]);
   });
 });
+
+// =============================================================================
+// TOCTOU race: a path discovered as a child during the BFS that has vanished
+// by the time statFix runs must be SKIPPED (not abort the whole walk). Mirrors
+// LOCAL_NOT_FOUND on the dispatch side. statFix (misc.ts) turns a null/
+// undefined adapter.stat into LOCAL_NOT_FOUND.
+// =============================================================================
+
+describe("obsFolderLister: TOCTOU race skips vanished paths", () => {
+  const MTIME = 1700000000000;
+
+  // Mock where list() can diverge from stat(): lets us plant "ghost"
+  // children that are listed as present but return null from stat (gone).
+  function ghostVault(opts: {
+    statFiles: string[];
+    statFolders: string[];
+    listedFiles: Record<string, string[]>;
+    listedFolders: Record<string, string[]>;
+  }): any {
+    const fileSet = new Set(opts.statFiles);
+    const folderSet = new Set(opts.statFolders);
+    return {
+      adapter: {
+        stat: async (path: string) => {
+          if (folderSet.has(path)) {
+            return { type: "folder", ctime: MTIME, mtime: MTIME, size: 0 };
+          }
+          if (fileSet.has(path)) {
+            return { type: "file", ctime: MTIME, mtime: MTIME, size: 100 };
+          }
+          return null; // gone -> statFix throws LOCAL_NOT_FOUND
+        },
+        list: async (path: string) => ({
+          files: opts.listedFiles[path] ?? [],
+          folders: opts.listedFolders[path] ?? [],
+        }),
+      },
+    };
+  }
+
+  async function keysOf(vault: any, toggles: Toggles): Promise<string[]> {
+    const entities = await listFilesInObsFolder(
+      CF,
+      vault,
+      PID,
+      toggles.syncObsidianConfig ?? false,
+      toggles.syncAppearance ?? false,
+      toggles.syncBookmarks ?? false,
+      toggles.syncThirdPartyPlugins ?? false,
+      toggles.syncSelfPlugin ?? false
+    );
+    return entities.map((e: any) => e.key).sort();
+  }
+
+  it("skips a file that vanished between list-discovery and stat", async () => {
+    // list(.obsidian) reports both app.json AND SKILL.md as children, but
+    // SKILL.md is gone by stat time (a transient file the walk raced with).
+    const vault = ghostVault({
+      statFiles: [`${CF}/app.json`], // SKILL.md intentionally absent -> gone
+      statFolders: [CF],
+      listedFiles: { [CF]: [`${CF}/app.json`, `${CF}/SKILL.md`] },
+      listedFolders: {},
+    });
+
+    const keys = await keysOf(vault, { syncObsidianConfig: true });
+
+    // Folder itself + surviving file listed; vanished SKILL.md omitted; no throw.
+    assert.deepStrictEqual(keys, [`${CF}/`, `${CF}/app.json`]);
+    assert.ok(!keys.includes(`${CF}/SKILL.md`), "vanished file must be skipped");
+  });
+
+  it("skips multiple vanished files but keeps the rest", async () => {
+    const vault = ghostVault({
+      statFiles: [`${CF}/keep.md`],
+      statFolders: [CF],
+      listedFiles: {
+        [CF]: [`${CF}/keep.md`, `${CF}/ghost1.md`, `${CF}/ghost2.md`],
+      },
+      listedFolders: {},
+    });
+    const keys = await keysOf(vault, { syncObsidianConfig: true });
+    assert.deepStrictEqual(keys, [`${CF}/`, `${CF}/keep.md`]);
+  });
+
+  it("still propagates real errors (mtime 0) — does not over-swallow", async () => {
+    // A file that exists but has mtime 0 is a genuine data error, NOT a race.
+    // It must still surface (re-thrown), proving the catch is scoped to
+    // LOCAL_NOT_FOUND only.
+    const vault = {
+      adapter: {
+        stat: async (path: string) => {
+          if (path === CF) {
+            return { type: "folder", ctime: MTIME, mtime: MTIME, size: 0 };
+          }
+          if (path === `${CF}/bad.json`) {
+            return { type: "file", ctime: 0, mtime: 0, size: 1 };
+          }
+          return null;
+        },
+        list: async (path: string) =>
+          path === CF
+            ? { files: [`${CF}/bad.json`], folders: [] }
+            : { files: [], folders: [] },
+      },
+    };
+    await assert.rejects(
+      listFilesInObsFolder(
+        CF,
+        vault as any,
+        PID,
+        true,
+        false,
+        false,
+        false,
+        false
+      ),
+      /last modified time 0/
+    );
+  });
+});

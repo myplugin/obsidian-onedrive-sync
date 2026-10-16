@@ -135,39 +135,61 @@ export const listFilesInObsFolder = async (
     const itemsToFetchChunks = chunkArray(itemsToFetch, CHUNK_SIZE);
     for (const singleChunk of itemsToFetchChunks) {
       const r = singleChunk.map(async (x) => {
-        const statRes = await statFix(vault, x);
+        try {
+          const statRes = await statFix(vault, x);
 
-        if (statRes === undefined || statRes === null) {
-          throw Error("something goes wrong while listing hidden folder");
-        }
-        const isFolder = statRes.type === "folder";
-        let children: ListedFiles | undefined = undefined;
-        if (isFolder) {
-          children = await vault.adapter.list(x);
-        }
+          if (statRes === undefined || statRes === null) {
+            throw Error("something goes wrong while listing hidden folder");
+          }
+          const isFolder = statRes.type === "folder";
+          let children: ListedFiles | undefined = undefined;
+          if (isFolder) {
+            children = await vault.adapter.list(x);
+          }
 
-        if (
-          !isFolder &&
-          (statRes.mtime === undefined ||
-            statRes.mtime === null ||
-            statRes.mtime === 0)
-        ) {
-          throw Error(
-            `File in Obsidian ${configDir} has last modified time 0: ${x}, don't know how to deal with it.`
-          );
-        }
+          if (
+            !isFolder &&
+            (statRes.mtime === undefined ||
+              statRes.mtime === null ||
+              statRes.mtime === 0)
+          ) {
+            throw Error(
+              `File in Obsidian ${configDir} has last modified time 0: ${x}, don't know how to deal with it.`
+            );
+          }
 
-        return {
-          itself: {
-            key: isFolder ? `${x}/` : x, // local always unencrypted
-            keyRaw: isFolder ? `${x}/` : x,
-            mtimeCli: statRes.mtime,
-            mtimeSvr: statRes.mtime,
-            size: statRes.size, // local always unencrypted
-            sizeRaw: statRes.size,
-          },
-          children: children,
-        };
+          return [
+            {
+              itself: {
+                key: isFolder ? `${x}/` : x, // local always unencrypted
+                keyRaw: isFolder ? `${x}/` : x,
+                mtimeCli: statRes.mtime,
+                mtimeSvr: statRes.mtime,
+                size: statRes.size, // local always unencrypted
+                sizeRaw: statRes.size,
+              },
+              children: children,
+            },
+          ];
+        } catch (e) {
+          // A path discovered as a child earlier in this BFS that vanished
+          // by the time we stat'd/list'd it is a benign TOCTOU race (e.g. a
+          // plugin being uninstalled deletes plugins/<id>/... mid-scan). Skip
+          // it — it won't be in the walk result, so the next sync re-derives
+          // the correct state. Mirrors LOCAL_NOT_FOUND on the dispatch side.
+          // statFix failure already carries LOCAL_NOT_FOUND; for other
+          // failures (e.g. list() on a folder gone since stat) re-stat to
+          // classify: gone → skip, still there → rethrow the real error.
+          if ((e as { code?: string })?.code === "LOCAL_NOT_FOUND") {
+            return [];
+          }
+          try {
+            await statFix(vault, x);
+          } catch {
+            return []; // gone since the op failed — race, skip
+          }
+          throw e; // still exists — real error, propagate
+        }
       });
       const r2 = (await Promise.all(r)).flat();
 
