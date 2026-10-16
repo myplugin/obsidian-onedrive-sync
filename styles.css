@@ -756,9 +756,10 @@
 }
 
 /* Obsidian mobile stretches bare <button> to full width in some panes;
-   pin the header/row buttons to their content size (same specificity-pin
-   treatment as the regex chips above). */
+   pin the header/row/column-head buttons to their content size (same
+   specificity-pin treatment as the regex chips above). */
 .rs-conflict-item-header button,
+.rs-conflict-diff-head button,
 .rs-conflict-dup-row button {
   flex: 0 0 auto;
   width: auto;
@@ -813,7 +814,11 @@
 }
 
 .rs-conflict-diff-head {
-  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 6px 3px 8px;
   font-size: var(--font-ui-smaller);
   font-weight: 600;
   color: var(--text-muted);
@@ -876,6 +881,45 @@
 .rs-conflict-dup-path:hover {
   color: var(--text-accent);
   text-decoration: underline;
+}
+
+/* "apply one side" mini buttons: sit inline next to the diff column titles
+   and the dup rows they act on — quiet by default (transparent fill, tinted
+   text/border in the side's color: local = accent, remote = warning, same
+   language as the diff column top borders), visible fill only on hover so
+   they never shout over the content. */
+.rs-conflict-apply-mini {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  padding: 0 7px;
+  font-size: var(--font-ui-smaller);
+  font-weight: 500;
+  line-height: 1.7;
+  background: transparent;
+  border-radius: var(--radius-s, 5px);
+  white-space: nowrap;
+}
+
+.rs-conflict-apply-local {
+  color: var(--text-accent);
+  border-color: color-mix(in srgb, var(--text-accent) 40%, transparent);
+}
+
+.rs-conflict-apply-local:hover {
+  background: color-mix(in srgb, var(--text-accent) 12%, transparent);
+}
+
+.rs-conflict-apply-remote {
+  color: var(--text-warning);
+  border-color: color-mix(in srgb, var(--text-warning) 45%, transparent);
+}
+
+.rs-conflict-apply-remote:hover {
+  background: color-mix(in srgb, var(--text-warning) 14%, transparent);
 }
 
 .rs-conflict-empty {

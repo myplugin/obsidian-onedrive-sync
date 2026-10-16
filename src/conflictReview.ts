@@ -216,6 +216,71 @@ export function parseConflictMarkerBlocks(text: string): ConflictMarkerBlock[] {
   return blocks;
 }
 
+/**
+ * Replace every complete `<<<<<<<` … `=======` … `>>>>>>>` block with the
+ * chosen side's lines (markers and the other side dropped); content outside
+ * blocks is kept verbatim. Returns undefined when no complete block exists
+ * (e.g. only stray markers from a partial manual edit, or an unterminated
+ * trailing block) — callers must then leave the file unchanged.
+ */
+export function applyBlockToText(
+  text: string,
+  blockIndex: number,
+  side: "local" | "remote"
+): string | undefined {
+  const out: string[] = [];
+  let state: "outside" | "local" | "remote" = "outside";
+  let localLines: string[] = [];
+  let remoteLines: string[] = [];
+  let cur = 0;
+  let applied = false;
+  for (const line of text.split("\n")) {
+    const t = line.trim();
+    if (state === "outside") {
+      if (t === CONFLICT_START) {
+        state = "local";
+        localLines = [];
+        remoteLines = [];
+      } else {
+        out.push(line);
+      }
+    } else if (state === "local") {
+      if (t === CONFLICT_BASE) {
+        state = "remote";
+      } else if (t === CONFLICT_START) {
+        // malformed nesting: restart the block (mirrors the parser above)
+        localLines = [];
+      } else {
+        localLines.push(line);
+      }
+    } else {
+      if (t === CONFLICT_END) {
+        if (cur === blockIndex) {
+          // resolve ONLY this block: drop the markers and keep the chosen side
+          out.push(...(side === "local" ? localLines : remoteLines));
+          applied = true;
+        } else {
+          // leave every other block untouched (markers + both sides intact),
+          // so the user can resolve conflicts one block at a time
+          out.push(CONFLICT_START);
+          out.push(...localLines);
+          out.push(CONFLICT_BASE);
+          out.push(...remoteLines);
+          out.push(CONFLICT_END);
+        }
+        cur++;
+        state = "outside";
+      } else {
+        remoteLines.push(line);
+      }
+    }
+  }
+  if (!applied || state !== "outside") {
+    return undefined;
+  }
+  return out.join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Unresolved-state collection
 // ---------------------------------------------------------------------------
@@ -395,16 +460,6 @@ export class ConflictReviewView extends ItemView {
     card.addClass(`rs-conflict-item-anim-${Math.min(idx + 1, 8)}`);
 
     const header = card.createDiv({ cls: "rs-conflict-item-header" });
-    header.createSpan({
-      cls:
-        item.kind === "merged"
-          ? "rs-conflict-badge rs-conflict-badge-merged"
-          : "rs-conflict-badge rs-conflict-badge-dup",
-      text:
-        item.kind === "merged"
-          ? t("conflict_view_badge_merged")
-          : t("conflict_view_badge_duplicated"),
-    });
     const pathEl = header.createSpan({
       cls: "rs-conflict-path",
       text: item.key,
@@ -413,12 +468,6 @@ export class ConflictReviewView extends ItemView {
     pathEl.addEventListener("click", () => {
       void this.openPath(item.key);
     });
-    new ButtonComponent(header)
-      .setClass("mod-small")
-      .setButtonText(t("conflict_view_open_file"))
-      .onClick(() => {
-        void this.openPath(item.key);
-      });
 
     const body = card.createDiv({ cls: "rs-conflict-body" });
     if (item.kind === "merged") {
@@ -459,10 +508,24 @@ export class ConflictReviewView extends ItemView {
       const colLocal = grid.createDiv({
         cls: "rs-conflict-diff-col rs-conflict-diff-col-local",
       });
-      colLocal.createDiv({
+      const headLocal = colLocal.createDiv({
         cls: "rs-conflict-diff-head",
-        text: t("conflict_view_side_local"),
       });
+      headLocal.createSpan({ text: t("conflict_view_side_local") });
+      // compact per-column apply button: file-level action (rewrites every
+      // block in the file with this side), placed inline with the column
+      // title so the choice sits right next to the content it keeps
+      const applyBtnLocal = new ButtonComponent(headLocal)
+        .setClass("mod-small")
+        .setIcon("check")
+        .setTooltip(t("conflict_view_apply_local"))
+        .onClick(() => {
+          void this.applyBlockSide(item, bi, "local");
+        });
+      applyBtnLocal.buttonEl.classList.add(
+        "rs-conflict-apply-mini",
+        "rs-conflict-apply-local"
+      );
       const preLocal = colLocal.createEl("pre", {
         cls: "rs-conflict-diff-pre",
       });
@@ -470,10 +533,21 @@ export class ConflictReviewView extends ItemView {
       const colRemote = grid.createDiv({
         cls: "rs-conflict-diff-col rs-conflict-diff-col-remote",
       });
-      colRemote.createDiv({
+      const headRemote = colRemote.createDiv({
         cls: "rs-conflict-diff-head",
-        text: t("conflict_view_side_remote"),
       });
+      headRemote.createSpan({ text: t("conflict_view_side_remote") });
+      const applyBtnRemote = new ButtonComponent(headRemote)
+        .setClass("mod-small")
+        .setIcon("check")
+        .setTooltip(t("conflict_view_apply_remote"))
+        .onClick(() => {
+          void this.applyBlockSide(item, bi, "remote");
+        });
+      applyBtnRemote.buttonEl.classList.add(
+        "rs-conflict-apply-mini",
+        "rs-conflict-apply-remote"
+      );
       const preRemote = colRemote.createEl("pre", {
         cls: "rs-conflict-diff-pre",
       });
@@ -533,6 +607,19 @@ export class ConflictReviewView extends ItemView {
       .onClick(() => {
         void this.openPath(item.dupPath);
       });
+    // compact per-row apply button: keeps this row's version (see
+    // applyDupSide) — inline with the row it acts on
+    const applyDupLocalBtn = new ButtonComponent(rowLocal)
+      .setClass("mod-small")
+      .setIcon("check")
+      .setTooltip(t("conflict_view_apply_local"))
+      .onClick(() => {
+        void this.applyDupSide(item, "local");
+      });
+    applyDupLocalBtn.buttonEl.classList.add(
+      "rs-conflict-apply-mini",
+      "rs-conflict-apply-local"
+    );
 
     // remote version -> the original name
     const rowRemote = rows.createDiv({ cls: "rs-conflict-dup-row" });
@@ -553,6 +640,126 @@ export class ConflictReviewView extends ItemView {
       .onClick(() => {
         void this.openPath(item.key);
       });
+    const applyDupRemoteBtn = new ButtonComponent(rowRemote)
+      .setClass("mod-small")
+      .setIcon("check")
+      .setTooltip(t("conflict_view_apply_remote"))
+      .onClick(() => {
+        void this.applyDupSide(item, "remote");
+      });
+    applyDupRemoteBtn.buttonEl.classList.add(
+      "rs-conflict-apply-mini",
+      "rs-conflict-apply-remote"
+    );
+  }
+
+  /**
+   * Merged card: resolve a SINGLE conflict block (blockIndex) by keeping
+   * only the chosen side and dropping its markers; every other block is
+   * left untouched so the user can resolve conflicts one at a time. Goes
+   * through vault.read/modify when the file is known to the vault (picks up
+   * saved editor content, updates open editors and the vault cache), with
+   * adapter.read/write as the fallback.
+   */
+  private async applyBlockSide(
+    item: Extract<UnresolvedConflict, { kind: "merged" }>,
+    blockIndex: number,
+    side: "local" | "remote"
+  ): Promise<void> {
+    const t = this.t;
+    try {
+      const f = this.app.vault.getAbstractFileByPath(item.key);
+      let applied: string | undefined = undefined;
+      if (f instanceof TFile) {
+        applied = applyBlockToText(
+          await this.app.vault.read(f),
+          blockIndex,
+          side
+        );
+        if (applied === undefined) {
+          new Notice(t("conflict_view_apply_failed_unparsed"));
+          return;
+        }
+        await this.app.vault.modify(f, applied);
+      } else {
+        const adapter = this.app.vault.adapter;
+        if (!(await adapter.exists(item.key))) {
+          new Notice(t("conflict_view_file_missing", { path: item.key }));
+          return;
+        }
+        applied = applyBlockToText(
+          await adapter.read(item.key),
+          blockIndex,
+          side
+        );
+        if (applied === undefined) {
+          new Notice(t("conflict_view_apply_failed_unparsed"));
+          return;
+        }
+        await adapter.write(item.key, applied);
+      }
+      new Notice(
+        side === "local"
+          ? t("conflict_view_applied_local")
+          : t("conflict_view_applied_remote")
+      );
+      await this.refresh();
+    } catch (e) {
+      console.error("conflict review: apply side failed:", e);
+      new Notice(t("conflict_view_apply_failed"));
+    }
+  }
+
+  /**
+   * Duplicated card: "local" overwrites the original name with the .dup
+   * copy's bytes (binary-safe, mirroring fsLocal.writeFile's adapter
+   * writeBinary) then trashes the copy; "remote" keeps the original name
+   * as-is and just trashes the copy. Both end with the .dup gone, so the
+   * item resolves on refresh.
+   */
+  private async applyDupSide(
+    item: Extract<UnresolvedConflict, { kind: "duplicated" }>,
+    side: "local" | "remote"
+  ): Promise<void> {
+    const t = this.t;
+    const adapter = this.app.vault.adapter;
+    try {
+      if (!(await adapter.exists(item.dupPath))) {
+        new Notice(t("conflict_view_file_missing", { path: item.dupPath }));
+        await this.refresh();
+        return;
+      }
+      if (side === "remote") {
+        // refusing to trash the copy when the original is gone would
+        // otherwise silently lose BOTH versions
+        if (!(await adapter.exists(item.key))) {
+          new Notice(t("conflict_view_apply_failed_original_missing"));
+          return;
+        }
+        await this.trashPath(item.dupPath);
+        new Notice(t("conflict_view_dup_applied_remote"));
+      } else {
+        const data = await adapter.readBinary(item.dupPath);
+        await adapter.writeBinary(item.key, data);
+        await this.trashPath(item.dupPath);
+        new Notice(t("conflict_view_dup_applied_local"));
+      }
+      await this.refresh();
+    } catch (e) {
+      console.error("conflict review: apply side failed:", e);
+      new Notice(t("conflict_view_apply_failed"));
+    }
+  }
+
+  /** Delete to Obsidian's local trash (recoverable, same as fsLocal.rm's
+   *  "obsidian" mode); fall back to a hard remove if trashing fails. */
+  private async trashPath(path: string): Promise<void> {
+    const adapter = this.app.vault.adapter;
+    try {
+      await adapter.trashLocal(path);
+    } catch {
+      await adapter.remove(path);
+    }
   }
 
   private async openPath(path: string): Promise<void> {

@@ -2373,12 +2373,22 @@ export const doActualSync = async (
   profileID: string,
   concurrency: number,
   protectModifyPercentage: number,
-  getProtectModifyPercentageErrorStrFunc: (percentage: number, modified: number, total: number) => string,
+  getProtectModifyPercentageErrorStrFunc: (
+    percentage: number,
+    modified: number,
+    total: number
+  ) => string,
   db: InternalDBs,
   profiler: Profiler | undefined,
   conflictAction: ConflictActionType,
   triggerSource: SyncTriggerSourceType,
-  callbackSyncProcess?: (s: SyncTriggerSourceType, counter: number, total: number, key: string, decision: string | undefined) => Promise<void> | void,
+  callbackSyncProcess?: (
+    s: SyncTriggerSourceType,
+    counter: number,
+    total: number,
+    key: string,
+    decision: string | undefined
+  ) => Promise<void> | void,
   remoteDeltaCount?: number,
   conflictsEncountered?: ConflictLogEntry[],
   isFileDirtyOpen?: (path: string) => boolean,
@@ -2753,7 +2763,13 @@ export async function syncer(
     step: number,
     everythingOk: boolean
   ) => Promise<void> | void,
-  callbackSyncProcess?: (s: SyncTriggerSourceType, counter: number, total: number, key: string, decision: string | undefined) => Promise<void> | void,
+  callbackSyncProcess?: (
+    s: SyncTriggerSourceType,
+    counter: number,
+    total: number,
+    key: string,
+    decision: string | undefined
+  ) => Promise<void> | void,
   // Dirty-buffer protection: injected by main.ts, returns true when the
   // (plain-text, vault-relative) path is currently open in an editor with
   // unsaved changes. Optional — when not supplied, the guard is a no-op

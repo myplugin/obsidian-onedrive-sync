@@ -39,6 +39,7 @@ import { appendConflictLog, formatConflictLogLine } from "./conflictLog";
 import {
   ConflictReviewView,
   VIEW_TYPE_CONFLICT_REVIEW,
+  collectUnresolvedConflicts,
   revealConflictLeaf,
 } from "./conflictReview";
 import { exportVaultSyncPlansToFiles } from "./debugMode";
@@ -1224,6 +1225,26 @@ export default class RemotelySavePlugin extends Plugin {
       callback: () => {
         void revealConflictLeaf(this.app).catch(console.error);
       },
+    });
+
+    // On startup, re-surface any conflicts left unresolved from a previous
+    // run. The sidebar auto-reveals after a sync that produced conflicts,
+    // but if Obsidian restarts with lingering conflicts, surface them again
+    // so they aren't forgotten. Wait for layout-ready so the workspace can
+    // host the leaf.
+    this.app.workspace.onLayoutReady(() => {
+      void (async () => {
+        try {
+          const unresolved = await collectUnresolvedConflicts(
+            this.app.vault.adapter
+          );
+          if (unresolved.length > 0) {
+            await revealConflictLeaf(this.app);
+          }
+        } catch (e) {
+          console.error("conflict review: startup check failed:", e);
+        }
+      })();
     });
 
     this.addCommand({
