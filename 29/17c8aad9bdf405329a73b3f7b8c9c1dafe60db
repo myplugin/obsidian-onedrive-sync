@@ -1,0 +1,16 @@
+src/obsFolderLister.ts
+  h_77bd96c5a60e28 138-139,141-148,150-159,161-192
+tests/obsFolderLister.test.ts
+  h_77bd96c5a60e28 228-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "2917c8aad9bdf405329a73b3f7b8c9c1dafe60db",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
