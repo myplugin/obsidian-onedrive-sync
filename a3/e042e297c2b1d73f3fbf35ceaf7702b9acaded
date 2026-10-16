@@ -1,0 +1,14 @@
+scripts/deploy.mjs
+  h_77bd96c5a60e28 22-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "a3e042e297c2b1d73f3fbf35ceaf7702b9acaded",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
