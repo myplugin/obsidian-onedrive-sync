@@ -97,8 +97,9 @@ import {
 } from "./syncSettings";
 
 /** An Error carrying optional machine-readable `code`/`key` fields (set by
- *  fsOnedrive's error builders, preserved by sync.ts's makeCatch). Used in
- *  errNotifyFunc to detect REMOTE_NOT_FOUND without resorting to `any`. */
+ *  fsOnedrive's error builders and misc.ts's statFix [LOCAL_NOT_FOUND],
+ *  preserved by sync.ts's makeCatch). Used in errNotifyFunc to detect
+ *  REMOTE_NOT_FOUND / LOCAL_NOT_FOUND without resorting to `any`. */
 type CodedError = Error & { code?: string; key?: string };
 
 /** Vault.off declares its callback param as `(...data: unknown[]) =>
@@ -494,12 +495,21 @@ export default class RemotelySavePlugin extends Plugin {
       };
 
       if (error instanceof AggregateError) {
-        // Partition into 404 "file deleted since walk" vs other errors.
+        // Partition into "file deleted since walk" (skippable TOCTOU races)
+        // vs other errors. REMOTE_NOT_FOUND = deleted on OneDrive mid-sync;
+        // LOCAL_NOT_FOUND = deleted from the vault mid-sync (e.g. a transient
+        // file the walk saw but was gone by the time dispatch ran stat). Both
+        // are safe to skip — the next sync re-walks and re-decides; no data
+        // loss, because the prev-sync record is left untouched and a fresh
+        // walk re-derives the correct plan (delete-remote if still gone).
         const notFound: CodedError[] = [];
+        const localNotFound: CodedError[] = [];
         const others: Error[] = [];
         for (const e of error.errors as readonly CodedError[]) {
           if (e?.code === "REMOTE_NOT_FOUND") {
             notFound.push(e);
+          } else if (e?.code === "LOCAL_NOT_FOUND") {
+            localNotFound.push(e);
           } else {
             others.push(e);
           }
@@ -512,7 +522,7 @@ export default class RemotelySavePlugin extends Plugin {
               ? `${keys.slice(0, 5).join(", ")}, … (+${keys.length - 5} more)`
               : keys.join(", ");
           const msg =
-            others.length === 0
+            others.length === 0 && localNotFound.length === 0
               ? `${notFound.length} file(s) were deleted on OneDrive since the sync started — skipped. Next sync will re-scan and catch up.\n${shown}`
               : `${notFound.length} file(s) deleted on OneDrive since sync started (skipped): ${shown}`;
           // Always show errors, even for auto-sync — getNotice suppresses
@@ -521,7 +531,25 @@ export default class RemotelySavePlugin extends Plugin {
           // Invalidate stale delta state for the next sync
           await selfHealStaleDelta();
         }
-        // Show remaining (non-404) errors individually
+        // Aggregated notice for files deleted from the vault mid-sync. Unlike
+        // the remote case there is no stale incremental-delta state to clear
+        // (fsLocal.walk is always a fresh full enumeration), so no self-heal
+        // is needed — the next sync's walk simply omits the file and the plan
+        // becomes local_is_deleted_thus_also_delete_remote.
+        if (localNotFound.length > 0) {
+          const keys = localNotFound
+            .map((e) => e.key as string)
+            .filter(Boolean);
+          const shown =
+            keys.length > 5
+              ? `${keys.slice(0, 5).join(", ")}, … (+${keys.length - 5} more)`
+              : keys.join(", ");
+          new Notice(
+            `${localNotFound.length} file(s) were deleted from the vault since the sync started — skipped. Next sync will catch up.\n${shown}`,
+            10 * 1000
+          );
+        }
+        // Show remaining (non-TOCTOU) errors individually
         for (const e of others) {
           new Notice(e.message, 10 * 1000);
         }

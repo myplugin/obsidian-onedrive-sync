@@ -5,6 +5,7 @@
 import { strict as assert } from "assert";
 import type { Entity } from "../src/baseTypes";
 import { clearDupFiles, getDupFiles } from "../src/clearDupFiles";
+import { localNotFoundError, statFix } from "../src/misc";
 
 // =============================================================================
 // C1: PQueue error handlers must preserve .code and .key properties
@@ -286,5 +287,162 @@ describe("clearDupFiles removes the reported dup files", () => {
       clearDupFiles(["x.dup.md"], mockFs as any),
       /rm failed/
     );
+  });
+});
+
+// =============================================================================
+// LOCAL_NOT_FOUND: when a local vault file is deleted between the sync walk
+// and dispatch (fsLocal.stat -> statFix throws), the error must carry
+// code=LOCAL_NOT_FOUND + key so sync.ts's makeCatch preserves them and
+// main.ts can skip the operation gracefully — mirroring REMOTE_NOT_FOUND.
+// =============================================================================
+
+describe("LOCAL_NOT_FOUND: error code preservation + partitioning", () => {
+  // --- primitive: localNotFoundError builder (mirrors fsOnedrive's
+  // remoteNotFoundError / remoteEtagMismatchError) ---
+  it("localNotFoundError sets code=LOCAL_NOT_FOUND + key", () => {
+    const err = localNotFoundError("a/b.md");
+    assert.strictEqual((err as any).code, "LOCAL_NOT_FOUND");
+    assert.strictEqual((err as any).key, "a/b.md");
+    assert.ok(/a\/b\.md/.test(err.message));
+  });
+
+  // --- primitive: statFix surfaces LOCAL_NOT_FOUND when the file is gone.
+  // readFile/rm/rename all delegate to statFix for this classification, so
+  // this covers the local-side TOCTOU race for all four call sites. ---
+  it("statFix throws LOCAL_NOT_FOUND when adapter.stat returns null", async () => {
+    const mockVault = {
+      adapter: { stat: async () => null },
+    } as any;
+    await assert.rejects(
+      statFix(mockVault, "a/SKILL.md"),
+      (e: any) => e.code === "LOCAL_NOT_FOUND" && e.key === "a/SKILL.md"
+    );
+  });
+
+  it("statFix throws LOCAL_NOT_FOUND when adapter.stat returns undefined", async () => {
+    const mockVault = {
+      adapter: { stat: async () => undefined },
+    } as any;
+    await assert.rejects(
+      statFix(mockVault, "x.md"),
+      (e: any) => e.code === "LOCAL_NOT_FOUND"
+    );
+  });
+
+  it("statFix returns the (patched) stat when the file exists", async () => {
+    const mockVault = {
+      adapter: {
+        stat: async () => ({ type: "file", mtime: 1, ctime: 1, size: 1 }),
+      },
+    } as any;
+    const s = await statFix(mockVault, "exists.md");
+    assert.strictEqual(s.size, 1);
+  });
+
+  // Same wrap logic as C1 (sync.ts doActualSync makeCatch) — generic over
+  // any .code, so LOCAL_NOT_FOUND must survive identically.
+  function wrapErrorWithCode(e: any): Error {
+    const msg = `${(e as any)?.key ?? ""}: ${e.message}`;
+    const wrapped = new Error(msg);
+    (wrapped as any).code = (e as any)?.code;
+    (wrapped as any).key = (e as any)?.key;
+    return wrapped;
+  }
+
+  it("should preserve .code='LOCAL_NOT_FOUND' and .key through makeCatch", () => {
+    // Mirrors statFix's tagged error (misc.ts: localNotFoundError).
+    const original = new Error(
+      "Local file not found (deleted since sync started): _attachments/.../SKILL.md"
+    );
+    (original as any).code = "LOCAL_NOT_FOUND";
+    (original as any).key =
+      "_attachments/Obsidian-Plugins/Copilot/skills/ob-format/SKILL.md";
+
+    const wrapped = wrapErrorWithCode(original);
+
+    assert.strictEqual((wrapped as any).code, "LOCAL_NOT_FOUND");
+    assert.strictEqual(
+      (wrapped as any).key,
+      "_attachments/Obsidian-Plugins/Copilot/skills/ob-format/SKILL.md"
+    );
+  });
+
+  // Replicates main.ts errNotifyFunc's AggregateError partitioning, asserting
+  // LOCAL_NOT_FOUND is separated from REMOTE_NOT_FOUND and from real errors,
+  // and that ONLY REMOTE_NOT_FOUND triggers the (mocked) self-heal.
+  function partitionAndHeal(errors: Array<Error & { code?: string }>) {
+    const remoteNotFound: Array<Error & { code?: string }> = [];
+    const localNotFound: Array<Error & { code?: string }> = [];
+    const others: Error[] = [];
+    for (const e of errors) {
+      if ((e as any)?.code === "REMOTE_NOT_FOUND") remoteNotFound.push(e);
+      else if ((e as any)?.code === "LOCAL_NOT_FOUND") localNotFound.push(e);
+      else others.push(e);
+    }
+    // main.ts calls selfHealStaleDelta() ONLY inside the remote branch
+    // (if notFound.length > 0). The local branch never self-heals — there
+    // is no stale incremental-delta state for the local side (fsLocal.walk
+    // is always a fresh full enumeration). This flag must therefore depend
+    // solely on the REMOTE bucket; a regression that ties it to the local
+    // bucket would fail the tests below.
+    const selfHealed = remoteNotFound.length > 0;
+    return {
+      remoteNotFound,
+      localNotFound,
+      others,
+      selfHealed,
+    };
+  }
+
+  it("routes LOCAL_NOT_FOUND to its own bucket, not 'others'", () => {
+    const ghost1 = Object.assign(new Error("gone1"), {
+      code: "LOCAL_NOT_FOUND",
+      key: "a/SKILL.md",
+    });
+    const ghost2 = Object.assign(new Error("gone2"), {
+      code: "LOCAL_NOT_FOUND",
+      key: "b/SKILL.md",
+    });
+    const real = new Error("network timeout");
+
+    const r = partitionAndHeal([ghost1, ghost2, real]);
+
+    assert.strictEqual(r.localNotFound.length, 2);
+    assert.strictEqual(
+      r.others.length,
+      1,
+      "real error must remain in others"
+    );
+    assert.strictEqual(r.remoteNotFound.length, 0);
+  });
+
+  it("never self-heals for local-only deletions (no stale delta state)", () => {
+    const ghost = Object.assign(new Error("gone"), {
+      code: "LOCAL_NOT_FOUND",
+      key: "a/SKILL.md",
+    });
+    const r = partitionAndHeal([ghost]);
+    assert.strictEqual(r.selfHealed, false);
+    assert.strictEqual(r.localNotFound.length, 1);
+  });
+
+  it("self-heals only for REMOTE_NOT_FOUND, not LOCAL_NOT_FOUND", () => {
+    const remote = Object.assign(new Error("404"), {
+      code: "REMOTE_NOT_FOUND",
+      key: "cloud.md",
+    });
+    const local = Object.assign(new Error("gone"), {
+      code: "LOCAL_NOT_FOUND",
+      key: "local.md",
+    });
+    const r = partitionAndHeal([remote, local]);
+    assert.strictEqual(r.selfHealed, true, "remote presence triggers heal");
+    assert.strictEqual(
+      r.localNotFound.length,
+      1,
+      "local present but no heal"
+    );
+    assert.strictEqual(r.remoteNotFound.length, 1);
   });
 });

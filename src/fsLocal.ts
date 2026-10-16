@@ -180,21 +180,53 @@ export class FakeFsLocal extends FakeFs {
   }
 
   async readFile(key: string): Promise<ArrayBuffer> {
-    return await this.vault.adapter.readBinary(key);
+    try {
+      return await this.vault.adapter.readBinary(key);
+    } catch (e) {
+      // A file the walk saw but that vanished before this read is a TOCTOU
+      // race — confirm via stat and surface LOCAL_NOT_FOUND (thrown by
+      // statFix) so sync skips it gracefully, mirroring REMOTE_NOT_FOUND.
+      // If stat succeeds the file exists but is unreadable: rethrow the
+      // original error unchanged (a real error, not a race).
+      await statFix(this.vault, key);
+      throw e;
+    }
   }
 
   async rename(key1: string, key2: string, _opts?: RenameOpts): Promise<void> {
-    return await this.vault.adapter.rename(key1, key2);
+    try {
+      return await this.vault.adapter.rename(key1, key2);
+    } catch (e) {
+      // If the source vanished between walk and this rename, surface
+      // LOCAL_NOT_FOUND (thrown by statFix) so sync skips it gracefully.
+      // If the source still exists, the rename failed for a real reason:
+      // rethrow unchanged.
+      await statFix(this.vault, key1);
+      throw e;
+    }
   }
 
   async rm(key: string): Promise<void> {
-    if (this.deleteToWhere === "obsidian") {
-      await this.vault.adapter.trashLocal(key);
-    } else {
-      // "system"
-      if (!(await this.vault.adapter.trashSystem(key))) {
+    try {
+      if (this.deleteToWhere === "obsidian") {
         await this.vault.adapter.trashLocal(key);
+      } else {
+        // "system"
+        if (!(await this.vault.adapter.trashSystem(key))) {
+          await this.vault.adapter.trashLocal(key);
+        }
       }
+    } catch (e) {
+      // If the file vanished between walk and this delete, it is already in
+      // the desired (gone) state — succeed silently, mirroring the remote
+      // _deleteJson 404→success idempotency. If it still exists, the delete
+      // failed for a real reason (permissions, IO): rethrow unchanged.
+      try {
+        await statFix(this.vault, key);
+      } catch {
+        return; // gone — idempotent success
+      }
+      throw e;
     }
   }
   async checkConnect(callbackFunc?: (err: unknown) => void): Promise<boolean> {

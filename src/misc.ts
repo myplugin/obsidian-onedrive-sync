@@ -427,6 +427,24 @@ export const toText = (x: unknown) => {
 };
 
 /**
+ * Build a recognizable error for the "local file was deleted between the
+ * sync walk and the stat / readFile / rm / rename" TOCTOU race. Mirrors
+ * remoteNotFoundError on the remote side: plain Error + `.code` +
+ * `.key`, so sync.ts's makeCatch preserves them and main.ts can skip the
+ * operation gracefully instead of aborting the whole sync. Safe to skip
+ * because fsLocal.walk is always a fresh full enumeration — the next
+ * sync's walk omits the file and the plan becomes
+ * local_is_deleted_thus_also_delete_remote (no data loss, no stale state).
+ */
+export function localNotFoundError(path: string): Error {
+  const err = new Error(
+    `Local file not found (deleted since sync started): ${path}`
+  );
+  Object.assign(err, { code: "LOCAL_NOT_FOUND", key: path });
+  return err;
+}
+
+/**
  * On Android the stat has bugs for folders. So we need a fixed version.
  * @param vault
  * @param path
@@ -434,7 +452,7 @@ export const toText = (x: unknown) => {
 export const statFix = async (vault: Vault, path: string) => {
   const s = await vault.adapter.stat(path);
   if (s === undefined || s === null) {
-    throw Error(`${path} doesn't exist cannot run stat`);
+    throw localNotFoundError(path);
   }
   if (s.ctime === undefined || s.ctime === null || Number.isNaN(s.ctime)) {
     Reflect.set(s, "ctime", undefined); // force assignment (Stat.ctime is typed number)
