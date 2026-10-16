@@ -1,0 +1,14 @@
+.github/workflows/release.yml
+  h_77bd96c5a60e28 46,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "2018e0623777ec650996f8c9aa892b437846e0f8",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
