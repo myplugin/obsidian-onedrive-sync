@@ -1,0 +1,14 @@
+scripts/obsidian-scan.mjs
+  h_77bd96c5a60e28 2-7,17-18,43,52-53,56-62,73-74,85,96-100,109,113,119-165,168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "754b062cbdcd69bfeadd4de075e6c1d6c39af471",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
