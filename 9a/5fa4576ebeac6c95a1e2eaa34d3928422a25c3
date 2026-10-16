@@ -1,0 +1,14 @@
+src/fsOnedrive.ts
+  h_77bd96c5a60e28 555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "9a5fa4576ebeac6c95a1e2eaa34d3928422a25c3",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
