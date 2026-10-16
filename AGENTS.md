@@ -7,10 +7,30 @@ Guidance for AI agents working in `onedrive-vault-sync` — a OneDrive-only fork
 - `npm run dev` — esbuild watch
 - `npm run build` — `tsc -noEmit -skipLibCheck` typecheck + esbuild production build → `main.js`
 - `npm run typecheck` — standalone typecheck (also runs as part of `build`)
+- `npm run scan` — **门禁检查 (gate check)**: 7-item Obsidian scanner mirror (ESLint all rules + CSS !important + dep audit + lockfile sync + version consistency + installability + manifest fields). Exit 0 = clean.
 - `npm run format` — `biome check --write .` (formatter + linter)
 - `npm run clean` — `rimraf main.js`
 - `npm test` — mocha + tsx over `tests/**/*.ts`
 - Single test file: `npx mocha --import=tsx tests/misc.test.ts`
+
+## 门禁检查 (Gate Check)
+
+When the user says "门禁检查", "gate check", "检查一下", "push 前检查", or similar, run the **full gate** before any push:
+
+```bash
+npm run scan       # 7 checks: ESLint + CSS + deps + lockfile + version + installability + manifest
+npm run typecheck  # tsc 0 errors
+npm test           # all tests pass
+npm run build      # tsc + esbuild + verify-build (move .env aside first: MV .env .env.bak; restore after)
+```
+
+All 4 must pass (0 warnings/errors/failures). Report each result. Only green → safe to push.
+
+The CI workflow (`.github/workflows/release.yml`) runs the same gate automatically on tag push: `npm ci → npm run scan → npm run build → verify version → release`. If any check fails, no release is created.
+
+### Before pushing: mandatory workflow
+
+**Any `package.json` change → `npm install` (sync lockfile) → `npm run build` → `npm run scan` → then push.** The lockfile sync check in `npm run scan` catches staleness, but running `npm install` first avoids the scan having to restore the lockfile.
 
 ## Build environment
 
