@@ -5,7 +5,7 @@
 import { strict as assert } from "assert";
 import type { Entity } from "../src/baseTypes";
 import { clearDupFiles, getDupFiles } from "../src/clearDupFiles";
-import { localNotFoundError, statFix } from "../src/misc";
+import { localNotFoundError, runLocalDeleteOrVanished, runLocalOpOrVanished, statFix } from "../src/misc";
 
 // =============================================================================
 // C1: PQueue error handlers must preserve .code and .key properties
@@ -444,5 +444,72 @@ describe("LOCAL_NOT_FOUND: error code preservation + partitioning", () => {
       "local present but no heal"
     );
     assert.strictEqual(r.remoteNotFound.length, 1);
+  });
+});
+
+// =============================================================================
+// fsLocal TOCTOU helpers (misc.ts, obsidian-free): runLocalOpOrVanished
+// (readFile/rename) + runLocalDeleteOrVanished (rm). Direct unit tests — the
+// helpers live in misc so they import cleanly without the obsidian runtime,
+// and fsLocal's three methods are now thin delegations to them.
+// =============================================================================
+
+describe("fsLocal TOCTOU helpers: runLocalOpOrVanished / runLocalDeleteOrVanished", () => {
+  const FILE_STAT = { type: "file", mtime: 1, ctime: 1, size: 1 };
+  // statFix consumes vault.adapter.stat; gone -> null (statFix throws
+  // LOCAL_NOT_FOUND), present -> a valid file stat.
+  const goneVault = { adapter: { stat: async () => null } } as any;
+  const existsVault = { adapter: { stat: async () => FILE_STAT } } as any;
+
+  describe("runLocalOpOrVanished (readFile / rename pattern)", () => {
+    it("op fails + file vanished since walk -> LOCAL_NOT_FOUND + key", async () => {
+      await assert.rejects(
+        runLocalOpOrVanished(goneVault, "a/b.md", async () => {
+          throw new Error("read failed");
+        }),
+        (e: any) => e.code === "LOCAL_NOT_FOUND" && e.key === "a/b.md"
+      );
+    });
+
+    it("op fails + file still present -> rethrows original, NOT LOCAL_NOT_FOUND", async () => {
+      await assert.rejects(
+        runLocalOpOrVanished(existsVault, "a.md", async () => {
+          throw new Error("permission denied");
+        }),
+        (e: any) =>
+          /permission denied/.test(e.message) && e.code !== "LOCAL_NOT_FOUND"
+      );
+    });
+
+    it("op succeeds -> returns result (stat not consulted)", async () => {
+      const r = await runLocalOpOrVanished(existsVault, "a.md", async () => 42);
+      assert.strictEqual(r, 42);
+    });
+  });
+
+  describe("runLocalDeleteOrVanished (rm pattern)", () => {
+    it("delete fails + file already gone -> idempotent success (no throw)", async () => {
+      // must resolve — file is already in the desired (gone) state
+      await runLocalDeleteOrVanished(goneVault, "a/b.md", async () => {
+        throw new Error("trash failed");
+      });
+    });
+
+    it("delete fails + file still present -> rethrows original", async () => {
+      await assert.rejects(
+        runLocalDeleteOrVanished(existsVault, "a.md", async () => {
+          throw new Error("permission denied");
+        }),
+        /permission denied/
+      );
+    });
+
+    it("delete succeeds -> resolves", async () => {
+      let called = false;
+      await runLocalDeleteOrVanished(existsVault, "a.md", async () => {
+        called = true;
+      });
+      assert.strictEqual(called, true);
+    });
   });
 });

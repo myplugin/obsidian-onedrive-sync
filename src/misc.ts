@@ -469,6 +469,53 @@ export const statFix = async (vault: Vault, path: string) => {
   return s;
 };
 
+/**
+ * Run a local fs op (readFile/rename) that targets a file the sync walk
+ * already saw. If the op fails, classify via statFix: if the file vanished
+ * since the walk (TOCTOU race) statFix throws LOCAL_NOT_FOUND, which sync's
+ * makeCatch preserves and main.ts skips gracefully (mirroring
+ * REMOTE_NOT_FOUND); if the file still exists the op failed for a real
+ * reason (permissions, IO) — rethrow the original error unchanged. Extracted
+ * from fsLocal.readFile/rename so the classify logic is unit-testable without
+ * the obsidian runtime (misc.ts is obsidian-free).
+ */
+export const runLocalOpOrVanished = async <T>(
+  vault: Vault,
+  key: string,
+  op: () => Promise<T>
+): Promise<T> => {
+  try {
+    return await op();
+  } catch (e) {
+    await statFix(vault, key); // throws LOCAL_NOT_FOUND if gone
+    throw e; // still exists — real error, propagate
+  }
+};
+
+/**
+ * Run a local delete (rm/trash) that targets a file the sync walk already
+ * saw. If the delete fails, classify via statFix: if the file is already gone
+ * (TOCTOU race) it is already in the desired (deleted) state — succeed
+ * silently (idempotent delete, mirroring the remote _deleteJson 404→success);
+ * if it still exists the delete failed for a real reason — rethrow unchanged.
+ */
+export const runLocalDeleteOrVanished = async (
+  vault: Vault,
+  key: string,
+  op: () => Promise<void>
+): Promise<void> => {
+  try {
+    return await op();
+  } catch (e) {
+    try {
+      await statFix(vault, key); // throws LOCAL_NOT_FOUND if gone
+    } catch {
+      return; // gone — idempotent success
+    }
+    throw e; // still exists — real error, propagate
+  }
+};
+
 export const isSpecialFolderNameToSkip = (
   x: string,
   more: string[] | undefined
