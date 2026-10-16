@@ -1,0 +1,26 @@
+src/conflictReview.ts
+  h_77bd96c5a60e28 219-283,511,514-528,536,539-550,610-622,643-762
+src/langs/en.json
+  h_77bd96c5a60e28 251,369,372,377,382-392
+src/langs/zh_cn.json
+  h_77bd96c5a60e28 251,372,377,382-392
+src/langs/zh_tw.json
+  h_77bd96c5a60e28 251,372,377,382-392
+src/main.ts
+  h_77bd96c5a60e28 42,1230-1249
+src/sync.ts
+  h_77bd96c5a60e28 2376-2380,2385-2391,2766-2772
+styles.css
+  h_77bd96c5a60e28 759-760,762,817-821,886-924
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "95773988ae3eb9ead1020cecd8393b25baf559c0",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
