@@ -1,0 +1,18 @@
+src/fsLocal.ts
+  h_77bd96c5a60e28 5,183-185,189-191,195,204
+src/misc.ts
+  h_77bd96c5a60e28 472-518
+tests/bugfixRegression.test.ts
+  h_77bd96c5a60e28 8,449-515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "f1ae1203152dc1be0aa1d854f64e43ab74a0f379",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
