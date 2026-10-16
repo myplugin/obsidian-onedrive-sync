@@ -35,4 +35,19 @@ export default defineConfig([
       },
     },
   },
+  {
+    // onedrive-vault-sync deliberately keeps an imperative tabbed `display()`
+    // (Account/Sync/Safety/Advanced) so section switching is a single click.
+    // Obsidian 1.13+'s declarative `getSettingDefinitions()` API renders
+    // navigable *pages* instead — a back-then-forward multi-click flow that
+    // regressed the UX after the 0.6.x warning cleanup. The declarative API
+    // is runtime-mutually-exclusive with display() (a non-empty definitions
+    // array bypasses display() entirely), so one-click tabs and declarative
+    // settings-search cannot coexist. Scoped to settings.ts only, so the rule
+    // stays ON for any future setting tabs.
+    files: ["src/settings.ts"],
+    rules: {
+      "obsidianmd/settings-tab/prefer-setting-definitions": "off",
+    },
+  },
 ]);
