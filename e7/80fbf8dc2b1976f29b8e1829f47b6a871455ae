@@ -1,0 +1,14 @@
+esbuild.config.mjs
+  h_77bd96c5a60e28 243-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "e780fbf8dc2b1976f29b8e1829f47b6a871455ae",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
