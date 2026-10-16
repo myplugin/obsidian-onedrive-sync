@@ -1,0 +1,42 @@
+esbuild.config.mjs
+  h_77bd96c5a60e28 5-7,190-193,219
+scripts/obsidian-scan.mjs
+  h_77bd96c5a60e28 47-49,51-53,65-68,73-80,103-105,112-114,125-127,130-135,142-144,161-170,197-199,209-211
+src/baseTypes.ts
+  h_77bd96c5a60e28 335
+src/driveItemConvert.ts
+  h_77bd96c5a60e28 648-651
+src/encryptOpenSSL.ts
+  h_77bd96c5a60e28 63,67,98,102
+src/encryptRClone.ts
+  h_77bd96c5a60e28 75-77,111-113,121-123,152-154,163-165,192-196,204-206,242-246,257-259
+src/fsAll.ts
+  h_77bd96c5a60e28 92-94
+src/fsLocal.ts
+  h_77bd96c5a60e28 1
+src/i18n.ts
+  h_77bd96c5a60e28 33
+src/misc.ts
+  h_77bd96c5a60e28 346-349,973-978,1222-1224
+src/syncDiagnose.ts
+  h_77bd96c5a60e28 4-7
+src/syncSettings.ts
+  h_77bd96c5a60e28 56-58,77-79
+stubs/elliptic/index.js
+  h_77bd96c5a60e28 2,4-7,15-21
+tests/onedriveHttpError.test.ts
+  h_77bd96c5a60e28 157-159
+tests/syncDiagnose.test.ts
+  h_77bd96c5a60e28 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "867bc5def5dfc133b6f756321d096486149dd91c",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
