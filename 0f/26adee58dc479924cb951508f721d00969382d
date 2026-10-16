@@ -1,0 +1,24 @@
+manifest-beta.json
+  h_77bd96c5a60e28 4
+manifest.json
+  h_77bd96c5a60e28 4
+package-lock.json
+  h_77bd96c5a60e28 3,9,3235-3238
+package.json
+  h_77bd96c5a60e28 3
+scripts/obsidian-scan.mjs
+  h_77bd96c5a60e28 2-5,11,16,63,108-127,131
+versions.json
+  h_77bd96c5a60e28 30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "0f26adee58dc479924cb951508f721d00969382d",
+  "prompts": {},
+  "humans": {
+    "h_77bd96c5a60e28": {
+      "author": "pef <pef@local>"
+    }
+  }
+}
