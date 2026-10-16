@@ -453,7 +453,6 @@ export class ConflictReviewView extends ItemView {
     item: UnresolvedConflict,
     idx: number
   ): void {
-    const t = this.t;
     const card = parent.createDiv({ cls: "rs-conflict-item" });
     // staggered entrance via CSS nth-child rules (see styles.css); the index
     // class caps at 8 so long lists stop delaying after the first screenful
