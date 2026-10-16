@@ -1,12 +1,9 @@
-import { nanoid } from "nanoid";
 import type {
   BatchRenameOp,
   BatchRenameResult,
   Entity,
   RenameOpts,
 } from "./baseTypes";
-import { debugInfo } from "./logger";
-import { deepEqual } from "./misc";
 
 export abstract class FakeFs {
   abstract kind: string;
@@ -92,56 +89,6 @@ export abstract class FakeFs {
   abstract checkConnect(
     callbackFunc?: (err: unknown) => void
   ): Promise<boolean>;
-  async checkConnectCommonOps(callbackFunc?: (err: unknown) => void) {
-    const folderName = `rs-test-folder-${nanoid()}/`;
-    const filename = `${folderName}rs-test-file-${nanoid()}`;
-    try {
-      debugInfo(`check connect: create folder`);
-      await this.mkdir(folderName);
-
-      debugInfo(`check connect: upload file`);
-      const ctime = Date.now();
-      const mtime1 = Date.now();
-      const content1 = new ArrayBuffer(100);
-      await this.writeFile(filename, content1, mtime1, ctime);
-
-      debugInfo(`check connect: overwrite file`);
-      const mtime2 = Date.now();
-      const content2 = new ArrayBuffer(200);
-      await this.writeFile(filename, content2, mtime2, ctime);
-
-      debugInfo(`check connect: download file`);
-      const content3 = await this.readFile(filename);
-      if (!deepEqual(content2, content3)) {
-        throw Error(`downloaded file is not equal with uploaded file!`);
-      }
-
-      return true;
-    } catch (err) {
-      console.error(err);
-      callbackFunc?.(err);
-      return false;
-    } finally {
-      // 兜底清理：无论检查成功或失败，都删除测试文件与文件夹，避免远程残留。
-      // 清理自身的错误不掩盖真正的检查结果，仅记录日志。
-      debugInfo(`check connect: cleanup file`);
-      try {
-        await this.rm(filename);
-      } catch (e) {
-        console.warn(
-          `check connect: cleanup file failed (ignored): ${String(e)}`
-        );
-      }
-      debugInfo(`check connect: cleanup folder`);
-      try {
-        await this.rm(folderName);
-      } catch (e) {
-        console.warn(
-          `check connect: cleanup folder failed (ignored): ${String(e)}`
-        );
-      }
-    }
-  }
   abstract getUserDisplayName(): Promise<string>;
   abstract revokeAuth(): Promise<void>;
   abstract allowEmptyFile(): boolean;

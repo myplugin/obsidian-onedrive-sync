@@ -2244,17 +2244,29 @@ export class FakeFsOnedrive extends FakeFs {
 
   async checkConnect(callbackFunc?: (err: unknown) => void): Promise<boolean> {
     try {
+      // 1. Verify auth: can we read the signed-in user's profile?
       const k = await this.getUserDisplayName();
       if (k === "<unknown display name>") {
         throw Error(`unknown display name!`);
       }
+      // 2. Verify App Folder access: _init() GETs
+      // /me/drive/special/approot (materializing the Apps/{appName}
+      // special folder) and lists its children, proving the token has the
+      // correct scope and the App Folder is reachable. This is read-only
+      // with respect to connectivity — unlike the old
+      // checkConnectCommonOps which created (and tried to clean up) random
+      // rs-test-folder-* / rs-test-file-* entries that could leak as
+      // orphaned remote folders when cleanup raced with OneDrive's
+      // eventual consistency. _init() does create the vault's own
+      // remoteBaseDir root folder if it is missing, but that is a named
+      // sync-root folder, not test litter.
+      await this._init();
+      return true;
     } catch (err) {
       console.debug(err);
       callbackFunc?.(err);
       return false;
     }
-
-    return await this.checkConnectCommonOps(callbackFunc);
   }
 
   async getUserDisplayName() {
