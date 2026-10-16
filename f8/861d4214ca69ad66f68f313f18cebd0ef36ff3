@@ -1,0 +1,39 @@
+cli/login-smoke.ts
+  s_13027d77289322::t_c418915c01f65e 1-163
+cli/sync.ts
+  s_5d94bf7cc2a38e::t_9c8e2c2cddc6cc 1-312
+esbuild.config.cli.mjs
+  s_a609b63b16f799::t_407b262e46c5cf 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "5.30.3",
+  "base_commit_sha": "f8861d4214ca69ad66f68f313f18cebd0ef36ff3",
+  "prompts": {},
+  "sessions": {
+    "s_13027d77289322": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ebb8c12bdffeZ3jWkSzTJR0GUb",
+        "model": "glm-5.2"
+      },
+      "human_author": "pef <pef@local>"
+    },
+    "s_5d94bf7cc2a38e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ebb92361bffers1jG4fJDe5c5Z",
+        "model": "glm-5.2"
+      },
+      "human_author": "pef <pef@local>"
+    },
+    "s_a609b63b16f799": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ebbc57cc8ffePTCkDkqd4Kiri2",
+        "model": "glm-5.2"
+      },
+      "human_author": "pef <pef@local>"
+    }
+  }
+}
